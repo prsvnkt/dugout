@@ -14,6 +14,7 @@ in one window. Electron + React + TypeScript, with real terminals (node-pty + xt
 - One project = one repo. Keep it that simple.
 
 See @docs/decisions.md for the decisions behind this and the roadmap.
+Accepted limitations to revisit are in `docs/known-issues.md`; update it when fixing or finding one.
 
 ## Commands
 
