@@ -1,0 +1,60 @@
+.pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg-app);
+  border-top: 2px solid var(--accent);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 32px;
+  padding: 0 var(--space-3);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.kind {
+  color: var(--text-secondary);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  color: var(--text-secondary);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-exited);
+}
+
+.status[data-state='running'] .statusDot {
+  background: var(--status-running);
+}
+
+.status[data-state='error'] {
+  color: var(--status-error);
+}
+
+.status[data-state='error'] .statusDot {
+  background: var(--status-error);
+}
+
+.terminal {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-2) 0 0 var(--space-3);
+}

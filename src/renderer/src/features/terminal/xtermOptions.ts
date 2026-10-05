@@ -1,0 +1,33 @@
+import type { ITerminalOptions } from '@xterm/xterm'
+
+export const XTERM_OPTIONS: ITerminalOptions = {
+  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontSize: 13,
+  lineHeight: 1.2,
+  cursorBlink: true,
+  scrollback: 10_000,
+  allowProposedApi: true,
+  macOptionIsMeta: true,
+  theme: {
+    background: '#0f1115',
+    foreground: '#e6e8ee',
+    cursor: '#e6e8ee',
+    selectionBackground: '#2a3242',
+    black: '#1c2029',
+    red: '#f87171',
+    green: '#4ade80',
+    yellow: '#facc15',
+    blue: '#60a5fa',
+    magenta: '#c084fc',
+    cyan: '#2dd4bf',
+    white: '#e6e8ee',
+    brightBlack: '#6b7282',
+    brightRed: '#fca5a5',
+    brightGreen: '#86efac',
+    brightYellow: '#fde047',
+    brightBlue: '#93c5fd',
+    brightMagenta: '#d8b4fe',
+    brightCyan: '#5eead4',
+    brightWhite: '#ffffff',
+  },
+}

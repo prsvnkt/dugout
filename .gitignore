@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Claude Code personal overrides
+.claude/settings.local.json
+
+# Playwright
+test-results/
+playwright-report/

@@ -1,0 +1,33 @@
+:root {
+  --bg-app: #0f1115;
+  --bg-panel: #151820;
+  --bg-elevated: #1c2029;
+  --border: #262b36;
+  --text-primary: #e6e8ee;
+  --text-secondary: #9aa1b1;
+  --text-muted: #6b7282;
+
+  --project-teal: #2dd4bf;
+  --project-orange: #fb923c;
+  --project-purple: #a78bfa;
+  --project-blue: #60a5fa;
+
+  --status-running: #4ade80;
+  --status-exited: #6b7282;
+  --status-error: #f87171;
+
+  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  /* Leaves room for the macOS traffic lights with titleBarStyle: hiddenInset. */
+  --titlebar-height: 38px;
+  --titlebar-inset: 80px;
+}
