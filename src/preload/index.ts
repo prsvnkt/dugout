@@ -56,6 +56,15 @@ const api: DugoutApi = {
     setHasUnsavedChanges: (hasUnsavedChanges) =>
       ipcRenderer.send(IpcChannel.editorUnsavedChanges, hasUnsavedChanges === true),
   },
+  github: {
+    getState: () => ipcRenderer.invoke(IpcChannel.authGetState),
+    startSignIn: () => ipcRenderer.invoke(IpcChannel.authStart),
+    cancelSignIn: () => ipcRenderer.invoke(IpcChannel.authCancel),
+    signOut: () => ipcRenderer.invoke(IpcChannel.authSignOut),
+    openVerificationPage: () => ipcRenderer.invoke(IpcChannel.authOpenVerification),
+    listRepos: () => ipcRenderer.invoke(IpcChannel.githubListRepos),
+    onStateChange: (listener) => subscribe(IpcChannel.authState, listener),
+  },
   workspace: {
     load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),
     save: (snapshot) => ipcRenderer.invoke(IpcChannel.workspaceSave, snapshot),

@@ -219,3 +219,13 @@
   white-space: pre-wrap;
   user-select: text;
 }
+
+.signIn {
+  display: block;
+  margin-top: var(--space-2);
+  padding: 2px var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}

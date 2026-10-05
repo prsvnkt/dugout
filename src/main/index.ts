@@ -1,10 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, shell } from 'electron'
 import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
 import { registerFileIpc } from './ipc/registerFileIpc'
+import { registerGitHubIpc } from './ipc/registerGitHubIpc'
 import { registerGitIpc } from './ipc/registerGitIpc'
 import { registerProjectIpc } from './ipc/registerProjectIpc'
 import { registerTerminalIpc } from './ipc/registerTerminalIpc'
@@ -13,6 +14,12 @@ import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
 import { GitService } from './services/git/GitService'
+import { gitHubConfig, GITHUB_SCOPES } from './services/github/config'
+import { DeviceFlowClient } from './services/github/DeviceFlowClient'
+import { GitHubApi } from './services/github/GitHubApi'
+import { GitHubAuth } from './services/github/GitHubAuth'
+import { gitCredentialConfig } from './services/github/gitCredentials'
+import { TokenStore, type Encryption } from './services/github/TokenStore'
 import { AgentNotifier, type AgentNotification } from './services/notifications/AgentNotifier'
 import { FileService } from './services/files/FileService'
 import { resolveRepoRoot } from './services/git/resolveRepoRoot'
@@ -26,6 +33,28 @@ import { createMainWindow } from './window'
 const PROJECTS_FILE = 'projects.json'
 const WORKTREES_DIR = 'worktrees'
 const WORKSPACE_FILE = 'workspace.json'
+const GITHUB_TOKEN_FILE = 'github-token.bin'
+
+/**
+ * safeStorage is Keychain-backed on macOS. E2E tests opt into a plaintext stand-in so they never
+ * trigger Keychain prompts; the variable name makes the trade-off explicit.
+ */
+const tokenEncryption: Encryption =
+  process.env.DUGOUT_INSECURE_TOKEN_STORAGE_FOR_TESTS === '1'
+    ? {
+        isAvailable: () => true,
+        encrypt: (text) => Buffer.from(text, 'utf8'),
+        decrypt: (data) => data.toString('utf8'),
+      }
+    : {
+        isAvailable: () => safeStorage.isEncryptionAvailable(),
+        encrypt: (text) => safeStorage.encryptString(text),
+        decrypt: (data) => safeStorage.decryptString(data),
+      }
+
+function broadcast(channel: string, ...args: unknown[]): void {
+  for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, ...args)
+}
 const WORKTREE_ID_BYTES = 3
 
 // Lets tests (and parallel dev instances) use an isolated data folder.
@@ -129,7 +158,31 @@ async function start(): Promise<void> {
 
   registerTerminalIpc(manager)
   registerProjectIpc(projectStore)
-  const git = new GitService({ env: process.env })
+  const github = gitHubConfig(process.env)
+  const githubApi = new GitHubApi({ fetch, apiBaseUrl: github.apiBaseUrl })
+  const githubAuth = new GitHubAuth({
+    isConfigured: github.clientId !== '',
+    deviceFlow: new DeviceFlowClient({
+      fetch,
+      webBaseUrl: github.webBaseUrl,
+      clientId: github.clientId,
+      scopes: GITHUB_SCOPES,
+      sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      now: () => Date.now(),
+    }),
+    tokens: new TokenStore({
+      filePath: join(dataDir, GITHUB_TOKEN_FILE),
+      encryption: tokenEncryption,
+    }),
+    api: githubApi,
+    onChange: (state) => broadcast(IpcChannel.authState, state),
+  })
+  void githubAuth.init().catch((error: unknown) => console.error('[github] init failed:', error))
+
+  const git = new GitService({
+    env: process.env,
+    credentials: () => gitCredentialConfig(githubAuth.token(), github.webBaseUrl),
+  })
   const worktrees = new WorktreeManager({
     git,
     baseDir: join(dataDir, WORKTREES_DIR),
@@ -142,6 +195,12 @@ async function start(): Promise<void> {
     openExternal: (url) => shell.openExternal(url),
   })
   registerWorktreeIpc(projectStore, worktrees)
+  registerGitHubIpc({
+    auth: githubAuth,
+    api: githubApi,
+    webBaseUrl: github.webBaseUrl,
+    openExternal: (url) => shell.openExternal(url),
+  })
   registerFileIpc(projectStore, worktrees, new FileService({ git }))
   registerWorkspaceIpc(new LayoutStore({ filePath: join(dataDir, WORKSPACE_FILE) }), projectStore)
   registerDialogIpc()

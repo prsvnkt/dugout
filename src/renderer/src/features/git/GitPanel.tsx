@@ -5,6 +5,7 @@ import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore
 import { CheckoutPicker } from '@renderer/features/worktrees/CheckoutPicker'
 import { ChangeSection, type ChangeEntry, type GitSelection } from './ChangeSection'
 import { CommitBox } from './CommitBox'
+import { isAuthError, useAuthStore } from '@renderer/features/github/authStore'
 import { useCheckoutGit, useGitStore } from './gitStore'
 import styles from './GitPanel.module.css'
 
@@ -47,6 +48,7 @@ export function GitPanel({ project }: GitPanelProps) {
   const actions = useGitStore()
   const id = checkout
   const openDiff = useEditorStore((state) => state.openDiff)
+  const signIn = useAuthStore((state) => state.signIn)
   const { tabs, activeTabId } = useProjectTabs(project.id)
   const activeTab = tabs.find((tab) => tab.id === activeTabId)
   const selection: GitSelection | null =
@@ -96,9 +98,14 @@ export function GitPanel({ project }: GitPanelProps) {
       </header>
 
       {git.actionError && (
-        <p className={styles.error} role="alert">
+        <div className={styles.error} role="alert">
           {git.actionError}
-        </p>
+          {isAuthError(git.actionError) && (
+            <button className={styles.signIn} onClick={() => void signIn()}>
+              Sign in to GitHub
+            </button>
+          )}
+        </div>
       )}
 
       <div className={styles.changes}>

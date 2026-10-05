@@ -37,7 +37,7 @@ src/
     services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
                 git/ (review panel, PR URLs), agentHooks/ (Claude status + session ids),
                 worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
-                files/ (explorer + editor file access, path-safe).
+                files/ (explorer + editor file access, path-safe), github/ (sign-in, API).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
@@ -75,6 +75,8 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   through `editorBridge`; never import `monaco-editor` outside that folder.
 - **All file access goes through `FileService`**, which realpaths every path and refuses
   anything outside the checkout (symlinks included).
+- **The GitHub token never leaves main** (decision 015). Renderer-facing types must not carry it;
+  e2e tests assert this. Network git commands go through `GitService.runNetwork`.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` (the e2e helpers do).
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.

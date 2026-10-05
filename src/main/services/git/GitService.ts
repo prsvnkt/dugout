@@ -1,5 +1,6 @@
 import { MAX_OPEN_FILE_BYTES, type GitRevision, type RevisionContent } from '@shared/files'
 import type { GitStatus } from '@shared/git'
+import type { GitCredentialConfig } from '../github/gitCredentials'
 import { parseStatus } from './parseStatus'
 import { buildPullRequestUrl } from './pullRequestUrl'
 import { GitError, runGit, type RunGitOptions } from './runGit'
@@ -8,6 +9,8 @@ type Env = Readonly<Record<string, string | undefined>>
 
 export interface GitServiceDeps {
   readonly env: Env
+  /** Credentials for network commands (push, clone), e.g. the signed-in GitHub token. */
+  readonly credentials?: () => GitCredentialConfig
 }
 
 const PUSH_TIMEOUT_MS = 120_000
@@ -27,7 +30,7 @@ const FALLBACK_BASE_BRANCH = 'main'
 export class GitService {
   private readonly env: Env
 
-  constructor(deps: GitServiceDeps) {
+  constructor(private readonly deps: GitServiceDeps) {
     this.env = {
       ...deps.env,
       GIT_TERMINAL_PROMPT: '0',
@@ -100,14 +103,14 @@ export class GitService {
     const status = await this.status(root)
     if (status.branch === null) throw new GitError('Check out a branch before pushing.')
     if (status.upstream !== null) {
-      await this.run(root, ['push'], { timeoutMs: PUSH_TIMEOUT_MS })
+      await this.runNetwork(root, ['push'], { timeoutMs: PUSH_TIMEOUT_MS })
       return
     }
     const { stdout } = await this.run(root, ['remote'])
     if (!stdout.split('\n').includes('origin')) {
       throw new GitError('This repository has no remote named "origin".')
     }
-    await this.run(root, ['push', '--set-upstream', 'origin', 'HEAD'], {
+    await this.runNetwork(root, ['push', '--set-upstream', 'origin', 'HEAD'], {
       timeoutMs: PUSH_TIMEOUT_MS,
     })
   }
@@ -171,6 +174,19 @@ export class GitService {
     )
     const ref = stdout.trim()
     return ref.startsWith('origin/') ? ref.slice('origin/'.length) : null
+  }
+
+  /** Like `run`, with the configured credentials (e.g. GitHub token) for remote access. */
+  private runNetwork(
+    root: string,
+    args: readonly string[],
+    options: Partial<Omit<RunGitOptions, 'cwd' | 'args'>> = {},
+  ) {
+    const credentials = this.deps.credentials?.() ?? { args: [], env: {} }
+    return this.run(root, [...credentials.args, ...args], {
+      ...options,
+      env: { ...this.env, ...credentials.env },
+    })
   }
 
   private run(

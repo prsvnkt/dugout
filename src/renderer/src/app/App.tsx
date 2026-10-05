@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Project } from '@shared/project'
 import { ProjectDialog, type ProjectDialogTarget } from '@renderer/features/projects/ProjectDialog'
 import { Sidebar } from '@renderer/features/projects/Sidebar'
+import { useAuthStore } from '@renderer/features/github/authStore'
+import { SignInDialog } from '@renderer/features/github/SignInDialog'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { ProjectWorkspace } from '@renderer/features/workspace/ProjectWorkspace'
 import { StatusBar } from '@renderer/features/workspace/StatusBar'
@@ -34,6 +36,8 @@ export function App() {
   useEffect(() => {
     void load()
   }, [load])
+  const connectAuth = useAuthStore((state) => state.connect)
+  useEffect(() => connectAuth(), [connectAuth])
 
   const startAddProject = useCallback(async () => {
     setPickError(null)
@@ -84,6 +88,7 @@ export function App() {
         </main>
       </div>
       <StatusBar />
+      <SignInDialog />
       {dialog && (
         <ProjectDialog target={dialog} onClose={() => setDialog(null)} onRemoved={onRemoved} />
       )}

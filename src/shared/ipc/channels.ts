@@ -34,5 +34,12 @@ export const IpcChannel = {
   worktreeList: 'worktree:list',
   worktreeCreate: 'worktree:create',
   worktreeRemove: 'worktree:remove',
+  authGetState: 'auth:get-state',
+  authStart: 'auth:start',
+  authCancel: 'auth:cancel',
+  authSignOut: 'auth:sign-out',
+  authOpenVerification: 'auth:open-verification',
+  authState: 'auth:state',
+  githubListRepos: 'github:list-repos',
   appCommand: 'app:command',
 } as const

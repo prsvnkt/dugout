@@ -7,11 +7,12 @@ export async function writeFileAtomic(
   filePath: string,
   contents: string,
   mode?: number,
+  encoding: BufferEncoding = 'utf8',
 ): Promise<void> {
   await mkdir(dirname(filePath), { recursive: true })
   const tempPath = `${filePath}.${randomUUID()}.tmp`
   try {
-    await writeFile(tempPath, contents, 'utf8')
+    await writeFile(tempPath, contents, { encoding, mode: mode ?? 0o644 })
     if (mode !== undefined) await chmod(tempPath, mode)
     await rename(tempPath, filePath)
   } catch (error) {

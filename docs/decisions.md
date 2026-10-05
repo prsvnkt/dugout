@@ -107,6 +107,19 @@ saves are atomic, keep the file mode, and are refused if the file changed on dis
 was opened. Open files reload when changed on disk; unsaved edits get a "Reload / Keep mine"
 banner. ⌘W closes the editor tab when the editor had focus, otherwise the pane.
 
+## 015 — GitHub sign-in via device flow; token stays in main (2026-10-05)
+
+Signing in uses GitHub's OAuth device flow (show a code, approve in the browser) with scopes
+`repo read:user workflow`. It needs a Dugout OAuth App with Device Flow enabled; its public
+client ID lives in `services/github/config.ts` (or `DUGOUT_GITHUB_CLIENT_ID`). The token is
+encrypted with Electron `safeStorage` (Keychain) in `<userData>/github-token.bin` (0600) and
+never sent to the renderer, which only sees `{ login, name, avatarUrl }`. Network git commands
+(push, clone) get the token through a credential helper scoped to the GitHub host that reads it
+from an env var, after clearing other helpers for that host; SSH remotes and agents' own git
+commands are unaffected. E2E tests use a local stub server (`DUGOUT_GITHUB_BASE_URL`) and an
+explicit insecure token store (`DUGOUT_INSECURE_TOKEN_STORAGE_FOR_TESTS=1`) to avoid Keychain
+prompts.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅

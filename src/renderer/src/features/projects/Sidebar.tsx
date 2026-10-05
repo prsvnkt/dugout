@@ -1,4 +1,5 @@
 import type { Project } from '@shared/project'
+import { AccountButton } from '@renderer/features/github/AccountButton'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
 import { ACTIVITY_LABEL } from '@renderer/features/workspace/paneActivity'
 import { useProjectAttention } from '@renderer/features/workspace/workspaceStore'
@@ -68,6 +69,7 @@ export function Sidebar({ onAddProject, onEditProject }: SidebarProps) {
           </li>
         ))}
       </ul>
+      <AccountButton />
       <button className={styles.add} onClick={onAddProject} title="Add project (⇧⌘O)">
         + Add project
       </button>

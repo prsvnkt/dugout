@@ -2,6 +2,7 @@ import type { AgentStatus } from './agentStatus'
 import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
 import type { GitStatus } from './git'
+import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
   ProjectAddRequest,
   ProjectUpdateRequest,
@@ -74,6 +75,16 @@ export interface DugoutApi {
   readonly editor: {
     /** Lets main warn before closing the window with unsaved edits. */
     setHasUnsavedChanges(hasUnsavedChanges: boolean): void
+  }
+  /** GitHub sign-in (device flow). The token never reaches the renderer. */
+  readonly github: {
+    getState(): Promise<Result<GitHubAuthState>>
+    startSignIn(): Promise<Result<DeviceCodePrompt>>
+    cancelSignIn(): Promise<Result<void>>
+    signOut(): Promise<Result<void>>
+    openVerificationPage(): Promise<Result<void>>
+    listRepos(): Promise<Result<readonly GitHubRepo[]>>
+    onStateChange(listener: (state: GitHubAuthState) => void): Unsubscribe
   }
   /** Saved panes per project, restored on launch. */
   readonly workspace: {
