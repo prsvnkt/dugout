@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { GitDiff, GitStatus } from '@shared/git'
-import type { ProjectId } from '@shared/project'
+import type { GitCheckout } from '@shared/worktree'
 import type { Result } from '@shared/result'
 import { dugout } from '@renderer/lib/dugout'
 
@@ -27,22 +27,29 @@ const INITIAL: ProjectGitState = {
   actionError: null,
 }
 
-interface GitState {
-  readonly byProject: Readonly<Record<ProjectId, ProjectGitState>>
-  readonly isPanelOpen: boolean
-  togglePanel(): void
-  refresh(projectId: ProjectId): Promise<void>
-  select(projectId: ProjectId, selection: GitSelection | null): Promise<void>
-  stage(projectId: ProjectId, paths: readonly string[]): Promise<void>
-  unstage(projectId: ProjectId, paths: readonly string[]): Promise<void>
-  discard(projectId: ProjectId, paths: readonly string[]): Promise<void>
-  /** Resolves true when the commit succeeded, so the caller can clear its message. */
-  commit(projectId: ProjectId, message: string): Promise<boolean>
-  push(projectId: ProjectId): Promise<void>
-  openPullRequest(projectId: ProjectId): Promise<void>
+/** Stable key for a checkout: the project, plus the worktree path when there is one. */
+export function checkoutKey(checkout: GitCheckout): string {
+  return checkout.worktreePath
+    ? `${checkout.projectId}::${checkout.worktreePath}`
+    : checkout.projectId
 }
 
-const refreshesInFlight = new Set<ProjectId>()
+interface GitState {
+  readonly byCheckout: Readonly<Record<string, ProjectGitState>>
+  readonly isPanelOpen: boolean
+  togglePanel(): void
+  refresh(checkout: GitCheckout): Promise<void>
+  select(checkout: GitCheckout, selection: GitSelection | null): Promise<void>
+  stage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
+  unstage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
+  discard(checkout: GitCheckout, paths: readonly string[]): Promise<void>
+  /** Resolves true when the commit succeeded, so the caller can clear its message. */
+  commit(checkout: GitCheckout, message: string): Promise<boolean>
+  push(checkout: GitCheckout): Promise<void>
+  openPullRequest(checkout: GitCheckout): Promise<void>
+}
+
+const refreshesInFlight = new Set<string>()
 
 function isStillListed(status: GitStatus, selection: GitSelection): boolean {
   return status.files.some(
@@ -53,73 +60,76 @@ function isStillListed(status: GitStatus, selection: GitSelection): boolean {
 }
 
 export const useGitStore = create<GitState>()((set, get) => {
-  const patch = (projectId: ProjectId, change: Partial<ProjectGitState>) =>
+  const patch = (checkout: GitCheckout, change: Partial<ProjectGitState>) => {
+    const key = checkoutKey(checkout)
     set((state) => ({
-      byProject: {
-        ...state.byProject,
-        [projectId]: { ...(state.byProject[projectId] ?? INITIAL), ...change },
+      byCheckout: {
+        ...state.byCheckout,
+        [key]: { ...(state.byCheckout[key] ?? INITIAL), ...change },
       },
     }))
-  const current = (projectId: ProjectId) => get().byProject[projectId] ?? INITIAL
+  }
+  const current = (checkout: GitCheckout) => get().byCheckout[checkoutKey(checkout)] ?? INITIAL
 
-  const loadDiff = async (projectId: ProjectId, selection: GitSelection | null) => {
-    if (!selection) return patch(projectId, { diff: null })
-    const result = await dugout.git.diff(projectId, selection.path, selection.staged)
-    if (current(projectId).selection !== selection) return // selection changed meanwhile
-    patch(projectId, result.ok ? { diff: result.data } : { diff: null, actionError: result.error })
+  const loadDiff = async (checkout: GitCheckout, selection: GitSelection | null) => {
+    if (!selection) return patch(checkout, { diff: null })
+    const result = await dugout.git.diff(checkout, selection.path, selection.staged)
+    if (current(checkout).selection !== selection) return // selection changed meanwhile
+    patch(checkout, result.ok ? { diff: result.data } : { diff: null, actionError: result.error })
   }
 
   /** Runs a mutating git action, surfaces its error, then refreshes. */
-  const runAction = async (projectId: ProjectId, action: () => Promise<Result<void>>) => {
-    patch(projectId, { isBusy: true, actionError: null })
+  const runAction = async (checkout: GitCheckout, action: () => Promise<Result<void>>) => {
+    patch(checkout, { isBusy: true, actionError: null })
     const result = await action()
-    patch(projectId, { isBusy: false, actionError: result.ok ? null : result.error })
-    await get().refresh(projectId)
+    patch(checkout, { isBusy: false, actionError: result.ok ? null : result.error })
+    await get().refresh(checkout)
     return result.ok
   }
 
   return {
-    byProject: {},
+    byCheckout: {},
     isPanelOpen: true,
     togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
 
-    async refresh(projectId) {
-      if (refreshesInFlight.has(projectId)) return
-      refreshesInFlight.add(projectId)
+    async refresh(checkout) {
+      const key = checkoutKey(checkout)
+      if (refreshesInFlight.has(key)) return
+      refreshesInFlight.add(key)
       try {
-        const result = await dugout.git.status(projectId)
-        if (!result.ok) return patch(projectId, { statusError: result.error })
-        const { selection } = current(projectId)
+        const result = await dugout.git.status(checkout)
+        if (!result.ok) return patch(checkout, { statusError: result.error })
+        const { selection } = current(checkout)
         const keepSelection = selection && isStillListed(result.data, selection) ? selection : null
-        patch(projectId, { status: result.data, statusError: null, selection: keepSelection })
-        await loadDiff(projectId, keepSelection)
+        patch(checkout, { status: result.data, statusError: null, selection: keepSelection })
+        await loadDiff(checkout, keepSelection)
       } finally {
-        refreshesInFlight.delete(projectId)
+        refreshesInFlight.delete(key)
       }
     },
 
-    async select(projectId, selection) {
-      patch(projectId, { selection, diff: null })
-      await loadDiff(projectId, selection)
+    async select(checkout, selection) {
+      patch(checkout, { selection, diff: null })
+      await loadDiff(checkout, selection)
     },
 
-    stage: (projectId, paths) =>
-      runAction(projectId, () => dugout.git.stage(projectId, paths)).then(() => {}),
-    unstage: (projectId, paths) =>
-      runAction(projectId, () => dugout.git.unstage(projectId, paths)).then(() => {}),
-    discard: (projectId, paths) =>
-      runAction(projectId, () => dugout.git.discard(projectId, paths)).then(() => {}),
-    commit: (projectId, message) =>
-      runAction(projectId, () => dugout.git.commit(projectId, message)),
-    push: (projectId) => runAction(projectId, () => dugout.git.push(projectId)).then(() => {}),
-    openPullRequest: (projectId) =>
-      runAction(projectId, async () => {
-        const result = await dugout.git.openPullRequest(projectId)
+    stage: (checkout, paths) =>
+      runAction(checkout, () => dugout.git.stage(checkout, paths)).then(() => {}),
+    unstage: (checkout, paths) =>
+      runAction(checkout, () => dugout.git.unstage(checkout, paths)).then(() => {}),
+    discard: (checkout, paths) =>
+      runAction(checkout, () => dugout.git.discard(checkout, paths)).then(() => {}),
+    commit: (checkout, message) => runAction(checkout, () => dugout.git.commit(checkout, message)),
+    push: (checkout) => runAction(checkout, () => dugout.git.push(checkout)).then(() => {}),
+    openPullRequest: (checkout) =>
+      runAction(checkout, async () => {
+        const result = await dugout.git.openPullRequest(checkout)
         return result.ok ? { ok: true, data: undefined } : result
       }).then(() => {}),
   }
 })
 
-export function useProjectGit(projectId: ProjectId): ProjectGitState {
-  return useGitStore((state) => state.byProject[projectId] ?? INITIAL)
+export function useCheckoutGit(checkout: GitCheckout): ProjectGitState {
+  const key = checkoutKey(checkout)
+  return useGitStore((state) => state.byCheckout[key] ?? INITIAL)
 }

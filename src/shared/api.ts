@@ -5,6 +5,7 @@ import type { ProjectAddRequest, ProjectUpdateRequest, TerminalCreateRequest } f
 import type { Project, ProjectId } from './project'
 import type { Result } from './result'
 import type { TerminalExit, TerminalId } from './terminal'
+import type { GitCheckout, Worktree } from './worktree'
 
 export type Unsubscribe = () => void
 
@@ -26,17 +27,23 @@ export interface DugoutApi {
     update(request: ProjectUpdateRequest): Promise<Result<Project>>
     remove(id: ProjectId): Promise<Result<void>>
   }
-  /** Git operations on a project's repository, addressed by project id. */
+  /** Git operations on a project's main checkout or one of its worktrees. */
   readonly git: {
-    status(projectId: ProjectId): Promise<Result<GitStatus>>
-    diff(projectId: ProjectId, path: string, staged: boolean): Promise<Result<GitDiff>>
-    stage(projectId: ProjectId, paths: readonly string[]): Promise<Result<void>>
-    unstage(projectId: ProjectId, paths: readonly string[]): Promise<Result<void>>
-    discard(projectId: ProjectId, paths: readonly string[]): Promise<Result<void>>
-    commit(projectId: ProjectId, message: string): Promise<Result<void>>
-    push(projectId: ProjectId): Promise<Result<void>>
+    status(checkout: GitCheckout): Promise<Result<GitStatus>>
+    diff(checkout: GitCheckout, path: string, staged: boolean): Promise<Result<GitDiff>>
+    stage(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
+    unstage(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
+    discard(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
+    commit(checkout: GitCheckout, message: string): Promise<Result<void>>
+    push(checkout: GitCheckout): Promise<Result<void>>
     /** Pushes if needed, then opens the new pull request page. Resolves to its URL. */
-    openPullRequest(projectId: ProjectId): Promise<Result<string>>
+    openPullRequest(checkout: GitCheckout): Promise<Result<string>>
+  }
+  /** Isolated checkouts for agent sessions, on their own dugout/* branches. */
+  readonly worktrees: {
+    list(projectId: ProjectId): Promise<Result<readonly Worktree[]>>
+    create(projectId: ProjectId): Promise<Result<Worktree>>
+    remove(projectId: ProjectId, path: string): Promise<Result<void>>
   }
   readonly dialog: {
     /** Resolves to the chosen absolute folder path, or null if cancelled. */

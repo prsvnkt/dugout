@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest'
-import { addPane, closePane, EMPTY_LAYOUT, focusPane, type ProjectLayout } from './layout'
+import {
+  addPane,
+  closePane,
+  closeWorktreePanes,
+  EMPTY_LAYOUT,
+  focusPane,
+  type ProjectLayout,
+} from './layout'
 
 let nextId = 0
 const createId = () => `pane${++nextId}`
@@ -62,5 +69,26 @@ describe('workspace layout', () => {
     let layout: ProjectLayout = EMPTY_LAYOUT
     for (let i = 0; i < 10; i++) layout = addPane(layout, 'shell', createId)
     expect(layout.panes).toHaveLength(6)
+  })
+})
+
+describe('worktree panes', () => {
+  test('a pane can run in a worktree', () => {
+    const worktree = { path: '/wt/s1', branch: 'dugout/s1', name: 's1' }
+    const layout = addPane(EMPTY_LAYOUT, 'claude', createId, worktree)
+    expect(layout.panes[0]).toMatchObject({ kind: 'claude', worktree })
+  })
+
+  test('closing every pane in a worktree leaves the others', () => {
+    const worktree = { path: '/wt/s1', branch: 'dugout/s1', name: 's1' }
+    let layout = addPane(EMPTY_LAYOUT, 'claude', createId)
+    layout = addPane(layout, 'claude', createId, worktree)
+    layout = addPane(layout, 'shell', createId, worktree)
+
+    const after = closeWorktreePanes(layout, '/wt/s1')
+
+    expect(after.panes).toHaveLength(1)
+    expect(after.panes[0]?.worktree).toBeUndefined()
+    expect(after.focusedPaneId).toBe(after.panes[0]?.id)
   })
 })

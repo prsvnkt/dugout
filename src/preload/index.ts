@@ -28,17 +28,21 @@ const api: DugoutApi = {
     remove: (id) => ipcRenderer.invoke(IpcChannel.projectRemove, { id }),
   },
   git: {
-    status: (projectId) => ipcRenderer.invoke(IpcChannel.gitStatus, { projectId }),
-    diff: (projectId, path, staged) =>
-      ipcRenderer.invoke(IpcChannel.gitDiff, { projectId, path, staged }),
-    stage: (projectId, paths) => ipcRenderer.invoke(IpcChannel.gitStage, { projectId, paths }),
-    unstage: (projectId, paths) => ipcRenderer.invoke(IpcChannel.gitUnstage, { projectId, paths }),
-    discard: (projectId, paths) => ipcRenderer.invoke(IpcChannel.gitDiscard, { projectId, paths }),
-    commit: (projectId, message) =>
-      ipcRenderer.invoke(IpcChannel.gitCommit, { projectId, message }),
-    push: (projectId) => ipcRenderer.invoke(IpcChannel.gitPush, { projectId }),
-    openPullRequest: (projectId) =>
-      ipcRenderer.invoke(IpcChannel.gitOpenPullRequest, { projectId }),
+    status: (checkout) => ipcRenderer.invoke(IpcChannel.gitStatus, checkout),
+    diff: (checkout, path, staged) =>
+      ipcRenderer.invoke(IpcChannel.gitDiff, { ...checkout, path, staged }),
+    stage: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitStage, { ...checkout, paths }),
+    unstage: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitUnstage, { ...checkout, paths }),
+    discard: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitDiscard, { ...checkout, paths }),
+    commit: (checkout, message) =>
+      ipcRenderer.invoke(IpcChannel.gitCommit, { ...checkout, message }),
+    push: (checkout) => ipcRenderer.invoke(IpcChannel.gitPush, checkout),
+    openPullRequest: (checkout) => ipcRenderer.invoke(IpcChannel.gitOpenPullRequest, checkout),
+  },
+  worktrees: {
+    list: (projectId) => ipcRenderer.invoke(IpcChannel.worktreeList, { projectId }),
+    create: (projectId) => ipcRenderer.invoke(IpcChannel.worktreeCreate, { projectId }),
+    remove: (projectId, path) => ipcRenderer.invoke(IpcChannel.worktreeRemove, { projectId, path }),
   },
   dialog: {
     pickFolder: () => ipcRenderer.invoke(IpcChannel.dialogPickFolder),

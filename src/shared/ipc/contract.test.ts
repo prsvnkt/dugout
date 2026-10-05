@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   gitCommitRequestSchema,
   gitPathsRequestSchema,
+  gitProjectRequestSchema,
   projectAddRequestSchema,
   projectsFileSchema,
   projectUpdateRequestSchema,
@@ -105,5 +106,17 @@ describe('git schemas', () => {
 
   test('rejects an empty commit message', () => {
     expect(gitCommitRequestSchema.safeParse({ projectId: 'p1', message: '  ' }).success).toBe(false)
+  })
+})
+
+describe('git checkout targeting', () => {
+  test('accepts an optional absolute worktree path', () => {
+    expect(gitProjectRequestSchema.safeParse({ projectId: 'p1' }).success).toBe(true)
+    expect(
+      gitProjectRequestSchema.safeParse({ projectId: 'p1', worktreePath: '/wt/s1' }).success,
+    ).toBe(true)
+    expect(
+      gitProjectRequestSchema.safeParse({ projectId: 'p1', worktreePath: 'wt/s1' }).success,
+    ).toBe(false)
   })
 })

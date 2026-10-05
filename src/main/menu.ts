@@ -30,6 +30,11 @@ export function buildMenuTemplate(
           click: () => send({ type: 'pane.new', kind: 'claude' }),
         },
         {
+          label: 'New Claude Pane in Worktree',
+          accelerator: 'Alt+CmdOrCtrl+T',
+          click: () => send({ type: 'pane.newWorktree' }),
+        },
+        {
           label: 'New Shell Pane',
           accelerator: 'CmdOrCtrl+Shift+T',
           click: () => send({ type: 'pane.new', kind: 'shell' }),

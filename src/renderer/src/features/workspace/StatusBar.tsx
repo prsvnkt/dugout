@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { useSelectedProject } from '@renderer/features/projects/projectsStore'
-import { useProjectGit } from '@renderer/features/git/gitStore'
-import { useActivityCount, useProjectLayout } from './workspaceStore'
+import { useCheckoutGit } from '@renderer/features/git/gitStore'
+import { useActivityCount, useProjectLayout, useSelectedCheckout } from './workspaceStore'
 import styles from './StatusBar.module.css'
 
 function terminalCount(count: number): string {
@@ -22,7 +22,7 @@ function ProjectStatus({ projectId }: { projectId: string }) {
 }
 
 function BranchStatus({ projectId }: { projectId: string }) {
-  const status = useProjectGit(projectId).status
+  const status = useCheckoutGit(useSelectedCheckout(projectId)).status
   if (!status) return null
   const sync = [status.ahead > 0 && `↑${status.ahead}`, status.behind > 0 && `↓${status.behind}`]
   return (

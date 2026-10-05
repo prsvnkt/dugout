@@ -5,51 +5,58 @@ import {
   gitPathsRequestSchema,
   gitProjectRequestSchema,
 } from '@shared/ipc/contract'
-import type { ProjectId } from '@shared/project'
+import type { Project, ProjectId } from '@shared/project'
 import type { GitService } from '../services/git/GitService'
 import type { ProjectStore } from '../services/projects/ProjectStore'
+import type { WorktreeManager } from '../services/worktrees/WorktreeManager'
 import { handleRequest } from './handle'
 
-/**
- * The renderer names a project, never a folder: main resolves the repository path itself,
- * so the UI cannot run git anywhere outside the user's projects.
- */
 const PULL_REQUEST_HOSTS = ['https://github.com/', 'https://gitlab.com/']
 
-export function registerGitIpc(
-  projects: ProjectStore,
-  git: GitService,
-  openExternal: (url: string) => Promise<void>,
-): void {
-  const rootOf = (projectId: ProjectId): string => {
-    const project = projects.list().find((candidate) => candidate.id === projectId)
-    if (!project) throw new Error('Project not found.')
-    return project.rootPath
-  }
+export interface GitIpcDeps {
+  readonly projects: ProjectStore
+  readonly git: GitService
+  readonly worktrees: WorktreeManager
+  readonly openExternal: (url: string) => Promise<void>
+}
 
-  handleRequest(IpcChannel.gitStatus, gitProjectRequestSchema, ({ projectId }) =>
-    git.status(rootOf(projectId)),
+export function findProject(projects: ProjectStore, projectId: ProjectId): Project {
+  const project = projects.list().find((candidate) => candidate.id === projectId)
+  if (!project) throw new Error('Project not found.')
+  return project
+}
+
+/**
+ * The renderer names a project (and optionally one of its worktrees), never a folder: main
+ * resolves and validates the path, so the UI cannot run git outside the user's projects.
+ */
+export function registerGitIpc({ projects, git, worktrees, openExternal }: GitIpcDeps): void {
+  const rootOf = (request: { projectId: ProjectId; worktreePath?: string | undefined }) =>
+    worktrees.resolveCheckout(findProject(projects, request.projectId), request.worktreePath)
+
+  handleRequest(IpcChannel.gitStatus, gitProjectRequestSchema, async (request) =>
+    git.status(await rootOf(request)),
   )
-  handleRequest(IpcChannel.gitDiff, gitDiffRequestSchema, ({ projectId, ...request }) =>
-    git.diff(rootOf(projectId), request),
+  handleRequest(IpcChannel.gitDiff, gitDiffRequestSchema, async (request) =>
+    git.diff(await rootOf(request), request),
   )
-  handleRequest(IpcChannel.gitStage, gitPathsRequestSchema, ({ projectId, paths }) =>
-    git.stage(rootOf(projectId), paths),
+  handleRequest(IpcChannel.gitStage, gitPathsRequestSchema, async (request) =>
+    git.stage(await rootOf(request), request.paths),
   )
-  handleRequest(IpcChannel.gitUnstage, gitPathsRequestSchema, ({ projectId, paths }) =>
-    git.unstage(rootOf(projectId), paths),
+  handleRequest(IpcChannel.gitUnstage, gitPathsRequestSchema, async (request) =>
+    git.unstage(await rootOf(request), request.paths),
   )
-  handleRequest(IpcChannel.gitDiscard, gitPathsRequestSchema, ({ projectId, paths }) =>
-    git.discard(rootOf(projectId), paths),
+  handleRequest(IpcChannel.gitDiscard, gitPathsRequestSchema, async (request) =>
+    git.discard(await rootOf(request), request.paths),
   )
-  handleRequest(IpcChannel.gitCommit, gitCommitRequestSchema, ({ projectId, message }) =>
-    git.commit(rootOf(projectId), message),
+  handleRequest(IpcChannel.gitCommit, gitCommitRequestSchema, async (request) =>
+    git.commit(await rootOf(request), request.message),
   )
-  handleRequest(IpcChannel.gitPush, gitProjectRequestSchema, ({ projectId }) =>
-    git.push(rootOf(projectId)),
+  handleRequest(IpcChannel.gitPush, gitProjectRequestSchema, async (request) =>
+    git.push(await rootOf(request)),
   )
-  handleRequest(IpcChannel.gitOpenPullRequest, gitProjectRequestSchema, async ({ projectId }) => {
-    const root = rootOf(projectId)
+  handleRequest(IpcChannel.gitOpenPullRequest, gitProjectRequestSchema, async (request) => {
+    const root = await rootOf(request)
     const url = await git.pullRequestUrl(root)
     if (!PULL_REQUEST_HOSTS.some((host) => url.startsWith(host))) {
       throw new Error('Refusing to open an unexpected URL.')

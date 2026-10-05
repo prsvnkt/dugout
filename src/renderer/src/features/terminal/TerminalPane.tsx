@@ -15,6 +15,8 @@ interface TerminalPaneProps {
   readonly kind: TerminalKind
   readonly projectId: string
   readonly cwd: string
+  /** Branch of the pane's worktree, shown in its header. Null for the main checkout. */
+  readonly branch: string | null
   readonly accentColor: string
   /** True when this pane should own keyboard focus (focused pane of the visible project). */
   readonly shouldFocus: boolean
@@ -34,7 +36,7 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 }
 
 export function TerminalPane(props: TerminalPaneProps) {
-  const { kind, projectId, cwd, accentColor, shouldFocus, isFocused } = props
+  const { kind, projectId, cwd, branch, accentColor, shouldFocus, isFocused } = props
   const { onFocus, onClose, onActivity, onTerminalId } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const { status, agentStatus, terminalId, focus } = useTerminal(containerRef, {
@@ -62,6 +64,11 @@ export function TerminalPane(props: TerminalPaneProps) {
     >
       <header className={styles.header}>
         <span className={styles.kind}>{KIND_LABEL[kind]}</span>
+        {branch && (
+          <span className={styles.branch} title={cwd}>
+            ⎇ {branch}
+          </span>
+        )}
         <ActivityIndicator
           activity={activity}
           label={describe(activity, status)}

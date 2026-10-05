@@ -23,5 +23,8 @@ export const IpcChannel = {
   gitCommit: 'git:commit',
   gitPush: 'git:push',
   gitOpenPullRequest: 'git:open-pull-request',
+  worktreeList: 'worktree:list',
+  worktreeCreate: 'worktree:create',
+  worktreeRemove: 'worktree:remove',
   appCommand: 'app:command',
 } as const

@@ -250,3 +250,30 @@ describe('GitService pull requests', () => {
     await expect(service.pullRequestUrl(repo)).rejects.toThrow('feature branch')
   })
 })
+
+describe('GitService worktrees', () => {
+  test('adds, lists and removes a worktree on a new branch', async () => {
+    const repo = makeRepoWithCommit()
+    const worktree = join(realpathSync(mkdtempSync(join(tmpdir(), 'dugout-wt-'))), 'session')
+
+    await service.addWorktree(repo, worktree, 'dugout/session')
+
+    expect(await service.listWorktrees(repo)).toEqual([
+      { path: repo, branch: 'main' },
+      { path: worktree, branch: 'dugout/session' },
+    ])
+    expect(readFileSync(join(worktree, 'readme.md'), 'utf8')).toBe('hello\n')
+
+    await service.removeWorktree(repo, worktree)
+    expect(await service.listWorktrees(repo)).toEqual([{ path: repo, branch: 'main' }])
+  })
+
+  test('refuses to remove a worktree with uncommitted work', async () => {
+    const repo = makeRepoWithCommit()
+    const worktree = join(realpathSync(mkdtempSync(join(tmpdir(), 'dugout-wt-'))), 'dirty')
+    await service.addWorktree(repo, worktree, 'dugout/dirty')
+    writeFileSync(join(worktree, 'wip.txt'), 'unsaved\n')
+
+    await expect(service.removeWorktree(repo, worktree)).rejects.toThrow(/modified or untracked/)
+  })
+})

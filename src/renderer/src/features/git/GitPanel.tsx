@@ -1,9 +1,11 @@
 import type { GitFileChange, GitStatus } from '@shared/git'
 import type { Project } from '@shared/project'
+import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore'
+import { CheckoutPicker } from '@renderer/features/worktrees/CheckoutPicker'
 import { ChangeSection, type ChangeEntry } from './ChangeSection'
 import { CommitBox } from './CommitBox'
 import { DiffView } from './DiffView'
-import { useGitStore, useProjectGit } from './gitStore'
+import { useCheckoutGit, useGitStore } from './gitStore'
 import styles from './GitPanel.module.css'
 
 interface GitPanelProps {
@@ -40,13 +42,15 @@ function pushLabel(status: GitStatus): string | null {
 }
 
 export function GitPanel({ project }: GitPanelProps) {
-  const git = useProjectGit(project.id)
+  const checkout = useSelectedCheckout(project.id)
+  const git = useCheckoutGit(checkout)
   const actions = useGitStore()
-  const id = project.id
+  const id = checkout
 
   if (!git.status) {
     return (
       <aside className={styles.panel} aria-label="Source control">
+        <CheckoutPicker project={project} />
         <p className={styles.notice}>{git.statusError ?? 'Loading git status…'}</p>
       </aside>
     )
@@ -59,6 +63,7 @@ export function GitPanel({ project }: GitPanelProps) {
 
   return (
     <aside className={styles.panel} aria-label="Source control">
+      <CheckoutPicker project={project} />
       <header className={styles.header}>
         <BranchSummary status={git.status} />
         {push && (

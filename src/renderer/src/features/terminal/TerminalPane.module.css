@@ -31,6 +31,15 @@
   color: var(--accent);
 }
 
+.branch {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status {
   margin-left: auto;
 }

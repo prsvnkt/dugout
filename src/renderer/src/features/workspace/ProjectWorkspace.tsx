@@ -4,11 +4,13 @@ import type { Project } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
 import { TerminalPane } from '@renderer/features/terminal/TerminalPane'
 import { GitPanel } from '@renderer/features/git/GitPanel'
-import { useGitStore, useProjectGit } from '@renderer/features/git/gitStore'
+import { useCheckoutGit, useGitStore } from '@renderer/features/git/gitStore'
 import { useGitAutoRefresh } from '@renderer/features/git/useGitAutoRefresh'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
+import { WorktreeError } from '@renderer/features/worktrees/WorktreeError'
+import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { MAX_PANES_PER_PROJECT } from './layout'
-import { useProjectLayout, useWorkspaceStore } from './workspaceStore'
+import { useProjectLayout, useSelectedCheckout, useWorkspaceStore } from './workspaceStore'
 import styles from './ProjectWorkspace.module.css'
 
 interface ProjectWorkspaceProps {
@@ -61,7 +63,8 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
             <TerminalPane
               kind={pane.kind}
               projectId={project.id}
-              cwd={project.rootPath}
+              cwd={pane.worktree?.path ?? project.rootPath}
+              branch={pane.worktree?.branch ?? null}
               accentColor={accent}
               isFocused={layout.focusedPaneId === pane.id}
               shouldFocus={isActive && layout.focusedPaneId === pane.id}
@@ -86,7 +89,8 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
   const addPane = useWorkspaceStore((state) => state.addPane)
   const isGitPanelOpen = useGitStore((state) => state.isPanelOpen)
   const togglePanel = useGitStore((state) => state.togglePanel)
-  const changeCount = useProjectGit(project.id).status?.files.length ?? 0
+  const changeCount = useCheckoutGit(useSelectedCheckout(project.id)).status?.files.length ?? 0
+  const startWorktreeSession = useWorktreeStore((state) => state.startSession)
   const accent = projectColorVar(project.color)
   const canAddPane = layout.panes.length < MAX_PANES_PER_PROJECT
   const add = (kind: TerminalKind) => addPane(project.id, kind)
@@ -102,6 +106,13 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
           <button disabled={!canAddPane} onClick={() => add('claude')} title="New Claude pane (⌘T)">
             + Claude
           </button>
+          <button
+            disabled={!canAddPane}
+            onClick={() => void startWorktreeSession(project.id)}
+            title="New Claude pane in its own worktree and branch (⌥⌘T)"
+          >
+            + Worktree
+          </button>
           <button disabled={!canAddPane} onClick={() => add('shell')} title="New shell (⇧⌘T)">
             + Shell
           </button>
@@ -114,6 +125,7 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
           </button>
         </div>
       </div>
+      <WorktreeError projectId={project.id} />
       <Group orientation="horizontal" className={styles.body}>
         <Panel id="terminals" minSize={MIN_PANE_SIZE_PX}>
           <div className={styles.terminals}>

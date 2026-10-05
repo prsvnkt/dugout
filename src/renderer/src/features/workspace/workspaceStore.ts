@@ -1,9 +1,12 @@
 import { create } from 'zustand'
 import type { ProjectId } from '@shared/project'
 import type { TerminalId, TerminalKind } from '@shared/terminal'
+import type { GitCheckout, Worktree } from '@shared/worktree'
+import { useMemo } from 'react'
 import {
   addPane,
   closePane,
+  closeWorktreePanes,
   EMPTY_LAYOUT,
   focusPane,
   type PaneId,
@@ -18,7 +21,11 @@ interface WorkspaceState {
   setTerminalId(paneId: PaneId, terminalId: TerminalId | null): void
   /** Finds the pane running a terminal, e.g. to reveal it from a notification. */
   findTerminal(terminalId: TerminalId): { projectId: ProjectId; paneId: PaneId } | null
-  addPane(projectId: ProjectId, kind: TerminalKind): void
+  /** Which checkout the git panel shows per project: a worktree path, or null for main. */
+  readonly gitCheckouts: Readonly<Record<ProjectId, string | null>>
+  selectCheckout(projectId: ProjectId, worktreePath: string | null): void
+  closeWorktreePanes(projectId: ProjectId, worktreePath: string): void
+  addPane(projectId: ProjectId, kind: TerminalKind, worktree?: Worktree): void
   closePane(projectId: ProjectId, paneId: PaneId): void
   closeFocusedPane(projectId: ProjectId): void
   focusPane(projectId: ProjectId, paneId: PaneId): void
@@ -41,6 +48,19 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
   return {
     layouts: {},
     activities: {},
+    gitCheckouts: {},
+    selectCheckout: (projectId, worktreePath) =>
+      set((state) => ({ gitCheckouts: { ...state.gitCheckouts, [projectId]: worktreePath } })),
+    closeWorktreePanes: (projectId, worktreePath) => {
+      const before = get().layouts[projectId]?.panes ?? []
+      const closed = before.filter((pane) => pane.worktree?.path === worktreePath)
+      updateLayout(projectId, (layout) => closeWorktreePanes(layout, worktreePath))
+      const ids = closed.map((pane) => pane.id)
+      set((state) => ({
+        activities: withoutKeys(state.activities, ids),
+        terminalIds: withoutKeys(state.terminalIds, ids),
+      }))
+    },
     terminalIds: {},
     setTerminalId: (paneId, terminalId) =>
       set((state) => ({
@@ -57,8 +77,10 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       )
       return projectId ? { projectId, paneId } : null
     },
-    addPane: (projectId, kind) =>
-      updateLayout(projectId, (layout) => addPane(layout, kind, createPaneId)),
+    addPane: (projectId, kind, worktree) => {
+      updateLayout(projectId, (layout) => addPane(layout, kind, createPaneId, worktree))
+      get().selectCheckout(projectId, worktree?.path ?? null)
+    },
     closePane: (projectId, paneId) => {
       updateLayout(projectId, (layout) => closePane(layout, paneId))
       set((state) => ({
@@ -70,8 +92,12 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       const focused = get().layouts[projectId]?.focusedPaneId
       if (focused) get().closePane(projectId, focused)
     },
-    focusPane: (projectId, paneId) =>
-      updateLayout(projectId, (layout) => focusPane(layout, paneId)),
+    focusPane: (projectId, paneId) => {
+      updateLayout(projectId, (layout) => focusPane(layout, paneId))
+      // The git panel follows the focused pane's checkout.
+      const pane = get().layouts[projectId]?.panes.find((candidate) => candidate.id === paneId)
+      if (pane) get().selectCheckout(projectId, pane.worktree?.path ?? null)
+    },
     setActivity: (paneId, activity) =>
       set((state) =>
         state.activities[paneId] === activity
@@ -109,5 +135,14 @@ export function useActivityCount(projectId: ProjectId, activity: PaneActivity): 
       (state.layouts[projectId]?.panes ?? []).filter(
         (pane) => state.activities[pane.id] === activity,
       ).length,
+  )
+}
+
+/** The checkout the git panel should show for a project. */
+export function useSelectedCheckout(projectId: ProjectId): GitCheckout {
+  const worktreePath = useWorkspaceStore((state) => state.gitCheckouts[projectId] ?? null)
+  return useMemo(
+    () => (worktreePath ? { projectId, worktreePath } : { projectId }),
+    [projectId, worktreePath],
   )
 }

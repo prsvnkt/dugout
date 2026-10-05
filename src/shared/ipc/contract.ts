@@ -93,21 +93,28 @@ const repoRelativePath = z
   .refine((path) => !path.startsWith('/'), 'Path must be relative to the repository')
   .refine((path) => !path.split('/').includes('..'), 'Path must stay inside the repository')
 
-export const gitProjectRequestSchema = z.object({ projectId })
+/** Targets the project's main checkout, or one of its worktrees when `worktreePath` is set. */
+export const gitProjectRequestSchema = z.object({
+  projectId,
+  worktreePath: absolutePath.optional(),
+})
 
 export const gitDiffRequestSchema = z.object({
   projectId,
+  worktreePath: absolutePath.optional(),
   path: repoRelativePath,
   staged: z.boolean(),
 })
 
 export const gitPathsRequestSchema = z.object({
   projectId,
+  worktreePath: absolutePath.optional(),
   paths: z.array(repoRelativePath).min(1).max(MAX_GIT_PATHS_PER_REQUEST),
 })
 
 export const gitCommitRequestSchema = z.object({
   projectId,
+  worktreePath: absolutePath.optional(),
   message: z.string().trim().min(1).max(MAX_COMMIT_MESSAGE_LENGTH),
 })
 
@@ -115,3 +122,7 @@ export type GitProjectRequest = z.infer<typeof gitProjectRequestSchema>
 export type GitDiffRequest = z.infer<typeof gitDiffRequestSchema>
 export type GitPathsRequest = z.infer<typeof gitPathsRequestSchema>
 export type GitCommitRequest = z.infer<typeof gitCommitRequestSchema>
+
+export const worktreeRemoveRequestSchema = z.object({ projectId, path: absolutePath })
+
+export type WorktreeRemoveRequest = z.infer<typeof worktreeRemoveRequestSchema>

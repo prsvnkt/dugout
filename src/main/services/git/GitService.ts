@@ -131,6 +131,28 @@ export class GitService {
     })
   }
 
+  async listWorktrees(root: string): Promise<{ path: string; branch: string | null }[]> {
+    const { stdout } = await this.run(root, ['worktree', 'list', '--porcelain'])
+    return stdout
+      .split('\n\n')
+      .filter((block) => block.startsWith('worktree '))
+      .map((block) => {
+        const lines = block.split('\n')
+        const path = (lines[0] ?? '').slice('worktree '.length)
+        const branchLine = lines.find((line) => line.startsWith('branch refs/heads/'))
+        return { path, branch: branchLine?.slice('branch refs/heads/'.length) ?? null }
+      })
+  }
+
+  async addWorktree(root: string, path: string, branch: string): Promise<void> {
+    await this.run(root, ['worktree', 'add', '--quiet', '-b', branch, path, 'HEAD'])
+  }
+
+  /** Fails (with git's explanation) if the worktree has uncommitted work. */
+  async removeWorktree(root: string, path: string): Promise<void> {
+    await this.run(root, ['worktree', 'remove', path])
+  }
+
   private async baseBranch(root: string): Promise<string | null> {
     const { stdout } = await this.run(
       root,

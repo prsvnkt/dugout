@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { app, BrowserWindow, Notification, shell } from 'electron'
 import type { AppCommand } from '@shared/commands'
@@ -7,6 +7,7 @@ import { registerDialogIpc } from './ipc/registerDialogIpc'
 import { registerGitIpc } from './ipc/registerGitIpc'
 import { registerProjectIpc } from './ipc/registerProjectIpc'
 import { registerTerminalIpc } from './ipc/registerTerminalIpc'
+import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
 import { GitService } from './services/git/GitService'
@@ -15,9 +16,12 @@ import { resolveRepoRoot } from './services/git/resolveRepoRoot'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
 import { TerminalManager } from './services/terminal/TerminalManager'
+import { WorktreeManager } from './services/worktrees/WorktreeManager'
 import { createMainWindow } from './window'
 
 const PROJECTS_FILE = 'projects.json'
+const WORKTREES_DIR = 'worktrees'
+const WORKTREE_ID_BYTES = 3
 
 // Lets tests (and parallel dev instances) use an isolated data folder.
 const userDataOverride = process.env.DUGOUT_USER_DATA_DIR
@@ -94,9 +98,19 @@ async function start(): Promise<void> {
 
   registerTerminalIpc(manager)
   registerProjectIpc(projectStore)
-  registerGitIpc(projectStore, new GitService({ env: process.env }), (url) =>
-    shell.openExternal(url),
-  )
+  const git = new GitService({ env: process.env })
+  const worktrees = new WorktreeManager({
+    git,
+    baseDir: join(dataDir, WORKTREES_DIR),
+    createId: () => randomBytes(WORKTREE_ID_BYTES).toString('hex'),
+  })
+  registerGitIpc({
+    projects: projectStore,
+    git,
+    worktrees,
+    openExternal: (url) => shell.openExternal(url),
+  })
+  registerWorktreeIpc(projectStore, worktrees)
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)
   createMainWindow()
