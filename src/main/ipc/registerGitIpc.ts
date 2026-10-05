@@ -1,9 +1,9 @@
 import { IpcChannel } from '@shared/ipc/channels'
 import {
   gitCommitRequestSchema,
-  gitDiffRequestSchema,
   gitPathsRequestSchema,
   gitProjectRequestSchema,
+  gitShowRequestSchema,
 } from '@shared/ipc/contract'
 import type { Project, ProjectId } from '@shared/project'
 import type { GitService } from '../services/git/GitService'
@@ -37,8 +37,8 @@ export function registerGitIpc({ projects, git, worktrees, openExternal }: GitIp
   handleRequest(IpcChannel.gitStatus, gitProjectRequestSchema, async (request) =>
     git.status(await rootOf(request)),
   )
-  handleRequest(IpcChannel.gitDiff, gitDiffRequestSchema, async (request) =>
-    git.diff(await rootOf(request), request),
+  handleRequest(IpcChannel.gitShow, gitShowRequestSchema, async (request) =>
+    git.showFile(await rootOf(request), request.revision, request.path),
   )
   handleRequest(IpcChannel.gitStage, gitPathsRequestSchema, async (request) =>
     git.stage(await rootOf(request), request.paths),

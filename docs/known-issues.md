@@ -39,3 +39,15 @@ setup command run in the new worktree (e.g. `npm install`), shown in the pane wh
 
 **Likely fix:** cap Playwright `workers` (e.g. 4) and add `retries: 1` in CI so a slow machine
 reports flakes instead of failures.
+
+## Change detection polls instead of watching files
+
+- **Area:** `src/renderer/src/features/workspace/useCheckoutRefresh.ts`
+- **Found:** 2026-10-05, while building the explorer and editor (decision 014)
+
+**What happens:** the git status, expanded explorer folders and open files refresh every 3s
+while the app is visible (plus on focus and agent status changes), so edits can take up to 3s
+to appear, and large expanded trees are re-read on every tick.
+
+**Likely fix:** a main-process watcher (`@parcel/watcher`) per active checkout that pushes
+change events, keeping the poll only as a fallback.

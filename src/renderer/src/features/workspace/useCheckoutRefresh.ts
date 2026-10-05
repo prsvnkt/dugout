@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import type { ProjectId } from '@shared/project'
-import { useSelectedCheckout, useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
+import { useSelectedCheckout, useWorkspaceStore } from './workspaceStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
-import { useGitStore } from './gitStore'
+import { useEditorStore } from '@renderer/features/editor/editorStore'
+import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
+import { useGitStore } from '@renderer/features/git/gitStore'
 
 const REFRESH_INTERVAL_MS = 3_000
 
@@ -16,11 +18,13 @@ function useActivitySignature(projectId: ProjectId): string {
 }
 
 /**
- * Keeps the visible project's selected checkout fresh: on show, on a timer while the window is
+ * Keeps the visible project's selected checkout fresh (git status, file tree, open files): on show, on a timer while the window is
  * visible, when the window regains focus, and whenever one of its agents changes status.
  */
-export function useGitAutoRefresh(projectId: ProjectId, isActive: boolean): void {
-  const refresh = useGitStore((state) => state.refresh)
+export function useCheckoutRefresh(projectId: ProjectId, isActive: boolean): void {
+  const refreshGit = useGitStore((state) => state.refresh)
+  const refreshTree = useExplorerStore((state) => state.refresh)
+  const syncWithDisk = useEditorStore((state) => state.syncWithDisk)
   const loadWorktrees = useWorktreeStore((state) => state.load)
   const checkout = useSelectedCheckout(projectId)
   const activitySignature = useActivitySignature(projectId)
@@ -31,13 +35,14 @@ export function useGitAutoRefresh(projectId: ProjectId, isActive: boolean): void
 
   useEffect(() => {
     if (!isActive) return
-    void refresh(checkout)
-  }, [isActive, checkout, refresh, activitySignature])
-
-  useEffect(() => {
-    if (!isActive) return
+    const refresh = () => {
+      void refreshGit(checkout)
+      void refreshTree(checkout)
+      void syncWithDisk(projectId)
+    }
+    refresh()
     const refreshIfVisible = () => {
-      if (document.visibilityState === 'visible') void refresh(checkout)
+      if (document.visibilityState === 'visible') refresh()
     }
     const timer = window.setInterval(refreshIfVisible, REFRESH_INTERVAL_MS)
     window.addEventListener('focus', refreshIfVisible)
@@ -45,5 +50,5 @@ export function useGitAutoRefresh(projectId: ProjectId, isActive: boolean): void
       window.clearInterval(timer)
       window.removeEventListener('focus', refreshIfVisible)
     }
-  }, [isActive, checkout, refresh])
+  }, [isActive, checkout, projectId, refreshGit, refreshTree, syncWithDisk, activitySignature])
 }

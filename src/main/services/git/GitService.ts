@@ -1,4 +1,5 @@
-import type { GitDiff, GitStatus } from '@shared/git'
+import { MAX_OPEN_FILE_BYTES, type GitRevision, type RevisionContent } from '@shared/files'
+import type { GitStatus } from '@shared/git'
 import { parseStatus } from './parseStatus'
 import { buildPullRequestUrl } from './pullRequestUrl'
 import { GitError, runGit, type RunGitOptions } from './runGit'
@@ -9,11 +10,11 @@ export interface GitServiceDeps {
   readonly env: Env
 }
 
-const MAX_DIFF_BYTES = 1024 * 1024
 const PUSH_TIMEOUT_MS = 120_000
-const BINARY_DIFF = /^(Binary files .* differ|GIT binary patch)$/m
-/** `git diff --no-index` exits 1 when the files differ. */
-const DIFF_NO_INDEX_OK = [0, 1]
+/** `git check-ignore` exits 1 when nothing is ignored. */
+const CHECK_IGNORE_OK = [0, 1]
+const MISSING_AT_REVISION =
+  /does not exist|exists on disk, but not in|invalid object name|bad revision|not in the index/i
 /** `git symbolic-ref --quiet` exits 1 when the ref does not exist. */
 const OPTIONAL_REF_OK = [0, 1]
 const FALLBACK_BASE_BRANCH = 'main'
@@ -59,26 +60,6 @@ export class GitService {
     }
     const { stdout } = await this.run(root, ['remote', 'get-url', 'origin'])
     return buildPullRequestUrl(stdout, base, status.branch)
-  }
-
-  async diff(root: string, request: { path: string; staged: boolean }): Promise<GitDiff> {
-    const isUntracked = !request.staged && !(await this.isTracked(root, request.path))
-    const args = isUntracked
-      ? ['diff', '--no-color', '--no-ext-diff', '--no-index', '--', '/dev/null', request.path]
-      : [
-          'diff',
-          '--no-color',
-          '--no-ext-diff',
-          ...(request.staged ? ['--cached'] : []),
-          '--',
-          request.path,
-        ]
-
-    const { stdout, isTruncated } = await this.run(root, args, {
-      maxOutputBytes: MAX_DIFF_BYTES,
-      ...(isUntracked && { okExitCodes: DIFF_NO_INDEX_OK }),
-    })
-    return { ...request, text: stdout, isBinary: BINARY_DIFF.test(stdout), isTruncated }
   }
 
   async stage(root: string, paths: readonly string[]): Promise<void> {
@@ -131,6 +112,35 @@ export class GitService {
     })
   }
 
+  /** A file as it is at HEAD or in the index (staged), for the original side of a diff. */
+  async showFile(root: string, revision: GitRevision, path: string): Promise<RevisionContent> {
+    const spec = revision === 'HEAD' ? `HEAD:${path}` : `:${path}`
+    try {
+      const { stdout } = await this.run(root, ['show', spec], {
+        maxOutputBytes: MAX_OPEN_FILE_BYTES,
+      })
+      const isBinary = stdout.includes('\0')
+      return { content: isBinary ? '' : stdout, exists: true, isBinary }
+    } catch (error) {
+      if (error instanceof GitError && MISSING_AT_REVISION.test(error.message)) {
+        return { content: '', exists: false, isBinary: false }
+      }
+      throw error
+    }
+  }
+
+  /** The subset of `paths` matched by .gitignore. */
+  async checkIgnored(root: string, paths: readonly string[]): Promise<Set<string>> {
+    if (paths.length === 0) return new Set()
+    // check-ignore takes plain paths (never globs) and rejects the literal-pathspec setting.
+    const { stdout } = await this.run(root, ['check-ignore', '-z', '--stdin'], {
+      input: paths.join('\0') + '\0',
+      okExitCodes: CHECK_IGNORE_OK,
+      env: { ...this.env, GIT_LITERAL_PATHSPECS: '0' },
+    })
+    return new Set(stdout.split('\0').filter(Boolean))
+  }
+
   async listWorktrees(root: string): Promise<{ path: string; branch: string | null }[]> {
     const { stdout } = await this.run(root, ['worktree', 'list', '--porcelain'])
     return stdout
@@ -163,15 +173,10 @@ export class GitService {
     return ref.startsWith('origin/') ? ref.slice('origin/'.length) : null
   }
 
-  private async isTracked(root: string, path: string): Promise<boolean> {
-    const { stdout } = await this.run(root, ['ls-files', '-z', '--', path])
-    return stdout.length > 0
-  }
-
   private run(
     root: string,
     args: readonly string[],
-    options: Partial<Omit<RunGitOptions, 'cwd' | 'args' | 'env'>> = {},
+    options: Partial<Omit<RunGitOptions, 'cwd' | 'args'>> = {},
   ) {
     return runGit({ cwd: root, args, env: this.env, ...options })
   }

@@ -1,9 +1,10 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { app, BrowserWindow, Notification, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron'
 import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
+import { registerFileIpc } from './ipc/registerFileIpc'
 import { registerGitIpc } from './ipc/registerGitIpc'
 import { registerProjectIpc } from './ipc/registerProjectIpc'
 import { registerTerminalIpc } from './ipc/registerTerminalIpc'
@@ -13,6 +14,7 @@ import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
 import { GitService } from './services/git/GitService'
 import { AgentNotifier, type AgentNotification } from './services/notifications/AgentNotifier'
+import { FileService } from './services/files/FileService'
 import { resolveRepoRoot } from './services/git/resolveRepoRoot'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
@@ -49,6 +51,31 @@ function showNotification({ terminalId, title, body }: AgentNotification): void 
     sendCommand({ type: 'terminal.reveal', terminalId })
   })
   notification.show()
+}
+
+const windowsWithUnsavedChanges = new Set<number>()
+
+ipcMain.on(IpcChannel.editorUnsavedChanges, (event, hasUnsavedChanges: unknown) => {
+  if (hasUnsavedChanges === true) windowsWithUnsavedChanges.add(event.sender.id)
+  else windowsWithUnsavedChanges.delete(event.sender.id)
+})
+
+/** Asks before closing a window (or quitting) while the editor has unsaved changes. */
+function guardUnsavedChanges(window: BrowserWindow): void {
+  const contentsId = window.webContents.id
+  window.on('close', (event) => {
+    if (!windowsWithUnsavedChanges.has(contentsId)) return
+    const choice = dialog.showMessageBoxSync(window, {
+      type: 'warning',
+      buttons: ['Discard Changes', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      message: 'You have unsaved changes.',
+      detail: 'Your edits will be lost if you close without saving.',
+    })
+    if (choice === 1) event.preventDefault()
+    else windowsWithUnsavedChanges.delete(contentsId)
+  })
 }
 
 function updateDockBadge(manager: TerminalManager): void {
@@ -115,13 +142,14 @@ async function start(): Promise<void> {
     openExternal: (url) => shell.openExternal(url),
   })
   registerWorktreeIpc(projectStore, worktrees)
+  registerFileIpc(projectStore, worktrees, new FileService({ git }))
   registerWorkspaceIpc(new LayoutStore({ filePath: join(dataDir, WORKSPACE_FILE) }), projectStore)
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)
-  createMainWindow()
+  guardUnsavedChanges(createMainWindow())
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
+    if (BrowserWindow.getAllWindows().length === 0) guardUnsavedChanges(createMainWindow())
   })
 }
 

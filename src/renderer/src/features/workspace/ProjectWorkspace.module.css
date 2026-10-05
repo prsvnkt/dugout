@@ -58,6 +58,22 @@
   min-height: 0;
 }
 
+.center {
+  height: 100%;
+}
+
+.separatorHorizontal {
+  height: 1px;
+  background: var(--border);
+  outline: none;
+}
+
+.separatorHorizontal:hover,
+.separatorHorizontal:focus-visible,
+.separatorHorizontal[data-separator='active'] {
+  background: var(--project-blue);
+}
+
 .terminals {
   display: flex;
   flex-direction: column;

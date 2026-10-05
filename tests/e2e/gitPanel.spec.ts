@@ -58,9 +58,11 @@ test('reviews, stages, commits, publishes and discards changes', async () => {
   const changes = panel().getByRole('region', { name: 'Changes' })
   await expect(changes.getByRole('listitem')).toHaveCount(2, { timeout: 10_000 })
 
-  // Review the diff
+  // Review the diff: it opens in the center editor, not in the side panel
   await changes.getByRole('button', { name: /^Open diff of readme\.md/ }).click()
-  await expect(panel().getByRole('table', { name: 'Diff' })).toContainText('from the agent')
+  const editor = page.getByRole('region', { name: 'Editor' })
+  await expect(editor.getByRole('tab', { name: /readme\.md \(changes\)/ })).toBeVisible()
+  await expect(editor).toContainText('from the agent')
 
   // Stage and commit
   await changes.getByRole('button', { name: 'Stage readme.md' }).click()

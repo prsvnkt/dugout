@@ -1,6 +1,7 @@
 import type { AgentStatus } from './agentStatus'
 import type { AppCommand } from './commands'
-import type { GitDiff, GitStatus } from './git'
+import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
+import type { GitStatus } from './git'
 import type {
   ProjectAddRequest,
   ProjectUpdateRequest,
@@ -37,7 +38,12 @@ export interface DugoutApi {
   /** Git operations on a project's main checkout or one of its worktrees. */
   readonly git: {
     status(checkout: GitCheckout): Promise<Result<GitStatus>>
-    diff(checkout: GitCheckout, path: string, staged: boolean): Promise<Result<GitDiff>>
+    /** A file at HEAD or in the index, for the original side of a diff. */
+    show(
+      checkout: GitCheckout,
+      path: string,
+      revision: GitRevision,
+    ): Promise<Result<RevisionContent>>
     stage(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
     unstage(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
     discard(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
@@ -51,6 +57,23 @@ export interface DugoutApi {
     list(projectId: ProjectId): Promise<Result<readonly Worktree[]>>
     create(projectId: ProjectId): Promise<Result<Worktree>>
     remove(projectId: ProjectId, path: string): Promise<Result<void>>
+  }
+  /** Files inside a project checkout, for the explorer and editor. */
+  readonly files: {
+    readDir(checkout: GitCheckout, path: string): Promise<Result<readonly DirEntry[]>>
+    read(checkout: GitCheckout, path: string): Promise<Result<FileContent>>
+    stat(checkout: GitCheckout, paths: readonly string[]): Promise<Result<readonly FileStat[]>>
+    /** Fails if the file changed on disk since `expectedMtimeMs`, unless `force`. */
+    write(
+      checkout: GitCheckout,
+      path: string,
+      content: string,
+      options: { expectedMtimeMs: number | null; force?: boolean },
+    ): Promise<Result<{ mtimeMs: number }>>
+  }
+  readonly editor: {
+    /** Lets main warn before closing the window with unsaved edits. */
+    setHasUnsavedChanges(hasUnsavedChanges: boolean): void
   }
   /** Saved panes per project, restored on launch. */
   readonly workspace: {

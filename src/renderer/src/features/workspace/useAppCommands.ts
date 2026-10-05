@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import type { AppCommand } from '@shared/commands'
 import { dugout } from '@renderer/lib/dugout'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
+import { useEditorStore } from '@renderer/features/editor/editorStore'
+import { checkoutOf, fileKeyOf } from '@renderer/features/editor/fileKey'
+import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { useWorkspaceStore } from './workspaceStore'
@@ -25,8 +28,33 @@ export function useAppCommands(onAddProject: () => void): void {
         case 'pane.newWorktree':
           if (selectedId) void useWorktreeStore.getState().startSession(selectedId)
           return
-        case 'pane.close':
-          if (selectedId) workspace.closeFocusedPane(selectedId)
+        case 'pane.close': {
+          if (!selectedId) return
+          // ⌘W closes the active editor tab when the editor had focus, otherwise the pane.
+          const editor = useEditorStore.getState()
+          const activeTab = editor.tabsByProject[selectedId]?.activeTabId
+          if (workspace.focusedAreas[selectedId] === 'editor' && activeTab) {
+            editor.requestClose(selectedId, activeTab)
+          } else {
+            workspace.closeFocusedPane(selectedId)
+          }
+          return
+        }
+        case 'editor.save': {
+          if (!selectedId) return
+          const editor = useEditorStore.getState()
+          const tabs = editor.tabsByProject[selectedId]
+          const active = tabs?.tabs.find((tab) => tab.id === tabs.activeTabId)
+          if (active && !(active.kind === 'diff' && active.staged)) {
+            void editor.save(fileKeyOf(checkoutOf(selectedId, active.worktreePath), active.path))
+          }
+          return
+        }
+        case 'editor.saveAll':
+          if (selectedId) void useEditorStore.getState().saveAll(selectedId)
+          return
+        case 'explorer.toggle':
+          useExplorerStore.getState().toggleOpen()
           return
         case 'git.togglePanel':
           useGitStore.getState().togglePanel()

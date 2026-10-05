@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
+  filesReadDirRequestSchema,
+  filesWriteRequestSchema,
   gitCommitRequestSchema,
   gitPathsRequestSchema,
   gitProjectRequestSchema,
@@ -146,5 +148,22 @@ describe('session persistence schemas', () => {
     expect(workspaceSnapshotSchema.parse(snapshot)).toEqual(snapshot)
     const bad = { version: 1, projects: { p1: { panes: [{}] } } }
     expect(workspaceSnapshotSchema.safeParse(bad).success).toBe(false)
+  })
+})
+
+describe('file schemas', () => {
+  test('a directory listing may target the checkout root', () => {
+    expect(filesReadDirRequestSchema.safeParse({ projectId: 'p1', path: '' }).success).toBe(true)
+    expect(filesReadDirRequestSchema.safeParse({ projectId: 'p1', path: '../x' }).success).toBe(
+      false,
+    )
+  })
+
+  test('saving requires a file path and bounded content', () => {
+    const base = { projectId: 'p1', path: 'a.ts', expectedMtimeMs: 1 }
+    expect(filesWriteRequestSchema.safeParse({ ...base, content: 'x' }).success).toBe(true)
+    expect(filesWriteRequestSchema.safeParse({ ...base, path: '', content: 'x' }).success).toBe(
+      false,
+    )
   })
 })

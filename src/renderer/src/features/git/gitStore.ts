@@ -1,19 +1,12 @@
 import { create } from 'zustand'
-import type { GitDiff, GitStatus } from '@shared/git'
-import type { GitCheckout } from '@shared/worktree'
+import type { GitStatus } from '@shared/git'
 import type { Result } from '@shared/result'
+import type { GitCheckout } from '@shared/worktree'
 import { dugout } from '@renderer/lib/dugout'
-
-export interface GitSelection {
-  readonly path: string
-  readonly staged: boolean
-}
 
 export interface ProjectGitState {
   readonly status: GitStatus | null
   readonly statusError: string | null
-  readonly selection: GitSelection | null
-  readonly diff: GitDiff | null
   readonly isBusy: boolean
   readonly actionError: string | null
 }
@@ -21,8 +14,6 @@ export interface ProjectGitState {
 const INITIAL: ProjectGitState = {
   status: null,
   statusError: null,
-  selection: null,
-  diff: null,
   isBusy: false,
   actionError: null,
 }
@@ -39,7 +30,6 @@ interface GitState {
   readonly isPanelOpen: boolean
   togglePanel(): void
   refresh(checkout: GitCheckout): Promise<void>
-  select(checkout: GitCheckout, selection: GitSelection | null): Promise<void>
   stage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
   unstage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
   discard(checkout: GitCheckout, paths: readonly string[]): Promise<void>
@@ -51,14 +41,6 @@ interface GitState {
 
 const refreshesInFlight = new Set<string>()
 
-function isStillListed(status: GitStatus, selection: GitSelection): boolean {
-  return status.files.some(
-    (file) =>
-      file.path === selection.path &&
-      (selection.staged ? file.staged !== null : file.unstaged !== null),
-  )
-}
-
 export const useGitStore = create<GitState>()((set, get) => {
   const patch = (checkout: GitCheckout, change: Partial<ProjectGitState>) => {
     const key = checkoutKey(checkout)
@@ -69,17 +51,9 @@ export const useGitStore = create<GitState>()((set, get) => {
       },
     }))
   }
-  const current = (checkout: GitCheckout) => get().byCheckout[checkoutKey(checkout)] ?? INITIAL
-
-  const loadDiff = async (checkout: GitCheckout, selection: GitSelection | null) => {
-    if (!selection) return patch(checkout, { diff: null })
-    const result = await dugout.git.diff(checkout, selection.path, selection.staged)
-    if (current(checkout).selection !== selection) return // selection changed meanwhile
-    patch(checkout, result.ok ? { diff: result.data } : { diff: null, actionError: result.error })
-  }
 
   /** Runs a mutating git action, surfaces its error, then refreshes. */
-  const runAction = async (checkout: GitCheckout, action: () => Promise<Result<void>>) => {
+  const runAction = async (checkout: GitCheckout, action: () => Promise<Result<unknown>>) => {
     patch(checkout, { isBusy: true, actionError: null })
     const result = await action()
     patch(checkout, { isBusy: false, actionError: result.ok ? null : result.error })
@@ -98,19 +72,14 @@ export const useGitStore = create<GitState>()((set, get) => {
       refreshesInFlight.add(key)
       try {
         const result = await dugout.git.status(checkout)
+        const current = get().byCheckout[key]
         if (!result.ok) return patch(checkout, { statusError: result.error })
-        const { selection } = current(checkout)
-        const keepSelection = selection && isStillListed(result.data, selection) ? selection : null
-        patch(checkout, { status: result.data, statusError: null, selection: keepSelection })
-        await loadDiff(checkout, keepSelection)
+        if (current?.status && JSON.stringify(current.status) === JSON.stringify(result.data))
+          return
+        patch(checkout, { status: result.data, statusError: null })
       } finally {
         refreshesInFlight.delete(key)
       }
-    },
-
-    async select(checkout, selection) {
-      patch(checkout, { selection, diff: null })
-      await loadDiff(checkout, selection)
     },
 
     stage: (checkout, paths) =>
@@ -122,10 +91,7 @@ export const useGitStore = create<GitState>()((set, get) => {
     commit: (checkout, message) => runAction(checkout, () => dugout.git.commit(checkout, message)),
     push: (checkout) => runAction(checkout, () => dugout.git.push(checkout)).then(() => {}),
     openPullRequest: (checkout) =>
-      runAction(checkout, async () => {
-        const result = await dugout.git.openPullRequest(checkout)
-        return result.ok ? { ok: true, data: undefined } : result
-      }).then(() => {}),
+      runAction(checkout, () => dugout.git.openPullRequest(checkout)).then(() => {}),
   }
 })
 

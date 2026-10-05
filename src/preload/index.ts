@@ -30,8 +30,8 @@ const api: DugoutApi = {
   },
   git: {
     status: (checkout) => ipcRenderer.invoke(IpcChannel.gitStatus, checkout),
-    diff: (checkout, path, staged) =>
-      ipcRenderer.invoke(IpcChannel.gitDiff, { ...checkout, path, staged }),
+    show: (checkout, path, revision) =>
+      ipcRenderer.invoke(IpcChannel.gitShow, { ...checkout, path, revision }),
     stage: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitStage, { ...checkout, paths }),
     unstage: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitUnstage, { ...checkout, paths }),
     discard: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitDiscard, { ...checkout, paths }),
@@ -44,6 +44,17 @@ const api: DugoutApi = {
     list: (projectId) => ipcRenderer.invoke(IpcChannel.worktreeList, { projectId }),
     create: (projectId) => ipcRenderer.invoke(IpcChannel.worktreeCreate, { projectId }),
     remove: (projectId, path) => ipcRenderer.invoke(IpcChannel.worktreeRemove, { projectId, path }),
+  },
+  files: {
+    readDir: (checkout, path) => ipcRenderer.invoke(IpcChannel.filesReadDir, { ...checkout, path }),
+    read: (checkout, path) => ipcRenderer.invoke(IpcChannel.filesRead, { ...checkout, path }),
+    stat: (checkout, paths) => ipcRenderer.invoke(IpcChannel.filesStat, { ...checkout, paths }),
+    write: (checkout, path, content, options) =>
+      ipcRenderer.invoke(IpcChannel.filesWrite, { ...checkout, path, content, ...options }),
+  },
+  editor: {
+    setHasUnsavedChanges: (hasUnsavedChanges) =>
+      ipcRenderer.send(IpcChannel.editorUnsavedChanges, hasUnsavedChanges === true),
   },
   workspace: {
     load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),

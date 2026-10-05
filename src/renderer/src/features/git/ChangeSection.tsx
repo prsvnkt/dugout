@@ -1,7 +1,12 @@
 import type { GitChangeKind } from '@shared/git'
-import type { GitSelection } from './gitStore'
 import { FileRow } from './FileRow'
 import styles from './GitPanel.module.css'
+
+/** The diff currently open in the editor, highlighted in the list. */
+export interface GitSelection {
+  readonly path: string
+  readonly staged: boolean
+}
 
 export interface ChangeEntry {
   readonly path: string

@@ -91,7 +91,7 @@ test('menu commands open and close panes in the selected project', async () => {
   await clickMenuItem(app, 'File', 'New Shell Pane')
   await expect(page.getByText('2 terminals')).toBeVisible()
 
-  await clickMenuItem(app, 'File', 'Close Pane')
+  await clickMenuItem(app, 'File', 'Close Tab or Pane')
   await expect(page.getByText('1 terminal', { exact: true })).toBeVisible()
 })
 

@@ -30,13 +30,5 @@ export interface GitStatus {
   readonly files: readonly GitFileChange[]
 }
 
-export interface GitDiff {
-  readonly path: string
-  readonly staged: boolean
-  readonly text: string
-  readonly isBinary: boolean
-  readonly isTruncated: boolean
-}
-
 export const MAX_GIT_PATHS_PER_REQUEST = 500
 export const MAX_COMMIT_MESSAGE_LENGTH = 10_000

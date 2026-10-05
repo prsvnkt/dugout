@@ -5,11 +5,15 @@ import type { TerminalKind } from '@shared/terminal'
 import { TerminalPane } from '@renderer/features/terminal/TerminalPane'
 import { GitPanel } from '@renderer/features/git/GitPanel'
 import { useCheckoutGit, useGitStore } from '@renderer/features/git/gitStore'
-import { useGitAutoRefresh } from '@renderer/features/git/useGitAutoRefresh'
+import { EditorArea } from '@renderer/features/editor/EditorArea'
+import { useProjectTabs } from '@renderer/features/editor/editorStore'
+import { ExplorerPanel } from '@renderer/features/explorer/ExplorerPanel'
+import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { WorktreeError } from '@renderer/features/worktrees/WorktreeError'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { MAX_PANES_PER_PROJECT } from './layout'
+import { useCheckoutRefresh } from './useCheckoutRefresh'
 import { useProjectLayout, useSelectedCheckout, useWorkspaceStore } from './workspaceStore'
 import styles from './ProjectWorkspace.module.css'
 
@@ -22,6 +26,12 @@ const MIN_PANE_SIZE_PX = 240
 const MIN_GIT_PANEL_PX = 280
 const DEFAULT_GIT_PANEL_PX = 380
 const MAX_GIT_PANEL_SIZE = '70%'
+const DEFAULT_EXPLORER_PX = 240
+const MIN_EXPLORER_PX = 160
+const MAX_EXPLORER_SIZE = '40%'
+const MIN_EDITOR_PX = 120
+const MIN_TERMINALS_PX = 120
+const DEFAULT_EDITOR_SIZE = '60%'
 
 function EmptyWorkspace({ onAdd }: { onAdd(kind: TerminalKind): void }) {
   return (
@@ -87,8 +97,9 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
 }
 
 /**
- * All terminals of one project, side by side. Stays mounted while another project is
- * shown (hidden with `visibility`, which keeps its size) so terminals keep running.
+ * One project's workspace: explorer, editor tabs above its terminals, and the git panel.
+ * Stays mounted while another project is shown (hidden with `visibility`, which keeps its
+ * size) so terminals keep running.
  */
 export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
   const layout = useProjectLayout(project.id)
@@ -100,7 +111,10 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
   const accent = projectColorVar(project.color)
   const canAddPane = layout.panes.length < MAX_PANES_PER_PROJECT
   const add = (kind: TerminalKind) => addPane(project.id, kind)
-  useGitAutoRefresh(project.id, isActive)
+  const isExplorerOpen = useExplorerStore((state) => state.isOpen)
+  const hasOpenTabs = useProjectTabs(project.id).tabs.length > 0
+  const setFocusedArea = useWorkspaceStore((state) => state.setFocusedArea)
+  useCheckoutRefresh(project.id, isActive)
 
   return (
     <div className={styles.workspace} data-active={isActive} aria-hidden={!isActive}>
@@ -132,11 +146,40 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
         </div>
       </div>
       <WorktreeError projectId={project.id} />
+      {/* Slots stay in fixed positions, so toggling panels never remounts the terminals. */}
       <Group orientation="horizontal" className={styles.body}>
-        <Panel id="terminals" minSize={MIN_PANE_SIZE_PX}>
-          <div className={styles.terminals}>
-            <TerminalsArea project={project} isActive={isActive} onAdd={add} />
-          </div>
+        {isExplorerOpen && (
+          <>
+            <Panel
+              id="explorer"
+              defaultSize={DEFAULT_EXPLORER_PX}
+              minSize={MIN_EXPLORER_PX}
+              maxSize={MAX_EXPLORER_SIZE}
+            >
+              <ExplorerPanel project={project} />
+            </Panel>
+            <Separator className={styles.separator} />
+          </>
+        )}
+        <Panel id="center" minSize={MIN_PANE_SIZE_PX}>
+          <Group orientation="vertical" className={styles.center}>
+            {hasOpenTabs && (
+              <>
+                <Panel id="editor" defaultSize={DEFAULT_EDITOR_SIZE} minSize={MIN_EDITOR_PX}>
+                  <EditorArea projectId={project.id} />
+                </Panel>
+                <Separator className={styles.separatorHorizontal} />
+              </>
+            )}
+            <Panel id="terminals" minSize={MIN_TERMINALS_PX}>
+              <div
+                className={styles.terminals}
+                onFocusCapture={() => setFocusedArea(project.id, 'terminal')}
+              >
+                <TerminalsArea project={project} isActive={isActive} onAdd={add} />
+              </div>
+            </Panel>
+          </Group>
         </Panel>
         {isGitPanelOpen && (
           <>

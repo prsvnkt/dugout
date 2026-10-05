@@ -46,11 +46,6 @@
   overflow-y: auto;
 }
 
-.changes[data-has-diff='true'] {
-  flex: 0 1 auto;
-  max-height: 45%;
-}
-
 .commitBox {
   display: flex;
   flex-direction: column;

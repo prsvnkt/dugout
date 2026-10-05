@@ -39,8 +39,15 @@ export function buildMenuTemplate(
           accelerator: 'CmdOrCtrl+Shift+T',
           click: () => send({ type: 'pane.new', kind: 'shell' }),
         },
+        { type: 'separator' },
+        { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => send({ type: 'editor.save' }) },
         {
-          label: 'Close Pane',
+          label: 'Save All',
+          accelerator: 'Alt+CmdOrCtrl+S',
+          click: () => send({ type: 'editor.saveAll' }),
+        },
+        {
+          label: 'Close Tab or Pane',
           accelerator: 'CmdOrCtrl+W',
           click: () => send({ type: 'pane.close' }),
         },
@@ -58,6 +65,11 @@ export function buildMenuTemplate(
     {
       label: 'View',
       submenu: [
+        {
+          label: 'Toggle Explorer',
+          accelerator: 'CmdOrCtrl+B',
+          click: () => send({ type: 'explorer.toggle' }),
+        },
         {
           label: 'Toggle Git Panel',
           accelerator: 'CmdOrCtrl+Shift+G',

@@ -6,6 +6,7 @@ import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { ProjectWorkspace } from '@renderer/features/workspace/ProjectWorkspace'
 import { StatusBar } from '@renderer/features/workspace/StatusBar'
 import { useAppCommands } from '@renderer/features/workspace/useAppCommands'
+import { useHasUnsavedChanges, useEditorStore } from '@renderer/features/editor/editorStore'
 import { useWorkspacePersistence } from '@renderer/features/workspace/useWorkspacePersistence'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { dugout } from '@renderer/lib/dugout'
@@ -47,9 +48,15 @@ export function App() {
   const addProject = useCallback(() => void startAddProject(), [startAddProject])
   useAppCommands(addProject)
   useWorkspacePersistence(isLoaded && loadError === null)
+  const hasUnsavedChanges = useHasUnsavedChanges()
+  useEffect(() => dugout.editor.setHasUnsavedChanges(hasUnsavedChanges), [hasUnsavedChanges])
 
   const editProject = (project: Project) => setDialog({ mode: 'edit', project })
-  const onRemoved = (project: Project) => removeLayout(project.id)
+  const removeEditorTabs = useEditorStore((state) => state.removeProject)
+  const onRemoved = (project: Project) => {
+    removeLayout(project.id)
+    removeEditorTabs(project.id)
+  }
 
   if (!isLoaded) return <div className={styles.app} />
 

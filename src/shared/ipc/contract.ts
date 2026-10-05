@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MAX_OPEN_FILE_BYTES } from '../files'
 import { MAX_COMMIT_MESSAGE_LENGTH, MAX_GIT_PATHS_PER_REQUEST } from '../git'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
 import { TERMINAL_KINDS } from '../terminal'
@@ -103,13 +104,6 @@ export const gitProjectRequestSchema = z.object({
   worktreePath: absolutePath.optional(),
 })
 
-export const gitDiffRequestSchema = z.object({
-  projectId,
-  worktreePath: absolutePath.optional(),
-  path: repoRelativePath,
-  staged: z.boolean(),
-})
-
 export const gitPathsRequestSchema = z.object({
   projectId,
   worktreePath: absolutePath.optional(),
@@ -123,7 +117,6 @@ export const gitCommitRequestSchema = z.object({
 })
 
 export type GitProjectRequest = z.infer<typeof gitProjectRequestSchema>
-export type GitDiffRequest = z.infer<typeof gitDiffRequestSchema>
 export type GitPathsRequest = z.infer<typeof gitPathsRequestSchema>
 export type GitCommitRequest = z.infer<typeof gitCommitRequestSchema>
 
@@ -154,3 +147,35 @@ export const workspaceSnapshotSchema = z.object({
 export type SavedPane = z.infer<typeof savedPaneSchema>
 export type WorkspaceSnapshot = z.infer<typeof workspaceSnapshotSchema>
 export { sessionId as sessionIdSchema }
+
+const checkoutFields = { projectId, worktreePath: absolutePath.optional() }
+
+export const filesReadDirRequestSchema = z.object({
+  ...checkoutFields,
+  /** '' lists the checkout root. */
+  path: z.union([z.literal(''), repoRelativePath]),
+})
+
+export const filesReadRequestSchema = z.object({ ...checkoutFields, path: repoRelativePath })
+
+export const filesStatRequestSchema = z.object({
+  ...checkoutFields,
+  paths: z.array(repoRelativePath).max(MAX_GIT_PATHS_PER_REQUEST),
+})
+
+export const filesWriteRequestSchema = z.object({
+  ...checkoutFields,
+  path: repoRelativePath,
+  content: z.string().max(MAX_OPEN_FILE_BYTES),
+  /** mtime when the file was opened; null skips the check (e.g. after "Keep mine"). */
+  expectedMtimeMs: z.number().nullable(),
+  force: z.boolean().optional(),
+})
+
+export const gitShowRequestSchema = z.object({
+  ...checkoutFields,
+  path: repoRelativePath,
+  revision: z.enum(['HEAD', 'INDEX']),
+})
+
+export type FilesWriteRequest = z.infer<typeof filesWriteRequestSchema>

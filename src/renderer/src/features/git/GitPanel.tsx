@@ -1,10 +1,10 @@
 import type { GitFileChange, GitStatus } from '@shared/git'
 import type { Project } from '@shared/project'
+import { useEditorStore, useProjectTabs } from '@renderer/features/editor/editorStore'
 import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore'
 import { CheckoutPicker } from '@renderer/features/worktrees/CheckoutPicker'
-import { ChangeSection, type ChangeEntry } from './ChangeSection'
+import { ChangeSection, type ChangeEntry, type GitSelection } from './ChangeSection'
 import { CommitBox } from './CommitBox'
-import { DiffView } from './DiffView'
 import { useCheckoutGit, useGitStore } from './gitStore'
 import styles from './GitPanel.module.css'
 
@@ -46,6 +46,13 @@ export function GitPanel({ project }: GitPanelProps) {
   const git = useCheckoutGit(checkout)
   const actions = useGitStore()
   const id = checkout
+  const openDiff = useEditorStore((state) => state.openDiff)
+  const { tabs, activeTabId } = useProjectTabs(project.id)
+  const activeTab = tabs.find((tab) => tab.id === activeTabId)
+  const selection: GitSelection | null =
+    activeTab?.kind === 'diff' && activeTab.worktreePath === (checkout.worktreePath ?? null)
+      ? { path: activeTab.path, staged: activeTab.staged }
+      : null
 
   if (!git.status) {
     return (
@@ -59,7 +66,8 @@ export function GitPanel({ project }: GitPanelProps) {
   const staged = entries(git.status.files, 'staged')
   const unstaged = entries(git.status.files, 'unstaged')
   const push = pushLabel(git.status)
-  const select = (staged: boolean) => (path: string) => void actions.select(id, { path, staged })
+  const select = (staged: boolean) => (path: string) =>
+    openDiff(project.id, checkout.worktreePath ?? null, path, staged)
 
   return (
     <aside className={styles.panel} aria-label="Source control">
@@ -93,7 +101,7 @@ export function GitPanel({ project }: GitPanelProps) {
         </p>
       )}
 
-      <div className={styles.changes} data-has-diff={git.selection !== null}>
+      <div className={styles.changes}>
         <CommitBox
           stagedCount={staged.length}
           isBusy={git.isBusy}
@@ -106,7 +114,7 @@ export function GitPanel({ project }: GitPanelProps) {
           title="Staged"
           entries={staged}
           isStaged
-          selection={git.selection}
+          selection={selection}
           isBusy={git.isBusy}
           bulkLabel="Unstage all"
           onBulk={() =>
@@ -122,7 +130,7 @@ export function GitPanel({ project }: GitPanelProps) {
           title="Changes"
           entries={unstaged}
           isStaged={false}
-          selection={git.selection}
+          selection={selection}
           isBusy={git.isBusy}
           bulkLabel="Stage all"
           onBulk={() =>
@@ -136,15 +144,6 @@ export function GitPanel({ project }: GitPanelProps) {
           onDiscard={(path) => void actions.discard(id, [path])}
         />
       </div>
-
-      {git.selection && (
-        <DiffView
-          diff={git.diff}
-          path={git.selection.path}
-          staged={git.selection.staged}
-          onClose={() => void actions.select(id, null)}
-        />
-      )}
     </aside>
   )
 }

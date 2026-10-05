@@ -95,6 +95,18 @@ session. Restored panes run `claude --resume <id>`. Launch lines use only plain 
 expansions, since conditional forms behave differently in bash, zsh and fish. A pane that exits
 before Claude was ready (failed resume) offers "Start new session" instead of resuming again.
 
+## 014 — Explorer and Monaco editor in the center (2026-10-05)
+
+Layout per project: Explorer (left, ⌘B) | editor tabs above terminals (center) | git panel
+(right). Panels keep fixed slots so opening files never remounts terminals. Files open in
+Monaco (lazy-loaded chunk, local workers, no CDN); one model per file is shared by its file tab
+and the editable side of its diff tab. Unsaved state uses Monaco's alternative version id.
+Diffs open in the center: unstaged = index vs working file (editable), staged = HEAD vs index.
+`FileService` resolves every path with realpath and refuses anything outside the checkout;
+saves are atomic, keep the file mode, and are refused if the file changed on disk since it
+was opened. Open files reload when changed on disk; unsaved edits get a "Reload / Keep mine"
+banner. ⌘W closes the editor tab when the editor had focus, otherwise the pane.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅

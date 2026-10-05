@@ -9,7 +9,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { GitService } from './GitService'
 
 const IDENTITY = ['-c', 'user.name=Test', '-c', 'user.email=test@example.com']
@@ -68,45 +68,6 @@ describe('GitService.status', () => {
     const repo = makeRepoWithCommit()
     writeFileSync(join(repo, '.git', 'index.lock'), '')
     await expect(service.status(repo)).resolves.toMatchObject({ branch: 'main' })
-  })
-})
-
-describe('GitService.diff', () => {
-  let repo: string
-
-  beforeEach(() => {
-    repo = makeRepoWithCommit()
-  })
-
-  test('shows unstaged and staged changes separately', async () => {
-    writeFileSync(join(repo, 'readme.md'), 'staged\n')
-    git(repo, 'add', 'readme.md')
-    writeFileSync(join(repo, 'readme.md'), 'unstaged\n')
-
-    const unstaged = await service.diff(repo, { path: 'readme.md', staged: false })
-    const staged = await service.diff(repo, { path: 'readme.md', staged: true })
-
-    expect(unstaged.text).toContain('-staged\n+unstaged')
-    expect(staged.text).toContain('-hello\n+staged')
-  })
-
-  test('shows an untracked file as all additions', async () => {
-    writeFileSync(join(repo, 'fresh.txt'), 'one\ntwo\n')
-    const diff = await service.diff(repo, { path: 'fresh.txt', staged: false })
-    expect(diff.text).toContain('+one\n+two')
-    expect(diff.isBinary).toBe(false)
-  })
-
-  test('detects binary files', async () => {
-    writeFileSync(join(repo, 'image.bin'), Buffer.from([0, 1, 2, 0, 255]))
-    const diff = await service.diff(repo, { path: 'image.bin', staged: false })
-    expect(diff.isBinary).toBe(true)
-  })
-
-  test('truncates very large diffs', async () => {
-    writeFileSync(join(repo, 'big.txt'), 'line of text\n'.repeat(400_000))
-    const diff = await service.diff(repo, { path: 'big.txt', staged: false })
-    expect(diff.isTruncated).toBe(true)
   })
 })
 
@@ -275,5 +236,44 @@ describe('GitService worktrees', () => {
     writeFileSync(join(worktree, 'wip.txt'), 'unsaved\n')
 
     await expect(service.removeWorktree(repo, worktree)).rejects.toThrow(/modified or untracked/)
+  })
+})
+
+describe('GitService revisions', () => {
+  test('reads a file as it is in HEAD and in the index', async () => {
+    const repo = makeRepoWithCommit()
+    writeFileSync(join(repo, 'readme.md'), 'staged\n')
+    git(repo, 'add', 'readme.md')
+    writeFileSync(join(repo, 'readme.md'), 'working\n')
+
+    expect(await service.showFile(repo, 'HEAD', 'readme.md')).toEqual({
+      content: 'hello\n',
+      exists: true,
+      isBinary: false,
+    })
+    expect((await service.showFile(repo, 'INDEX', 'readme.md')).content).toBe('staged\n')
+  })
+
+  test('reports files that do not exist at a revision', async () => {
+    const repo = makeRepoWithCommit()
+    expect(await service.showFile(repo, 'HEAD', 'new.ts')).toEqual({
+      content: '',
+      exists: false,
+      isBinary: false,
+    })
+  })
+
+  test('works before the first commit', async () => {
+    const repo = makeRepo()
+    expect((await service.showFile(repo, 'HEAD', 'a.txt')).exists).toBe(false)
+  })
+
+  test('tells which paths are gitignored', async () => {
+    const repo = makeRepoWithCommit()
+    writeFileSync(join(repo, '.gitignore'), 'dist/\n*.log\n')
+    mkdirSync(join(repo, 'dist'))
+    expect(await service.checkIgnored(repo, ['dist', 'app.log', 'src', 'readme.md'])).toEqual(
+      new Set(['dist', 'app.log']),
+    )
   })
 })

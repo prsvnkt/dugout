@@ -39,7 +39,12 @@ interface WorkspaceState {
   focusPane(projectId: ProjectId, paneId: PaneId): void
   setActivity(paneId: PaneId, activity: PaneActivity): void
   removeProject(projectId: ProjectId): void
+  /** Where keyboard focus last was per project, so ⌘W closes a tab or a pane accordingly. */
+  readonly focusedAreas: Readonly<Record<ProjectId, FocusArea>>
+  setFocusedArea(projectId: ProjectId, area: FocusArea): void
 }
+
+export type FocusArea = 'editor' | 'terminal'
 
 const createPaneId = () => crypto.randomUUID()
 
@@ -57,6 +62,13 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
     })
 
   return {
+    focusedAreas: {},
+    setFocusedArea: (projectId, area) =>
+      set((state) =>
+        state.focusedAreas[projectId] === area
+          ? state
+          : { focusedAreas: { ...state.focusedAreas, [projectId]: area } },
+      ),
     layouts: {},
     activities: {},
     gitCheckouts: {},
@@ -126,6 +138,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       if (focused) get().closePane(projectId, focused)
     },
     focusPane: (projectId, paneId) => {
+      get().setFocusedArea(projectId, 'terminal')
       updateLayout(projectId, (layout) => focusPane(layout, paneId))
       // The git panel follows the focused pane's checkout.
       const pane = get().layouts[projectId]?.panes.find((candidate) => candidate.id === paneId)
