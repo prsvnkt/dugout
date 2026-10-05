@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, shell } from 'electron'
 import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
+import { registerCloneIpc } from './ipc/registerCloneIpc'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
 import { registerFileIpc } from './ipc/registerFileIpc'
 import { registerGitHubIpc } from './ipc/registerGitHubIpc'
@@ -26,6 +27,7 @@ import { resolveRepoRoot } from './services/git/resolveRepoRoot'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
 import { TerminalManager } from './services/terminal/TerminalManager'
+import { SettingsStore } from './services/settings/SettingsStore'
 import { LayoutStore } from './services/workspace/LayoutStore'
 import { WorktreeManager } from './services/worktrees/WorktreeManager'
 import { createMainWindow } from './window'
@@ -34,6 +36,7 @@ const PROJECTS_FILE = 'projects.json'
 const WORKTREES_DIR = 'worktrees'
 const WORKSPACE_FILE = 'workspace.json'
 const GITHUB_TOKEN_FILE = 'github-token.bin'
+const SETTINGS_FILE = 'settings.json'
 
 /**
  * safeStorage is Keychain-backed on macOS. E2E tests opt into a plaintext stand-in so they never
@@ -202,6 +205,7 @@ async function start(): Promise<void> {
     openExternal: (url) => shell.openExternal(url),
   })
   registerFileIpc(projectStore, worktrees, new FileService({ git }))
+  registerCloneIpc(git, new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) }))
   registerWorkspaceIpc(new LayoutStore({ filePath: join(dataDir, WORKSPACE_FILE) }), projectStore)
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)

@@ -34,11 +34,14 @@ setup command run in the new worktree (e.g. `npm install`), shown in the pane wh
 ## E2E tests can time out when the machine is busy
 
 - **Area:** `tests/e2e/` (Playwright, one Electron instance per worker)
-- **Found:** 2026-10-05 — two unrelated tests hit the 30s timeout in one full run under load,
-  then passed alone and in a full re-run.
+- **Found:** 2026-10-05; still seen occasionally while other Dugout dev instances were running.
 
-**Likely fix:** cap Playwright `workers` (e.g. 4) and add `retries: 1` in CI so a slow machine
-reports flakes instead of failures.
+**Mitigated:** `playwright.config.ts` now caps workers at 4, allows 60s per test, and retries
+once on CI. Shell-based tests wait for the user's login shell, so a slow shell profile under load
+can still stretch them.
+
+**If it recurs:** start test shells with a minimal profile (e.g. `ZDOTDIR` pointing at an empty
+folder) so tests do not depend on the developer's shell setup.
 
 ## Change detection polls instead of watching files
 

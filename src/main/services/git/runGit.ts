@@ -10,6 +10,10 @@ export interface RunGitOptions {
   readonly maxOutputBytes?: number
   /** Exit codes that count as success (e.g. 1 for `git diff --no-index`). */
   readonly okExitCodes?: readonly number[]
+  /** Receives stderr as it arrives (e.g. `--progress` output). */
+  readonly onStderr?: (text: string) => void
+  /** Kills git and rejects with "cancelled". */
+  readonly signal?: AbortSignal
 }
 
 export interface RunGitResult {
@@ -53,6 +57,13 @@ export function runGit(options: RunGitOptions): Promise<RunGitResult> {
       isTimedOut = true
       child.kill()
     }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
+    let isCancelled = false
+    const cancel = () => {
+      isCancelled = true
+      child.kill()
+    }
+    if (options.signal?.aborted) cancel()
+    options.signal?.addEventListener('abort', cancel, { once: true })
 
     child.stdout.on('data', (chunk: Buffer) => {
       if (isTruncated) return
@@ -64,14 +75,19 @@ export function runGit(options: RunGitOptions): Promise<RunGitResult> {
         child.kill()
       }
     })
-    child.stderr.on('data', (chunk: Buffer) => stderr.push(chunk))
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr.push(chunk)
+      options.onStderr?.(chunk.toString('utf8'))
+    })
     child.on('error', (error) => {
       clearTimeout(timer)
       reject(new GitError(`Could not run git: ${error.message}`))
     })
     child.on('close', (code) => {
       clearTimeout(timer)
+      options.signal?.removeEventListener('abort', cancel)
       const out = Buffer.concat(stdout).toString('utf8')
+      if (isCancelled) return reject(new GitError(`git ${options.args[0] ?? ''} was cancelled.`))
       if (isTimedOut) return reject(new GitError(`git ${options.args[0] ?? ''} timed out.`))
       if (isTruncated || okCodes.includes(code ?? -1)) return resolve({ stdout: out, isTruncated })
       const err = Buffer.concat(stderr).toString('utf8')

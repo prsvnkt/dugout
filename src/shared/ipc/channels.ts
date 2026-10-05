@@ -41,5 +41,9 @@ export const IpcChannel = {
   authOpenVerification: 'auth:open-verification',
   authState: 'auth:state',
   githubListRepos: 'github:list-repos',
+  cloneDefaults: 'clone:defaults',
+  cloneStart: 'clone:start',
+  cloneCancel: 'clone:cancel',
+  cloneProgress: 'clone:progress',
   appCommand: 'app:command',
 } as const

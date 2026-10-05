@@ -53,6 +53,11 @@ export function buildMenuTemplate(
         },
         { type: 'separator' },
         {
+          label: 'Clone Repository…',
+          accelerator: 'CmdOrCtrl+Shift+C',
+          click: () => send({ type: 'project.clone' }),
+        },
+        {
           label: 'Add Project…',
           accelerator: 'CmdOrCtrl+Shift+O',
           click: () => send({ type: 'project.add' }),

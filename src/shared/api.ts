@@ -1,4 +1,5 @@
 import type { AgentStatus } from './agentStatus'
+import type { CloneDefaults, CloneProgress } from './clone'
 import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
 import type { GitStatus } from './git'
@@ -6,6 +7,7 @@ import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
   ProjectAddRequest,
   ProjectUpdateRequest,
+  CloneRequest,
   TerminalCreateRequest,
   WorkspaceSnapshot,
 } from './ipc/contract'
@@ -85,6 +87,14 @@ export interface DugoutApi {
     openVerificationPage(): Promise<Result<void>>
     listRepos(): Promise<Result<readonly GitHubRepo[]>>
     onStateChange(listener: (state: GitHubAuthState) => void): Unsubscribe
+  }
+  /** Clone a repository into a folder; the caller then adds it as a project. */
+  readonly clone: {
+    defaults(): Promise<Result<CloneDefaults>>
+    /** Resolves to the cloned folder's path. */
+    start(request: CloneRequest): Promise<Result<string>>
+    cancel(): void
+    onProgress(listener: (progress: CloneProgress) => void): Unsubscribe
   }
   /** Saved panes per project, restored on launch. */
   readonly workspace: {

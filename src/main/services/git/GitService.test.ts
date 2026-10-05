@@ -277,3 +277,46 @@ describe('GitService revisions', () => {
     )
   })
 })
+
+describe('GitService.clone', () => {
+  function makeBareRemote(): string {
+    const source = makeRepoWithCommit()
+    const remote = join(realpathSync(mkdtempSync(join(tmpdir(), 'dugout-clone-src-'))), 'app.git')
+    git(source, 'clone', '-q', '--bare', source, remote)
+    return remote
+  }
+
+  test('clones into a new folder and reports progress', async () => {
+    const remote = makeBareRemote()
+    const destination = join(realpathSync(mkdtempSync(join(tmpdir(), 'dugout-clone-'))), 'app')
+    const phases: string[] = []
+
+    await service.clone(remote, destination, { onProgress: (p) => phases.push(p.phase) })
+
+    expect(readFileSync(join(destination, 'readme.md'), 'utf8')).toBe('hello\n')
+    expect(phases.length).toBeGreaterThan(0)
+  })
+
+  test('refuses a destination that already has files', async () => {
+    const destination = realpathSync(mkdtempSync(join(tmpdir(), 'dugout-clone-')))
+    writeFileSync(join(destination, 'keep.txt'), 'mine')
+    await expect(service.clone(makeBareRemote(), destination)).rejects.toThrow('not empty')
+    expect(readFileSync(join(destination, 'keep.txt'), 'utf8')).toBe('mine')
+  })
+
+  test('cleans up the folder it created when the clone fails', async () => {
+    const destination = join(realpathSync(mkdtempSync(join(tmpdir(), 'dugout-clone-'))), 'app')
+    await expect(service.clone('/no/such/repo.git', destination)).rejects.toThrow()
+    expect(existsSync(destination)).toBe(false)
+  })
+
+  test('can be cancelled', async () => {
+    const destination = join(realpathSync(mkdtempSync(join(tmpdir(), 'dugout-clone-'))), 'app')
+    const controller = new AbortController()
+    controller.abort()
+    await expect(
+      service.clone(makeBareRemote(), destination, { signal: controller.signal }),
+    ).rejects.toThrow('cancelled')
+    expect(existsSync(destination)).toBe(false)
+  })
+})

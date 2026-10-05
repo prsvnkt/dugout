@@ -65,6 +65,12 @@ const api: DugoutApi = {
     listRepos: () => ipcRenderer.invoke(IpcChannel.githubListRepos),
     onStateChange: (listener) => subscribe(IpcChannel.authState, listener),
   },
+  clone: {
+    defaults: () => ipcRenderer.invoke(IpcChannel.cloneDefaults),
+    start: (request) => ipcRenderer.invoke(IpcChannel.cloneStart, request),
+    cancel: () => ipcRenderer.send(IpcChannel.cloneCancel),
+    onProgress: (listener) => subscribe(IpcChannel.cloneProgress, listener),
+  },
   workspace: {
     load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),
     save: (snapshot) => ipcRenderer.invoke(IpcChannel.workspaceSave, snapshot),

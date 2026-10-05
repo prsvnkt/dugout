@@ -62,3 +62,15 @@
   background: var(--bg-elevated);
   color: var(--status-error);
 }
+
+.welcomeActions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.secondary {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}

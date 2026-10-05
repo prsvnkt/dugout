@@ -10,7 +10,7 @@ import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { useWorkspaceStore } from './workspaceStore'
 
 /** Routes native menu commands (and their shortcuts) to the stores. */
-export function useAppCommands(onAddProject: () => void): void {
+export function useAppCommands(onAddProject: () => void, onCloneProject: () => void): void {
   useEffect(() => {
     const handle = (command: AppCommand) => {
       const { selectedId, selectIndex } = useProjectsStore.getState()
@@ -18,6 +18,9 @@ export function useAppCommands(onAddProject: () => void): void {
       switch (command.type) {
         case 'project.add':
           onAddProject()
+          return
+        case 'project.clone':
+          onCloneProject()
           return
         case 'project.select':
           selectIndex(command.index)
@@ -69,5 +72,5 @@ export function useAppCommands(onAddProject: () => void): void {
       }
     }
     return dugout.onCommand(handle)
-  }, [onAddProject])
+  }, [onAddProject, onCloneProject])
 }

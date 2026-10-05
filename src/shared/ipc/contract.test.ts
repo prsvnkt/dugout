@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
+  cloneRequestSchema,
   filesReadDirRequestSchema,
   filesWriteRequestSchema,
   gitCommitRequestSchema,
@@ -165,5 +166,34 @@ describe('file schemas', () => {
     expect(filesWriteRequestSchema.safeParse({ ...base, path: '', content: 'x' }).success).toBe(
       false,
     )
+  })
+})
+
+describe('clone schemas', () => {
+  const base = {
+    url: 'https://github.com/octo/app.git',
+    parentDir: '/Users/me/code',
+    folderName: 'app',
+  }
+
+  test.each([
+    'https://github.com/octo/app.git',
+    'git@github.com:octo/app.git',
+    'ssh://git@github.com/octo/app.git',
+    '/Users/me/repos/app.git',
+    'file:///Users/me/repos/app.git',
+  ])('accepts the clone URL %s', (url) => {
+    expect(cloneRequestSchema.safeParse({ ...base, url }).success).toBe(true)
+  })
+
+  test.each(['--upload-pack=evil', 'ftp://x/y', 'has space.git', ''])(
+    'rejects the clone URL %s',
+    (url) => {
+      expect(cloneRequestSchema.safeParse({ ...base, url }).success).toBe(false)
+    },
+  )
+
+  test.each(['..', '.', 'a/b', '-rf', ''])('rejects the folder name %s', (folderName) => {
+    expect(cloneRequestSchema.safeParse({ ...base, folderName }).success).toBe(false)
   })
 })

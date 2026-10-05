@@ -4,6 +4,7 @@ export type AppCommand =
   | { readonly type: 'pane.newWorktree' }
   | { readonly type: 'pane.close' }
   | { readonly type: 'project.add' }
+  | { readonly type: 'project.clone' }
   | { readonly type: 'project.select'; readonly index: number }
   | { readonly type: 'git.togglePanel' }
   | { readonly type: 'explorer.toggle' }

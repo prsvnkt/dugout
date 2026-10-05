@@ -1,6 +1,10 @@
+import { readdir, rm } from 'node:fs/promises'
+import { dirname } from 'node:path'
+import type { CloneProgress } from '@shared/clone'
 import { MAX_OPEN_FILE_BYTES, type GitRevision, type RevisionContent } from '@shared/files'
 import type { GitStatus } from '@shared/git'
 import type { GitCredentialConfig } from '../github/gitCredentials'
+import { cloneProgressHandler } from './cloneProgressHandler'
 import { parseStatus } from './parseStatus'
 import { buildPullRequestUrl } from './pullRequestUrl'
 import { GitError, runGit, type RunGitOptions } from './runGit'
@@ -14,6 +18,7 @@ export interface GitServiceDeps {
 }
 
 const PUSH_TIMEOUT_MS = 120_000
+const CLONE_TIMEOUT_MS = 30 * 60_000
 /** `git check-ignore` exits 1 when nothing is ignored. */
 const CHECK_IGNORE_OK = [0, 1]
 const MISSING_AT_REVISION =
@@ -96,6 +101,31 @@ export class GitService {
 
   async commit(root: string, message: string): Promise<void> {
     await this.run(root, ['commit', '--quiet', '--file=-'], { input: message })
+  }
+
+  /**
+   * Clones into `destination`, which must not exist or be an empty folder. On failure or cancel
+   * the folder is removed again if this call created it.
+   */
+  async clone(
+    url: string,
+    destination: string,
+    options: { onProgress?: (progress: CloneProgress) => void; signal?: AbortSignal } = {},
+  ): Promise<void> {
+    const existing = await readdir(destination).catch(() => null)
+    if (existing && existing.length > 0) throw new GitError(`${destination} is not empty.`)
+    const isCreatedHere = existing === null
+    const parent = dirname(destination)
+    try {
+      await this.runNetwork(parent, ['clone', '--progress', '--', url, destination], {
+        timeoutMs: CLONE_TIMEOUT_MS,
+        ...(options.signal && { signal: options.signal }),
+        ...(options.onProgress && { onStderr: cloneProgressHandler(options.onProgress) }),
+      })
+    } catch (error) {
+      if (isCreatedHere) await rm(destination, { recursive: true, force: true })
+      throw error
+    }
   }
 
   /** Pushes the current branch, publishing it to origin when it has no upstream yet. */

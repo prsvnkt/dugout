@@ -24,10 +24,11 @@ function ProjectAttention({ projectId }: { projectId: string }) {
 
 interface SidebarProps {
   onAddProject(): void
+  onCloneProject(): void
   onEditProject(project: Project): void
 }
 
-export function Sidebar({ onAddProject, onEditProject }: SidebarProps) {
+export function Sidebar({ onAddProject, onCloneProject, onEditProject }: SidebarProps) {
   const { projects, selectedId, select } = useProjectsStore()
 
   return (
@@ -70,9 +71,14 @@ export function Sidebar({ onAddProject, onEditProject }: SidebarProps) {
         ))}
       </ul>
       <AccountButton />
-      <button className={styles.add} onClick={onAddProject} title="Add project (⇧⌘O)">
-        + Add project
-      </button>
+      <div className={styles.addRow}>
+        <button className={styles.add} onClick={onAddProject} title="Add project (⇧⌘O)">
+          + Add project
+        </button>
+        <button className={styles.add} onClick={onCloneProject} title="Clone repository (⇧⌘C)">
+          Clone
+        </button>
+      </div>
     </nav>
   )
 }

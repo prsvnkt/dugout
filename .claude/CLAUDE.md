@@ -37,7 +37,8 @@ src/
     services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
                 git/ (review panel, PR URLs), agentHooks/ (Claude status + session ids),
                 worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
-                files/ (explorer + editor file access, path-safe), github/ (sign-in, API).
+                files/ (explorer + editor file access, path-safe), github/ (sign-in, API),
+                settings/ (small app preferences).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.

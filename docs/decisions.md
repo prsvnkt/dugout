@@ -120,6 +120,16 @@ commands are unaffected. E2E tests use a local stub server (`DUGOUT_GITHUB_BASE_
 explicit insecure token store (`DUGOUT_INSECURE_TOKEN_STORAGE_FOR_TESTS=1`) to avoid Keychain
 prompts.
 
+## 016 — Clone from your GitHub repos or any URL (2026-10-05)
+
+"Clone repository…" (sidebar, welcome screen, ⇧⌘C) offers a searchable list of the signed-in
+user's GitHub repositories or a URL (https, ssh, scp-style, file:// or an absolute path; never
+anything starting with "-", and passed after `--`). It clones with `git clone --progress` into
+`<parent>/<folder>`, streaming progress and supporting cancel; the destination must not exist or
+be empty, and a folder the clone created is removed on failure or cancel. The parent folder is
+remembered in `<userData>/settings.json` (default `~/Developer`, else home). On success the
+repo is added as a project with the next free colour.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -128,5 +138,6 @@ prompts.
    - Status from hooks (ready / working / needs you / done / exited). ✅
    - Git panel (branch, changes, diff, stage / commit / push). ✅
 3. **Next:** worktree sessions ✅, resume on relaunch ✅, native notifications ✅, create PR ✅.
-4. **Later:** "needs you" inbox across projects, Codex adapter, PR/CI status in the git panel,
+4. **Done since:** explorer + center editor ✅, GitHub sign-in ✅, clone ✅.
+5. **Later:** "needs you" inbox across projects, Codex adapter, PR/CI status in the git panel,
    per-project MCP config editor.
