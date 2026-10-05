@@ -20,9 +20,16 @@ const api: DugoutApi = {
     onData: (listener) => subscribe(IpcChannel.terminalData, listener),
     onExit: (listener) => subscribe(IpcChannel.terminalExit, listener),
   },
+  projects: {
+    list: () => ipcRenderer.invoke(IpcChannel.projectList),
+    add: (request) => ipcRenderer.invoke(IpcChannel.projectAdd, request),
+    update: (request) => ipcRenderer.invoke(IpcChannel.projectUpdate, request),
+    remove: (id) => ipcRenderer.invoke(IpcChannel.projectRemove, { id }),
+  },
   dialog: {
     pickFolder: () => ipcRenderer.invoke(IpcChannel.dialogPickFolder),
   },
+  onCommand: (listener) => subscribe(IpcChannel.appCommand, listener),
 }
 
 contextBridge.exposeInMainWorld('dugout', api)

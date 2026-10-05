@@ -1,51 +1,83 @@
-import { useState } from 'react'
-import type { TerminalKind } from '@shared/terminal'
-import { TerminalPane } from '@renderer/features/terminal/TerminalPane'
+import { useCallback, useEffect, useState } from 'react'
+import type { Project } from '@shared/project'
+import { ProjectDialog, type ProjectDialogTarget } from '@renderer/features/projects/ProjectDialog'
+import { Sidebar } from '@renderer/features/projects/Sidebar'
+import { useProjectsStore } from '@renderer/features/projects/projectsStore'
+import { ProjectWorkspace } from '@renderer/features/workspace/ProjectWorkspace'
+import { StatusBar } from '@renderer/features/workspace/StatusBar'
+import { useAppCommands } from '@renderer/features/workspace/useAppCommands'
+import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { dugout } from '@renderer/lib/dugout'
 import styles from './App.module.css'
 
-interface ActiveSession {
-  readonly kind: TerminalKind
-  readonly cwd: string
+function Welcome({ onAddProject }: { onAddProject(): void }) {
+  return (
+    <div className={styles.welcome}>
+      <div className={styles.titlebar} />
+      <h1 className={styles.heading}>Add your first project</h1>
+      <p className={styles.hint}>A project is a git repository you run agents in.</p>
+      <button className={styles.primary} onClick={onAddProject}>
+        Add project…
+      </button>
+    </div>
+  )
 }
 
-const DEFAULT_ACCENT = 'var(--project-teal)'
-
 export function App() {
-  const [session, setSession] = useState<ActiveSession | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { projects, selectedId, isLoaded, loadError, load } = useProjectsStore()
+  const removeLayout = useWorkspaceStore((state) => state.removeProject)
+  const [dialog, setDialog] = useState<ProjectDialogTarget | null>(null)
+  const [pickError, setPickError] = useState<string | null>(null)
 
-  const start = async (kind: TerminalKind) => {
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const startAddProject = useCallback(async () => {
+    setPickError(null)
     try {
-      const cwd = await dugout.dialog.pickFolder()
-      if (cwd) setSession({ kind, cwd })
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not open folder')
+      const rootPath = await dugout.dialog.pickFolder()
+      if (rootPath) setDialog({ mode: 'add', rootPath })
+    } catch (error) {
+      console.error('[projects] folder picker failed', error)
+      setPickError('Could not open the folder picker.')
     }
-  }
+  }, [])
+  const addProject = useCallback(() => void startAddProject(), [startAddProject])
+  useAppCommands(addProject)
+
+  const editProject = (project: Project) => setDialog({ mode: 'edit', project })
+  const onRemoved = (project: Project) => removeLayout(project.id)
+
+  if (!isLoaded) return <div className={styles.app} />
 
   return (
     <div className={styles.app}>
-      <div className={styles.titlebar}>Dugout</div>
-      <main className={styles.main}>
-        {session ? (
-          <TerminalPane kind={session.kind} cwd={session.cwd} accentColor={DEFAULT_ACCENT} />
-        ) : (
-          <div className={styles.empty}>
-            <h1 className={styles.heading}>Start a session</h1>
-            <p className={styles.hint}>Pick a repo folder to run an agent in.</p>
-            <div className={styles.actions}>
-              <button className={styles.primary} onClick={() => void start('claude')}>
-                Start Claude Code…
-              </button>
-              <button className={styles.secondary} onClick={() => void start('shell')}>
-                Open shell…
-              </button>
-            </div>
-            {error && <p className={styles.error}>{error}</p>}
-          </div>
-        )}
-      </main>
+      <div className={styles.body}>
+        <Sidebar onAddProject={addProject} onEditProject={editProject} />
+        <main className={styles.main}>
+          {projects.length === 0 ? (
+            <Welcome onAddProject={addProject} />
+          ) : (
+            projects.map((project) => (
+              <ProjectWorkspace
+                key={project.id}
+                project={project}
+                isActive={project.id === selectedId}
+              />
+            ))
+          )}
+          {(loadError ?? pickError) && (
+            <p className={styles.error} role="alert">
+              {loadError ?? pickError}
+            </p>
+          )}
+        </main>
+      </div>
+      <StatusBar />
+      {dialog && (
+        <ProjectDialog target={dialog} onClose={() => setDialog(null)} onRemoved={onRemoved} />
+      )}
     </div>
   )
 }

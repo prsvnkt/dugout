@@ -1,0 +1,95 @@
+import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  clickMenuItem,
+  launchApp,
+  makeGitRepo,
+  makeTempDir,
+  recordTerminalOutput,
+  stubFolderPicker,
+} from './helpers'
+
+let app: ElectronApplication
+let page: Page
+let userDataDir: string
+
+test.beforeEach(async () => {
+  userDataDir = makeTempDir()
+  app = await launchApp(userDataDir)
+  page = await app.firstWindow()
+})
+
+test.afterEach(async () => {
+  await app.close()
+})
+
+async function addProject(repo: string, opener: () => Promise<void>): Promise<void> {
+  await stubFolderPicker(app, repo)
+  await opener()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Add project' }).click()
+  await expect(dialog).toBeHidden()
+}
+
+const activeWorkspace = () => page.locator('[data-active="true"]')
+
+test('adds projects, runs split terminals, and keeps them alive across switches', async () => {
+  // Arrange
+  const alpha = makeGitRepo('alpha')
+  const beta = makeGitRepo('beta')
+  const output = await recordTerminalOutput(page)
+
+  // Act: first project with two shells side by side
+  await addProject(alpha, () => page.getByRole('button', { name: 'Add project…' }).click())
+  await activeWorkspace()
+    .getByRole('button', { name: /New shell/ })
+    .click()
+  await activeWorkspace().getByRole('button', { name: '+ Shell' }).click()
+  await expect(activeWorkspace().getByText('Running')).toHaveCount(2)
+  await expect(page.getByText('2 terminals')).toBeVisible()
+
+  // Act: second project, then back to the first
+  await addProject(beta, () => page.getByRole('button', { name: '+ Add project' }).click())
+  await expect(page.getByRole('contentinfo')).toContainText('beta')
+  await page.getByRole('button', { name: 'alpha', exact: true }).click()
+
+  // Assert: the first project's terminals are still running and accept input
+  await expect(page.getByText('2 terminals')).toBeVisible()
+  await activeWorkspace().getByTestId('terminal').last().click()
+  await page.keyboard.type('echo still-$((40 + 2))-alive\n')
+  await expect.poll(output).toContain('still-42-alive')
+})
+
+test('rejects a folder that is not a git repository', async () => {
+  await stubFolderPicker(app, makeTempDir())
+  await page.getByRole('button', { name: 'Add project…' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Add project' }).click()
+  await expect(dialog.getByRole('alert')).toContainText('not inside a git repository')
+})
+
+test('remembers projects across restarts', async () => {
+  await addProject(makeGitRepo('gamma'), () =>
+    page.getByRole('button', { name: 'Add project…' }).click(),
+  )
+  await app.close()
+
+  app = await launchApp(userDataDir)
+  page = await app.firstWindow()
+
+  await expect(
+    page.getByRole('navigation').getByRole('button', { name: 'gamma', exact: true }),
+  ).toBeVisible()
+})
+
+test('menu commands open and close panes in the selected project', async () => {
+  await addProject(makeGitRepo('delta'), () =>
+    page.getByRole('button', { name: 'Add project…' }).click(),
+  )
+
+  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await expect(page.getByText('2 terminals')).toBeVisible()
+
+  await clickMenuItem(app, 'File', 'Close Pane')
+  await expect(page.getByText('1 terminal', { exact: true })).toBeVisible()
+})

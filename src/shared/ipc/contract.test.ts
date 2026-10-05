@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import {
+  projectAddRequestSchema,
+  projectsFileSchema,
+  projectUpdateRequestSchema,
   terminalCreateRequestSchema,
   terminalResizeRequestSchema,
   terminalWriteRequestSchema,
@@ -41,5 +44,36 @@ describe('terminalWriteRequestSchema', () => {
 describe('terminalResizeRequestSchema', () => {
   test('requires an id', () => {
     expect(terminalResizeRequestSchema.safeParse({ cols: 80, rows: 24 }).success).toBe(false)
+  })
+})
+
+describe('project schemas', () => {
+  test('trims and accepts a valid new project', () => {
+    const parsed = projectAddRequestSchema.parse({
+      name: '  Bene  ',
+      rootPath: '/Users/me/bene',
+      color: 'teal',
+    })
+    expect(parsed.name).toBe('Bene')
+  })
+
+  test('rejects blank names and unknown colours', () => {
+    const base = { name: 'Bene', rootPath: '/Users/me/bene', color: 'teal' }
+    expect(projectAddRequestSchema.safeParse({ ...base, name: '   ' }).success).toBe(false)
+    expect(projectAddRequestSchema.safeParse({ ...base, color: 'mauve' }).success).toBe(false)
+  })
+
+  test('update accepts a partial change', () => {
+    expect(projectUpdateRequestSchema.safeParse({ id: 'p1', color: 'blue' }).success).toBe(true)
+  })
+
+  test('update requires at least one field to change', () => {
+    expect(projectUpdateRequestSchema.safeParse({ id: 'p1' }).success).toBe(false)
+  })
+
+  test('the projects file schema rejects malformed entries', () => {
+    expect(projectsFileSchema.safeParse({ version: 1, projects: [{ id: 'p1' }] }).success).toBe(
+      false,
+    )
   })
 })

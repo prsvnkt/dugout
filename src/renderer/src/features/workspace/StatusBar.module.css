@@ -1,0 +1,31 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--statusbar-height);
+  padding: 0 var(--space-3);
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.bar[data-has-project] {
+  background: var(--accent);
+  border-top-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.name {
+  font-weight: 600;
+}
+
+.path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.spacer {
+  flex: 1;
+}

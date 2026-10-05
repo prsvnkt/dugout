@@ -10,4 +10,9 @@ export const IpcChannel = {
   terminalData: 'terminal:data',
   terminalExit: 'terminal:exit',
   dialogPickFolder: 'dialog:pick-folder',
+  projectList: 'project:list',
+  projectAdd: 'project:add',
+  projectUpdate: 'project:update',
+  projectRemove: 'project:remove',
+  appCommand: 'app:command',
 } as const

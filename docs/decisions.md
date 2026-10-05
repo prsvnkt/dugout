@@ -35,11 +35,23 @@ Playwright for Electron E2E, ESLint flat config + Prettier. SQLite, Monaco and f
 deferred until a feature needs them: start with JSON for metadata, git status driven by hook
 events for change detection, and a lightweight diff viewer.
 
+## 006 — Shortcuts live in the native menu (2026-10-05)
+
+All keyboard shortcuts are menu accelerators that send an `AppCommand` to the renderer. They work
+while a terminal has focus, appear in the menu bar, and let ⌘W close a pane instead of the window.
+
+## 007 — Side-by-side panes only, terminals stay mounted (2026-10-05)
+
+Each project shows up to 6 resizable side-by-side panes. Every project's workspace stays mounted
+while hidden so terminals keep running across project switches. Grid splits and saving layouts
+between launches are deferred.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
-2. **MVP:** projects (repo, name, colour) in a sidebar; split-pane terminals per project;
-   status from hooks (running / waiting / done / exited); git panel (branch, changes, diff,
-   stage / commit / push).
+2. **MVP:**
+   - Projects (repo, name, colour) in a sidebar; split-pane terminals per project. ✅
+   - Status from hooks (running / waiting / done / exited).
+   - Git panel (branch, changes, diff, stage / commit / push).
 3. **Next:** worktree sessions, resume on relaunch, "needs you" list + native notifications,
    create PR.

@@ -1,0 +1,30 @@
+import { useEffect } from 'react'
+import type { AppCommand } from '@shared/commands'
+import { dugout } from '@renderer/lib/dugout'
+import { useProjectsStore } from '@renderer/features/projects/projectsStore'
+import { useWorkspaceStore } from './workspaceStore'
+
+/** Routes native menu commands (and their shortcuts) to the stores. */
+export function useAppCommands(onAddProject: () => void): void {
+  useEffect(() => {
+    const handle = (command: AppCommand) => {
+      const { selectedId, selectIndex } = useProjectsStore.getState()
+      const workspace = useWorkspaceStore.getState()
+      switch (command.type) {
+        case 'project.add':
+          onAddProject()
+          return
+        case 'project.select':
+          selectIndex(command.index)
+          return
+        case 'pane.new':
+          if (selectedId) workspace.addPane(selectedId, command.kind)
+          return
+        case 'pane.close':
+          if (selectedId) workspace.closeFocusedPane(selectedId)
+          return
+      }
+    }
+    return dugout.onCommand(handle)
+  }, [onAddProject])
+}

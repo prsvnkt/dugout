@@ -9,6 +9,7 @@ import {
 } from '@shared/ipc/contract'
 import type { TerminalId } from '@shared/terminal'
 import type { TerminalManager } from '../services/terminal/TerminalManager'
+import { handleRequest } from './handle'
 import { parsePayload } from './validate'
 
 async function assertDirectory(path: string): Promise<void> {
@@ -52,9 +53,7 @@ function trackOwnership(manager: TerminalManager) {
 export function registerTerminalIpc(manager: TerminalManager): void {
   const ownership = trackOwnership(manager)
 
-  ipcMain.handle(IpcChannel.terminalCreate, async (event, payload: unknown) => {
-    const request = parsePayload(terminalCreateRequestSchema, payload, IpcChannel.terminalCreate)
-    if (!request) throw new Error('Invalid terminal request')
+  handleRequest(IpcChannel.terminalCreate, terminalCreateRequestSchema, async (request, event) => {
     await assertDirectory(request.cwd)
 
     const owner = event.sender
