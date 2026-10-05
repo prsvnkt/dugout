@@ -93,3 +93,24 @@ test('menu commands open and close panes in the selected project', async () => {
   await clickMenuItem(app, 'File', 'Close Pane')
   await expect(page.getByText('1 terminal', { exact: true })).toBeVisible()
 })
+
+test('a newly split pane starts its process at the full pane width', async () => {
+  // Regression: panes mount at ~0 width and the resize was lost before the PTY connected,
+  // leaving `claude` rendering into a 2-column terminal.
+  const output = await recordTerminalOutput(page)
+  await addProject(makeGitRepo('epsilon'), () =>
+    page.getByRole('button', { name: 'Add project…' }).click(),
+  )
+
+  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await expect(activeWorkspace().getByText('Running')).toHaveCount(3)
+  await activeWorkspace().getByTestId('terminal').last().click()
+  await page.keyboard.type('echo "pty-size:$(stty size)"\n')
+
+  await expect.poll(output).toMatch(/pty-size:\d+ \d+/)
+  const [, rows, cols] = /pty-size:(\d+) (\d+)/.exec(await output()) ?? []
+  expect(Number(cols)).toBeGreaterThan(40)
+  expect(Number(rows)).toBeGreaterThan(20)
+})

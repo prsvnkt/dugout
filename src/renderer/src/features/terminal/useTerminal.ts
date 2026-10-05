@@ -17,8 +17,6 @@ export interface TerminalHandle {
   focus(): void
 }
 
-const FALLBACK_SIZE = { cols: 100, rows: 30 }
-
 function loadWebgl(terminal: Terminal): void {
   try {
     const webgl = new WebglAddon()
@@ -29,9 +27,14 @@ function loadWebgl(terminal: Terminal): void {
   }
 }
 
-/** Hidden containers measure 0×0; fitting then would shrink the PTY to 2 columns. */
-function fitIfVisible(container: HTMLElement, fit: FitAddon): void {
-  if (container.clientWidth > 0 && container.clientHeight > 0) fit.fit()
+/**
+ * Below this the container is still being laid out (new split panes mount at ~0 width) or
+ * hidden. Fitting then would shrink the PTY to a couple of columns and garble the TUI.
+ */
+const MIN_MEASURABLE_PX = 50
+
+function hasUsableSize(container: HTMLElement): boolean {
+  return container.clientWidth >= MIN_MEASURABLE_PX && container.clientHeight >= MIN_MEASURABLE_PX
 }
 
 /** Mounts an xterm into `containerRef` and connects it to a new PTY in the main process. */
@@ -52,7 +55,6 @@ export function useTerminal(
     terminal.loadAddon(fit)
     terminal.open(container)
     loadWebgl(terminal)
-    fitIfVisible(container, fit)
     terminalRef.current = terminal
 
     let terminalId: string | null = null
@@ -62,6 +64,8 @@ export function useTerminal(
     const connect = (id: string) => {
       terminalId = id
       setStatus({ state: 'running' })
+      // The pane may have resized while the PTY was starting; sync before listening.
+      dugout.terminal.resize(id, terminal.cols, terminal.rows)
       const input = terminal.onData((data) => dugout.terminal.write(id, data))
       const resize = terminal.onResize(({ cols, rows }) => dugout.terminal.resize(id, cols, rows))
       cleanups.push(
@@ -74,23 +78,33 @@ export function useTerminal(
       )
     }
 
-    const size = fit.proposeDimensions() ?? FALLBACK_SIZE
-    dugout.terminal
-      .create({ kind, cwd, cols: size.cols, rows: size.rows })
-      .then((result) => {
-        if (!result.ok) {
-          if (!isDisposed) setStatus({ state: 'error', message: result.error })
-          return
-        }
-        if (isDisposed) dugout.terminal.kill(result.data)
-        else connect(result.data)
-      })
-      .catch((error: unknown) => {
-        console.error('[terminal] create failed', error)
-        if (!isDisposed) setStatus({ state: 'error', message: 'Could not start terminal.' })
-      })
+    const start = () => {
+      dugout.terminal
+        .create({ kind, cwd, cols: terminal.cols, rows: terminal.rows })
+        .then((result) => {
+          if (!result.ok) {
+            if (!isDisposed) setStatus({ state: 'error', message: result.error })
+            return
+          }
+          if (isDisposed) dugout.terminal.kill(result.data)
+          else connect(result.data)
+        })
+        .catch((error: unknown) => {
+          console.error('[terminal] create failed', error)
+          if (!isDisposed) setStatus({ state: 'error', message: 'Could not start terminal.' })
+        })
+    }
 
-    const observer = new ResizeObserver(() => fitIfVisible(container, fit))
+    // Start the process only once the pane has a real size, so it never begins tiny.
+    let hasStarted = false
+    const observer = new ResizeObserver(() => {
+      if (!hasUsableSize(container)) return
+      fit.fit()
+      if (!hasStarted) {
+        hasStarted = true
+        start()
+      }
+    })
     observer.observe(container)
 
     return () => {

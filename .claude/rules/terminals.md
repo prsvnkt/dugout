@@ -12,6 +12,9 @@ paths:
   the executable or arguments, only a `TerminalKind` and a `cwd`.
 - Environment changes go in `buildTerminalEnv` with a unit test. It must not mutate its input.
 - `TerminalBackend` is the seam for a future tmux-backed implementation; keep it minimal.
+- Never start a PTY before its container has a real size: new split panes mount at ~0 width.
+  `useTerminal` starts the process on the first usable ResizeObserver measurement, and re-sends
+  the size once connected, because resizes during startup have no PTY id to go to.
 - In the renderer, `useTerminal` owns one xterm + one PTY. Its cleanup must kill the PTY and
   dispose xterm. Handle the create-resolves-after-unmount race (React StrictMode mounts twice).
 - Session status (running / waiting / done) will come from Claude Code hooks passed via
