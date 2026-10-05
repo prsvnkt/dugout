@@ -25,6 +25,8 @@ export interface GitStatus {
   readonly behind: number
   /** True before the first commit. */
   readonly isUnborn: boolean
+  /** The remote's default branch (from origin/HEAD), or null when unknown. */
+  readonly baseBranch: string | null
   readonly files: readonly GitFileChange[]
 }
 

@@ -27,6 +27,12 @@ function BranchSummary({ status }: { status: GitStatus }) {
   )
 }
 
+function canOpenPullRequest(status: GitStatus): boolean {
+  return (
+    status.branch !== null && !status.isUnborn && status.branch !== (status.baseBranch ?? 'main')
+  )
+}
+
 function pushLabel(status: GitStatus): string | null {
   if (status.branch === null || status.isUnborn) return null
   if (status.upstream === null) return 'Publish'
@@ -62,6 +68,16 @@ export function GitPanel({ project }: GitPanelProps) {
             disabled={git.isBusy}
           >
             {push}
+          </button>
+        )}
+        {canOpenPullRequest(git.status) && (
+          <button
+            className={styles.pushButton}
+            onClick={() => void actions.openPullRequest(id)}
+            disabled={git.isBusy}
+            title="Push if needed, then open a new pull request in your browser"
+          >
+            Create PR
           </button>
         )}
       </header>

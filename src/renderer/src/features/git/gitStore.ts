@@ -39,6 +39,7 @@ interface GitState {
   /** Resolves true when the commit succeeded, so the caller can clear its message. */
   commit(projectId: ProjectId, message: string): Promise<boolean>
   push(projectId: ProjectId): Promise<void>
+  openPullRequest(projectId: ProjectId): Promise<void>
 }
 
 const refreshesInFlight = new Set<ProjectId>()
@@ -111,6 +112,11 @@ export const useGitStore = create<GitState>()((set, get) => {
     commit: (projectId, message) =>
       runAction(projectId, () => dugout.git.commit(projectId, message)),
     push: (projectId) => runAction(projectId, () => dugout.git.push(projectId)).then(() => {}),
+    openPullRequest: (projectId) =>
+      runAction(projectId, async () => {
+        const result = await dugout.git.openPullRequest(projectId)
+        return result.ok ? { ok: true, data: undefined } : result
+      }).then(() => {}),
   }
 })
 

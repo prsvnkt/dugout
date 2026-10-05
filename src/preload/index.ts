@@ -37,6 +37,8 @@ const api: DugoutApi = {
     commit: (projectId, message) =>
       ipcRenderer.invoke(IpcChannel.gitCommit, { projectId, message }),
     push: (projectId) => ipcRenderer.invoke(IpcChannel.gitPush, { projectId }),
+    openPullRequest: (projectId) =>
+      ipcRenderer.invoke(IpcChannel.gitOpenPullRequest, { projectId }),
   },
   dialog: {
     pickFolder: () => ipcRenderer.invoke(IpcChannel.dialogPickFolder),

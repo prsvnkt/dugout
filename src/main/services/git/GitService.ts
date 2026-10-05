@@ -1,5 +1,6 @@
 import type { GitDiff, GitStatus } from '@shared/git'
 import { parseStatus } from './parseStatus'
+import { buildPullRequestUrl } from './pullRequestUrl'
 import { GitError, runGit, type RunGitOptions } from './runGit'
 
 type Env = Readonly<Record<string, string | undefined>>
@@ -13,6 +14,9 @@ const PUSH_TIMEOUT_MS = 120_000
 const BINARY_DIFF = /^(Binary files .* differ|GIT binary patch)$/m
 /** `git diff --no-index` exits 1 when the files differ. */
 const DIFF_NO_INDEX_OK = [0, 1]
+/** `git symbolic-ref --quiet` exits 1 when the ref does not exist. */
+const OPTIONAL_REF_OK = [0, 1]
+const FALLBACK_BASE_BRANCH = 'main'
 
 /**
  * Git operations for the review panel. Never prompts (no credential or editor prompts), never
@@ -40,7 +44,21 @@ export class GitService {
       '-z',
       '--untracked-files=all',
     ])
-    return parseStatus(stdout)
+    return { ...parseStatus(stdout), baseBranch: await this.baseBranch(root) }
+  }
+
+  /** The page for opening a pull request from the current branch into the base branch. */
+  async pullRequestUrl(root: string): Promise<string> {
+    const status = await this.status(root)
+    const base = status.baseBranch ?? FALLBACK_BASE_BRANCH
+    if (status.branch === null || status.isUnborn) {
+      throw new GitError('Check out a feature branch to create a pull request.')
+    }
+    if (status.branch === base) {
+      throw new GitError(`You are on ${base}. Switch to a feature branch to create a pull request.`)
+    }
+    const { stdout } = await this.run(root, ['remote', 'get-url', 'origin'])
+    return buildPullRequestUrl(stdout, base, status.branch)
   }
 
   async diff(root: string, request: { path: string; staged: boolean }): Promise<GitDiff> {
@@ -111,6 +129,16 @@ export class GitService {
     await this.run(root, ['push', '--set-upstream', 'origin', 'HEAD'], {
       timeoutMs: PUSH_TIMEOUT_MS,
     })
+  }
+
+  private async baseBranch(root: string): Promise<string | null> {
+    const { stdout } = await this.run(
+      root,
+      ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'],
+      { okExitCodes: OPTIONAL_REF_OK },
+    )
+    const ref = stdout.trim()
+    return ref.startsWith('origin/') ? ref.slice('origin/'.length) : null
   }
 
   private async isTracked(root: string, path: string): Promise<boolean> {

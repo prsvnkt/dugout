@@ -111,3 +111,44 @@ test('the git panel can be toggled from the menu', async () => {
   await clickMenuItem(app, 'View', 'Toggle Git Panel')
   await expect(panel()).toBeVisible()
 })
+
+test('Create PR pushes the branch and opens the compare page', async () => {
+  // Arrange: origin fetches from GitHub but pushes to a local bare repo
+  const { repo, remote } = makeRepoWithRemote()
+  git(repo, 'remote', 'set-url', 'origin', 'git@github.com:acme/app.git')
+  git(repo, 'remote', 'set-url', '--push', 'origin', remote)
+  git(repo, 'checkout', '-q', '-b', 'feat/login')
+  writeFileSync(join(repo, 'login.ts'), 'export {}\n')
+  git(repo, 'add', '.')
+  git(repo, 'commit', '-qm', 'feat: login')
+  await app.evaluate(({ shell }) => {
+    const opened: string[] = []
+    ;(globalThis as unknown as { openedUrls: string[] }).openedUrls = opened
+    shell.openExternal = async (url: string) => {
+      opened.push(url)
+    }
+  })
+  await stubFolderPicker(app, repo)
+  await page.getByRole('button', { name: 'Add project…' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
+
+  // Act
+  await panel().getByRole('button', { name: 'Create PR' }).click()
+
+  // Assert
+  const openedUrls = () =>
+    app.evaluate(() => (globalThis as unknown as { openedUrls: string[] }).openedUrls)
+  await expect
+    .poll(openedUrls)
+    .toEqual(['https://github.com/acme/app/compare/main...feat/login?expand=1'])
+  expect(git(remote, 'log', '--format=%s', 'feat/login')).toContain('feat: login')
+})
+
+test('Create PR is not offered on the base branch', async () => {
+  const { repo } = makeRepoWithRemote()
+  await stubFolderPicker(app, repo)
+  await page.getByRole('button', { name: 'Add project…' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
+  await expect(panel()).toContainText('main')
+  await expect(panel().getByRole('button', { name: 'Create PR' })).toBeHidden()
+})

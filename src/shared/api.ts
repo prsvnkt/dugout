@@ -35,6 +35,8 @@ export interface DugoutApi {
     discard(projectId: ProjectId, paths: readonly string[]): Promise<Result<void>>
     commit(projectId: ProjectId, message: string): Promise<Result<void>>
     push(projectId: ProjectId): Promise<Result<void>>
+    /** Pushes if needed, then opens the new pull request page. Resolves to its URL. */
+    openPullRequest(projectId: ProjectId): Promise<Result<string>>
   }
   readonly dialog: {
     /** Resolves to the chosen absolute folder path, or null if cancelled. */

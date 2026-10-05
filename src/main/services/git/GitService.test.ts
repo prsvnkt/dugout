@@ -218,3 +218,35 @@ describe('GitService.push', () => {
     await expect(service.push(repo)).rejects.toThrow('no remote named "origin"')
   })
 })
+
+describe('GitService pull requests', () => {
+  function makeFeatureRepo(): string {
+    const repo = makeRepoWithCommit()
+    git(repo, 'remote', 'add', 'origin', 'git@github.com:acme/app.git')
+    git(repo, 'checkout', '-q', '-b', 'feat/login')
+    return repo
+  }
+
+  test('reports the remote default branch as the base', async () => {
+    const repo = makeFeatureRepo()
+    git(repo, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/develop')
+    expect((await service.status(repo)).baseBranch).toBe('develop')
+  })
+
+  test('has no base branch when origin/HEAD is unknown', async () => {
+    expect((await service.status(makeFeatureRepo())).baseBranch).toBeNull()
+  })
+
+  test('builds the compare URL against the base branch, defaulting to main', async () => {
+    const repo = makeFeatureRepo()
+    expect(await service.pullRequestUrl(repo)).toBe(
+      'https://github.com/acme/app/compare/main...feat/login?expand=1',
+    )
+  })
+
+  test('refuses to open a pull request from the base branch itself', async () => {
+    const repo = makeFeatureRepo()
+    git(repo, 'checkout', '-q', 'main')
+    await expect(service.pullRequestUrl(repo)).rejects.toThrow('feature branch')
+  })
+})

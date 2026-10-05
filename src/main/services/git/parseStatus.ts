@@ -35,7 +35,7 @@ function ordinaryChange(entry: string, fieldCount: number): GitFileChange {
  * Parses `git status --porcelain=v2 --branch -z`. Records are NUL-terminated; a rename
  * record is followed by one extra NUL-terminated field holding the original path.
  */
-export function parseStatus(output: string): GitStatus {
+export function parseStatus(output: string): Omit<GitStatus, 'baseBranch'> {
   const entries = output.split('\0')
   const files: GitFileChange[] = []
   let branch: string | null = null

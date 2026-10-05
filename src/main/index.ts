@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { app, BrowserWindow, Notification } from 'electron'
+import { app, BrowserWindow, Notification, shell } from 'electron'
 import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
@@ -94,7 +94,9 @@ async function start(): Promise<void> {
 
   registerTerminalIpc(manager)
   registerProjectIpc(projectStore)
-  registerGitIpc(projectStore, new GitService({ env: process.env }))
+  registerGitIpc(projectStore, new GitService({ env: process.env }), (url) =>
+    shell.openExternal(url),
+  )
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)
   createMainWindow()

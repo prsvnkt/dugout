@@ -22,5 +22,6 @@ export const IpcChannel = {
   gitDiscard: 'git:discard',
   gitCommit: 'git:commit',
   gitPush: 'git:push',
+  gitOpenPullRequest: 'git:open-pull-request',
   appCommand: 'app:command',
 } as const

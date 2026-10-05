@@ -14,7 +14,13 @@ import { handleRequest } from './handle'
  * The renderer names a project, never a folder: main resolves the repository path itself,
  * so the UI cannot run git anywhere outside the user's projects.
  */
-export function registerGitIpc(projects: ProjectStore, git: GitService): void {
+const PULL_REQUEST_HOSTS = ['https://github.com/', 'https://gitlab.com/']
+
+export function registerGitIpc(
+  projects: ProjectStore,
+  git: GitService,
+  openExternal: (url: string) => Promise<void>,
+): void {
   const rootOf = (projectId: ProjectId): string => {
     const project = projects.list().find((candidate) => candidate.id === projectId)
     if (!project) throw new Error('Project not found.')
@@ -42,4 +48,15 @@ export function registerGitIpc(projects: ProjectStore, git: GitService): void {
   handleRequest(IpcChannel.gitPush, gitProjectRequestSchema, ({ projectId }) =>
     git.push(rootOf(projectId)),
   )
+  handleRequest(IpcChannel.gitOpenPullRequest, gitProjectRequestSchema, async ({ projectId }) => {
+    const root = rootOf(projectId)
+    const url = await git.pullRequestUrl(root)
+    if (!PULL_REQUEST_HOSTS.some((host) => url.startsWith(host))) {
+      throw new Error('Refusing to open an unexpected URL.')
+    }
+    const status = await git.status(root)
+    if (status.upstream === null || status.ahead > 0) await git.push(root)
+    await openExternal(url)
+    return url
+  })
 }
