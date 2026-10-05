@@ -43,6 +43,8 @@ src/
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
   renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.
+              Layout: project tabs (title bar) / Explorer | editor over terminals | Git panel;
+              side panels collapse to rails via workspace/SidePanel.tsx.
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.

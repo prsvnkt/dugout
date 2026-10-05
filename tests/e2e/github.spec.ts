@@ -25,7 +25,7 @@ test.afterEach(async () => {
   await stub.close()
 })
 
-const sidebar = () => page.getByRole('navigation', { name: 'Projects' })
+const sidebar = () => page.getByRole('banner')
 
 test('signs in with the device flow, remembers the session, and signs out', async () => {
   // Arrange

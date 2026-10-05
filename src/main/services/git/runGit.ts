@@ -41,6 +41,9 @@ export function runGit(options: RunGitOptions): Promise<RunGitResult> {
   const maxBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES
   const okCodes = options.okExitCodes ?? [0]
 
+  if (options.signal?.aborted) {
+    return Promise.reject(new GitError(`git ${options.args[0] ?? ''} was cancelled.`))
+  }
   return new Promise((resolve, reject) => {
     const child = spawn('git', ['-c', 'core.quotePath=false', ...options.args], {
       cwd: options.cwd,
@@ -94,6 +97,8 @@ export function runGit(options: RunGitOptions): Promise<RunGitResult> {
       reject(new GitError(readableError(err, out, options.args)))
     })
 
+    // A killed (cancelled or timed-out) git closes its stdin early; that EPIPE is expected.
+    child.stdin.on('error', () => {})
     child.stdin.end(options.input ?? '')
   })
 }

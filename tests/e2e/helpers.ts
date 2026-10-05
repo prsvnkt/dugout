@@ -125,3 +125,9 @@ export function makeFakeClaude(): string {
   writeFileSync(path, `#!${process.execPath}\n${FAKE_CLAUDE_SOURCE}`, { mode: 0o755 })
   return path
 }
+
+/** Opens the folder-picker flow from the "+" next to the project tabs. */
+export async function openAddProjectFromTabs(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'New project' }).click()
+  await page.getByRole('menuitem', { name: /^Add project…/ }).click()
+}

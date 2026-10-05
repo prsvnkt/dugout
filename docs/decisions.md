@@ -130,6 +130,14 @@ be empty, and a folder the clone created is removed on failure or cancel. The pa
 remembered in `<userData>/settings.json` (default `~/Developer`, else home). On success the
 repo is added as a project with the next free colour.
 
+## 017 — Projects as title-bar tabs; collapsible side panels (2026-10-05)
+
+Projects are Chrome-style tabs in the title bar (colour dot, name, most urgent agent status,
+⋯ to edit, + for Add project / Clone repository), with the GitHub account at the right. The
+left sidebar is gone: the Explorer is the leftmost panel. Explorer and Git panel collapse to
+28px rails (header button, ⌘B / ⇧⌘G, or dragging them closed) and stay mounted in fixed
+slots, so collapsing never remounts terminals. New-pane buttons live in a Terminals header.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅

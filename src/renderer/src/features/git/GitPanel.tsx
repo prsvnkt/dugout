@@ -49,6 +49,7 @@ export function GitPanel({ project }: GitPanelProps) {
   const id = checkout
   const openDiff = useEditorStore((state) => state.openDiff)
   const signIn = useAuthStore((state) => state.signIn)
+  const setPanelOpen = useGitStore((state) => state.setPanelOpen)
   const { tabs, activeTabId } = useProjectTabs(project.id)
   const activeTab = tabs.find((tab) => tab.id === activeTabId)
   const selection: GitSelection | null =
@@ -76,6 +77,14 @@ export function GitPanel({ project }: GitPanelProps) {
       <CheckoutPicker project={project} />
       <header className={styles.header}>
         <BranchSummary status={git.status} />
+        <button
+          className={styles.hide}
+          onClick={() => setPanelOpen(false)}
+          title="Hide git panel (⇧⌘G)"
+          aria-label="Hide Git panel"
+        >
+          »
+        </button>
         {push && (
           <button
             className={styles.pushButton}

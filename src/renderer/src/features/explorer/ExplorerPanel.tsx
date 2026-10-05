@@ -124,6 +124,7 @@ export function ExplorerPanel({ project }: { project: Project }) {
   const tree = useCheckoutTree(checkout)
   const collapseAll = useExplorerStore((state) => state.collapseAll)
   const refresh = useExplorerStore((state) => state.refresh)
+  const setOpen = useExplorerStore((state) => state.setOpen)
   const marks = useGitMarks(project)
   const { tabs, activeTabId } = useProjectTabs(project.id)
   const activePath = tabs.find((tab) => tab.id === activeTabId)?.path ?? null
@@ -146,6 +147,13 @@ export function ExplorerPanel({ project }: { project: Project }) {
           aria-label="Collapse all folders"
         >
           ⊟
+        </button>
+        <button
+          onClick={() => setOpen(false)}
+          title="Hide explorer (⌘B)"
+          aria-label="Hide Explorer"
+        >
+          «
         </button>
       </header>
       <div className={styles.root} title={checkout.worktreePath ?? project.rootPath}>

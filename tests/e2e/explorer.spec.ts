@@ -146,3 +146,30 @@ test('the explorer can be toggled', async () => {
   await clickMenuItem(app, 'View', 'Toggle Explorer')
   await expect(explorer()).toBeVisible()
 })
+
+test('side panels collapse to rails and expand again without restarting terminals', async () => {
+  const output = await recordTerminalOutput(page)
+  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await expect.poll(output).not.toBe('')
+
+  // Collapse both from their headers
+  await explorer().getByRole('button', { name: 'Hide Explorer' }).click()
+  await page
+    .getByRole('complementary', { name: 'Source control' })
+    .getByRole('button', { name: 'Hide Git panel' })
+    .click()
+  await expect(explorer()).toBeHidden()
+  await expect(page.getByRole('complementary', { name: 'Source control' })).toBeHidden()
+
+  // Expand both from their rails
+  await page.getByRole('button', { name: 'Show Explorer' }).click()
+  await page.getByRole('button', { name: /^Show Git/ }).click()
+  await expect(explorer()).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Source control' })).toBeVisible()
+
+  // The same shell kept running throughout
+  await page.locator('[data-testid="terminal"]').click()
+  await page.keyboard.type('echo kept-$((40 + 2))\n')
+  await expect.poll(output).toContain('kept-42')
+  expect(await terminalIdsSeen(page)).toHaveLength(1)
+})

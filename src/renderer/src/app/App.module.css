@@ -16,13 +16,6 @@
   min-width: 0;
 }
 
-.titlebar {
-  position: absolute;
-  inset: 0 0 auto;
-  height: var(--titlebar-height);
-  -webkit-app-region: drag;
-}
-
 .welcome {
   display: flex;
   flex-direction: column;

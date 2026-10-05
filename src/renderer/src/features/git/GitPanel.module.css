@@ -229,3 +229,19 @@
   background: var(--bg-panel);
   color: var(--text-primary);
 }
+
+.hide {
+  order: 10;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.hide:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}

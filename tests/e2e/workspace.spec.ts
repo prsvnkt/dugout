@@ -1,6 +1,7 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
   clickMenuItem,
+  openAddProjectFromTabs,
   launchApp,
   makeGitRepo,
   makeTempDir,
@@ -49,7 +50,7 @@ test('adds projects, runs split terminals, and keeps them alive across switches'
   await expect(page.getByText('2 terminals')).toBeVisible()
 
   // Act: second project, then back to the first
-  await addProject(beta, () => page.getByRole('button', { name: '+ Add project' }).click())
+  await addProject(beta, () => openAddProjectFromTabs(page))
   await expect(page.getByRole('contentinfo')).toContainText('beta')
   await page.getByRole('button', { name: 'alpha', exact: true }).click()
 
@@ -126,9 +127,7 @@ test('revealing a terminal (as a notification click does) switches to its projec
   await clickMenuItem(app, 'File', 'New Shell Pane')
   await expect.poll(output).not.toBe('')
   const [terminalId] = await terminalIdsSeen(page)
-  await addProject(makeGitRepo('beta'), () =>
-    page.getByRole('button', { name: '+ Add project' }).click(),
-  )
+  await addProject(makeGitRepo('beta'), () => openAddProjectFromTabs(page))
   await expect(page.getByRole('contentinfo')).toContainText('beta')
 
   // Act

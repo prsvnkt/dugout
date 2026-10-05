@@ -9,10 +9,11 @@ import { EditorArea } from '@renderer/features/editor/EditorArea'
 import { useProjectTabs } from '@renderer/features/editor/editorStore'
 import { ExplorerPanel } from '@renderer/features/explorer/ExplorerPanel'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
-import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { WorktreeError } from '@renderer/features/worktrees/WorktreeError'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { MAX_PANES_PER_PROJECT } from './layout'
+import { projectColorVar } from '@renderer/features/projects/projectColor'
+import { SidePanel } from './SidePanel'
 import { useCheckoutRefresh } from './useCheckoutRefresh'
 import { useProjectLayout, useSelectedCheckout, useWorkspaceStore } from './workspaceStore'
 import styles from './ProjectWorkspace.module.css'
@@ -53,6 +54,39 @@ interface TerminalsAreaProps {
   readonly project: Project
   readonly isActive: boolean
   onAdd(kind: TerminalKind): void
+}
+
+/** Above the terminals: where new Claude, worktree and shell panes are started. */
+function TerminalsHeader({
+  project,
+  onAdd,
+}: {
+  project: Project
+  onAdd(kind: TerminalKind): void
+}) {
+  const layout = useProjectLayout(project.id)
+  const startWorktreeSession = useWorktreeStore((state) => state.startSession)
+  const canAddPane = layout.panes.length < MAX_PANES_PER_PROJECT
+  return (
+    <div className={styles.terminalsHeader}>
+      <span className={styles.terminalsTitle}>Terminals</span>
+      <div className={styles.toolbarActions}>
+        <button disabled={!canAddPane} onClick={() => onAdd('claude')} title="New Claude pane (⌘T)">
+          + Claude
+        </button>
+        <button
+          disabled={!canAddPane}
+          onClick={() => void startWorktreeSession(project.id)}
+          title="New Claude pane in its own worktree and branch (⌥⌘T)"
+        >
+          + Worktree
+        </button>
+        <button disabled={!canAddPane} onClick={() => onAdd('shell')} title="New shell (⇧⌘T)">
+          + Shell
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
@@ -97,70 +131,40 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
 }
 
 /**
- * One project's workspace: explorer, editor tabs above its terminals, and the git panel.
- * Stays mounted while another project is shown (hidden with `visibility`, which keeps its
- * size) so terminals keep running.
+ * One project's workspace: explorer (left), editor tabs above its terminals (center) and the
+ * git panel (right); both side panels collapse to rails. Stays mounted while another project is
+ * shown (hidden with `visibility`, which keeps its size) so terminals keep running.
  */
 export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
-  const layout = useProjectLayout(project.id)
   const addPane = useWorkspaceStore((state) => state.addPane)
-  const isGitPanelOpen = useGitStore((state) => state.isPanelOpen)
-  const togglePanel = useGitStore((state) => state.togglePanel)
-  const changeCount = useCheckoutGit(useSelectedCheckout(project.id)).status?.files.length ?? 0
-  const startWorktreeSession = useWorktreeStore((state) => state.startSession)
-  const accent = projectColorVar(project.color)
-  const canAddPane = layout.panes.length < MAX_PANES_PER_PROJECT
-  const add = (kind: TerminalKind) => addPane(project.id, kind)
-  const isExplorerOpen = useExplorerStore((state) => state.isOpen)
-  const hasOpenTabs = useProjectTabs(project.id).tabs.length > 0
   const setFocusedArea = useWorkspaceStore((state) => state.setFocusedArea)
+  const isGitPanelOpen = useGitStore((state) => state.isPanelOpen)
+  const setGitPanelOpen = useGitStore((state) => state.setPanelOpen)
+  const isExplorerOpen = useExplorerStore((state) => state.isOpen)
+  const setExplorerOpen = useExplorerStore((state) => state.setOpen)
+  const changeCount = useCheckoutGit(useSelectedCheckout(project.id)).status?.files.length ?? 0
+  const hasOpenTabs = useProjectTabs(project.id).tabs.length > 0
+  const add = (kind: TerminalKind) => addPane(project.id, kind)
   useCheckoutRefresh(project.id, isActive)
 
   return (
     <div className={styles.workspace} data-active={isActive} aria-hidden={!isActive}>
-      <div className={styles.toolbar}>
-        <span className={styles.projectName} style={{ color: accent }}>
-          {project.name}
-        </span>
-        <div className={styles.toolbarActions}>
-          <button disabled={!canAddPane} onClick={() => add('claude')} title="New Claude pane (⌘T)">
-            + Claude
-          </button>
-          <button
-            disabled={!canAddPane}
-            onClick={() => void startWorktreeSession(project.id)}
-            title="New Claude pane in its own worktree and branch (⌥⌘T)"
-          >
-            + Worktree
-          </button>
-          <button disabled={!canAddPane} onClick={() => add('shell')} title="New shell (⇧⌘T)">
-            + Shell
-          </button>
-          <button
-            onClick={togglePanel}
-            aria-pressed={isGitPanelOpen}
-            title="Toggle git panel (⇧⌘G)"
-          >
-            Git{changeCount > 0 && ` · ${changeCount}`}
-          </button>
-        </div>
-      </div>
       <WorktreeError projectId={project.id} />
-      {/* Slots stay in fixed positions, so toggling panels never remounts the terminals. */}
+      {/* Every slot is always rendered, so collapsing panels never remounts the terminals. */}
       <Group orientation="horizontal" className={styles.body}>
-        {isExplorerOpen && (
-          <>
-            <Panel
-              id="explorer"
-              defaultSize={DEFAULT_EXPLORER_PX}
-              minSize={MIN_EXPLORER_PX}
-              maxSize={MAX_EXPLORER_SIZE}
-            >
-              <ExplorerPanel project={project} />
-            </Panel>
-            <Separator className={styles.separator} />
-          </>
-        )}
+        <SidePanel
+          id="explorer"
+          side="left"
+          label="Explorer"
+          isExpanded={isExplorerOpen}
+          onExpandedChange={setExplorerOpen}
+          defaultSize={DEFAULT_EXPLORER_PX}
+          minSize={MIN_EXPLORER_PX}
+          maxSize={MAX_EXPLORER_SIZE}
+        >
+          <ExplorerPanel project={project} />
+        </SidePanel>
+        <Separator className={styles.separator} />
         <Panel id="center" minSize={MIN_PANE_SIZE_PX}>
           <Group orientation="vertical" className={styles.center}>
             {hasOpenTabs && (
@@ -176,24 +180,25 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
                 className={styles.terminals}
                 onFocusCapture={() => setFocusedArea(project.id, 'terminal')}
               >
+                <TerminalsHeader project={project} onAdd={add} />
                 <TerminalsArea project={project} isActive={isActive} onAdd={add} />
               </div>
             </Panel>
           </Group>
         </Panel>
-        {isGitPanelOpen && (
-          <>
-            <Separator className={styles.separator} />
-            <Panel
-              id="git"
-              defaultSize={DEFAULT_GIT_PANEL_PX}
-              minSize={MIN_GIT_PANEL_PX}
-              maxSize={MAX_GIT_PANEL_SIZE}
-            >
-              <GitPanel project={project} />
-            </Panel>
-          </>
-        )}
+        <Separator className={styles.separator} />
+        <SidePanel
+          id="git"
+          side="right"
+          label={changeCount > 0 ? `Git · ${changeCount}` : 'Git'}
+          isExpanded={isGitPanelOpen}
+          onExpandedChange={setGitPanelOpen}
+          defaultSize={DEFAULT_GIT_PANEL_PX}
+          minSize={MIN_GIT_PANEL_PX}
+          maxSize={MAX_GIT_PANEL_SIZE}
+        >
+          <GitPanel project={project} />
+        </SidePanel>
       </Group>
     </div>
   )

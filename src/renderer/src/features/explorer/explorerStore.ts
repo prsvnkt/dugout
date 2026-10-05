@@ -17,6 +17,7 @@ interface ExplorerState {
   readonly trees: Readonly<Record<string, CheckoutTree>>
   readonly isOpen: boolean
   toggleOpen(): void
+  setOpen(isOpen: boolean): void
   toggleDir(checkout: GitCheckout, path: string): Promise<void>
   collapseAll(checkout: GitCheckout): void
   /** Re-reads the root and every expanded folder (cheap; runs on the refresh timer). */
@@ -55,6 +56,7 @@ export const useExplorerStore = create<ExplorerState>()((set, get) => {
     trees: {},
     isOpen: true,
     toggleOpen: () => set((state) => ({ isOpen: !state.isOpen })),
+    setOpen: (isOpen) => set((state) => (state.isOpen === isOpen ? state : { isOpen })),
 
     async toggleDir(checkout, path) {
       const key = checkoutKey(checkout)

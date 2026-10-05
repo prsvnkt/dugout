@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Project } from '@shared/project'
 import { ProjectDialog, type ProjectDialogTarget } from '@renderer/features/projects/ProjectDialog'
-import { Sidebar } from '@renderer/features/projects/Sidebar'
+import { ProjectTabs } from '@renderer/features/projects/ProjectTabs'
 import { CloneDialog } from '@renderer/features/clone/CloneDialog'
 import { useAuthStore } from '@renderer/features/github/authStore'
 import { SignInDialog } from '@renderer/features/github/SignInDialog'
@@ -18,7 +18,6 @@ import styles from './App.module.css'
 function Welcome({ onAddProject, onClone }: { onAddProject(): void; onClone(): void }) {
   return (
     <div className={styles.welcome}>
-      <div className={styles.titlebar} />
       <h1 className={styles.heading}>Add your first project</h1>
       <p className={styles.hint}>A project is a git repository you run agents in.</p>
       <div className={styles.welcomeActions}>
@@ -74,8 +73,12 @@ export function App() {
 
   return (
     <div className={styles.app}>
+      <ProjectTabs
+        onAddProject={addProject}
+        onCloneProject={openClone}
+        onEditProject={editProject}
+      />
       <div className={styles.body}>
-        <Sidebar onAddProject={addProject} onCloneProject={openClone} onEditProject={editProject} />
         <main className={styles.main}>
           {projects.length === 0 ? (
             <Welcome onAddProject={addProject} onClone={openClone} />

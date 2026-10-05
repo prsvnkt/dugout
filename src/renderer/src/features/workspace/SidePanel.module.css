@@ -1,0 +1,40 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: 100%;
+  padding: var(--space-2) 0;
+  border: none;
+  background: var(--bg-panel);
+  color: var(--text-muted);
+}
+
+.rail[data-side='left'] {
+  border-right: 1px solid var(--border);
+}
+
+.rail[data-side='right'] {
+  border-left: 1px solid var(--border);
+}
+
+.rail:hover {
+  color: var(--text-primary);
+}
+
+.chevron {
+  font-size: 14px;
+}
+
+.railLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+}
+
+.rail[data-side='left'] .railLabel {
+  transform: rotate(180deg);
+}

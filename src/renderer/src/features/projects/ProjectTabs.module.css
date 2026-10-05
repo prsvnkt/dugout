@@ -1,0 +1,200 @@
+.bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  height: var(--titlebar-height);
+  padding-left: var(--titlebar-inset);
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+
+.nav {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.tabs {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  /* An explicit width (not just flex-basis) sets the tab's intrinsic size; it still shrinks. */
+  flex: 0 1 auto;
+  align-items: center;
+  width: 190px;
+  min-width: 96px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  color: var(--text-secondary);
+  -webkit-app-region: no-drag;
+}
+
+.tab:hover {
+  background: var(--bg-panel);
+}
+
+.tab[data-selected='true'] {
+  background: var(--bg-panel);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* The selected tab merges into the content below, like Chrome. */
+.tab[data-selected='true']::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: var(--bg-panel);
+}
+
+.tab[data-selected='true']::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: 12px;
+  left: 12px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--accent);
+}
+
+.select {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: none;
+  background: transparent;
+  text-align: left;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab[data-selected='true'] .name {
+  font-weight: 600;
+}
+
+.attention {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.edit {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin-right: var(--space-1);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.tab:hover .edit,
+.tab[data-selected='true'] .edit,
+.edit:focus-visible {
+  opacity: 1;
+}
+
+.edit:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.newWrap {
+  position: relative;
+  align-self: center;
+  margin-left: var(--space-1);
+  -webkit-app-region: no-drag;
+}
+
+.newTab {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.newTab:hover {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: 0 8px 24px var(--bg-overlay);
+}
+
+.menu button {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+}
+
+.menu button:hover,
+.menu button:focus-visible {
+  background: var(--bg-panel);
+}
+
+.menu kbd {
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+}
+
+.end {
+  display: flex;
+  align-self: center;
+  padding: 0 var(--space-3);
+  -webkit-app-region: no-drag;
+}

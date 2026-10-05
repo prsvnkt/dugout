@@ -29,6 +29,7 @@ interface GitState {
   readonly byCheckout: Readonly<Record<string, ProjectGitState>>
   readonly isPanelOpen: boolean
   togglePanel(): void
+  setPanelOpen(isOpen: boolean): void
   refresh(checkout: GitCheckout): Promise<void>
   stage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
   unstage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
@@ -65,6 +66,8 @@ export const useGitStore = create<GitState>()((set, get) => {
     byCheckout: {},
     isPanelOpen: true,
     togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
+    setPanelOpen: (isOpen) =>
+      set((state) => (state.isPanelOpen === isOpen ? state : { isPanelOpen: isOpen })),
 
     async refresh(checkout) {
       const key = checkoutKey(checkout)
