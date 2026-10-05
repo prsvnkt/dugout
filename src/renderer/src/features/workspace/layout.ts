@@ -8,6 +8,10 @@ export interface Pane {
   readonly kind: TerminalKind
   /** Set when the pane runs in an isolated worktree instead of the main checkout. */
   readonly worktree?: Worktree
+  /** Latest Claude session id, used to resume the conversation after a restart. */
+  readonly sessionId?: string
+  /** Bumped to restart the pane's process (the pane remounts with a new key). */
+  readonly generation: number
 }
 
 /** The side-by-side terminal panes of one project. */
@@ -28,7 +32,7 @@ export function addPane(
   worktree?: Worktree,
 ): ProjectLayout {
   if (layout.panes.length >= MAX_PANES_PER_PROJECT) return layout
-  const pane: Pane = { id: createId(), kind, ...(worktree && { worktree }) }
+  const pane: Pane = { id: createId(), kind, generation: 0, ...(worktree && { worktree }) }
   return { panes: [...layout.panes, pane], focusedPaneId: pane.id }
 }
 
@@ -55,4 +59,30 @@ export function closeWorktreePanes(layout: ProjectLayout, path: string): Project
   return layout.panes
     .filter((pane) => pane.worktree?.path === path)
     .reduce((current, pane) => closePane(current, pane.id), layout)
+}
+
+function updatePane(layout: ProjectLayout, paneId: PaneId, change: (pane: Pane) => Pane) {
+  return {
+    ...layout,
+    panes: layout.panes.map((pane) => (pane.id === paneId ? change(pane) : pane)),
+  }
+}
+
+export function setPaneSession(layout: ProjectLayout, paneId: PaneId, sessionId: string) {
+  const pane = layout.panes.find((candidate) => candidate.id === paneId)
+  if (!pane || pane.sessionId === sessionId) return layout
+  return updatePane(layout, paneId, (current) => ({ ...current, sessionId }))
+}
+
+/** Restarts a pane's process. `isFresh` drops its session, starting a new conversation. */
+export function restartPane(
+  layout: ProjectLayout,
+  paneId: PaneId,
+  { isFresh = false }: { readonly isFresh?: boolean } = {},
+): ProjectLayout {
+  return updatePane(layout, paneId, ({ sessionId, ...pane }) => ({
+    ...pane,
+    generation: pane.generation + 1,
+    ...(!isFresh && sessionId !== undefined && { sessionId }),
+  }))
 }

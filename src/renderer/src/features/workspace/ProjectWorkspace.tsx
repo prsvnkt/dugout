@@ -51,6 +51,8 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
   const focusPane = useWorkspaceStore((state) => state.focusPane)
   const setActivity = useWorkspaceStore((state) => state.setActivity)
   const setTerminalId = useWorkspaceStore((state) => state.setTerminalId)
+  const setPaneSession = useWorkspaceStore((state) => state.setPaneSession)
+  const restartPane = useWorkspaceStore((state) => state.restartPane)
   const accent = projectColorVar(project.color)
 
   if (layout.panes.length === 0) return <EmptyWorkspace onAdd={onAdd} />
@@ -61,7 +63,9 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
           {index > 0 && <Separator className={styles.separator} />}
           <Panel id={pane.id} minSize={MIN_PANE_SIZE_PX}>
             <TerminalPane
+              key={`${pane.id}:${pane.generation}`}
               kind={pane.kind}
+              resumeSessionId={pane.sessionId}
               projectId={project.id}
               cwd={pane.worktree?.path ?? project.rootPath}
               branch={pane.worktree?.branch ?? null}
@@ -72,6 +76,8 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               onClose={() => closePane(project.id, pane.id)}
               onActivity={(activity) => setActivity(pane.id, activity)}
               onTerminalId={(terminalId) => setTerminalId(pane.id, terminalId)}
+              onSessionId={(sessionId) => setPaneSession(project.id, pane.id, sessionId)}
+              onRestart={(options) => restartPane(project.id, pane.id, options)}
             />
           </Panel>
         </Fragment>

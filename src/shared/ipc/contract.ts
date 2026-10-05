@@ -16,10 +16,14 @@ const absolutePath = z
   .refine((path) => path.startsWith('/'), 'Path must be absolute')
 
 const projectIdField = z.string().min(1).max(64)
+/** Claude session ids are UUIDs; this also rules out anything that could look like a flag. */
+const sessionId = z.string().regex(/^[A-Za-z0-9][\w-]{0,127}$/)
 
 export const terminalCreateRequestSchema = z.object({
   kind: z.enum(TERMINAL_KINDS),
   projectId: projectIdField,
+  /** Continue this Claude conversation (`claude --resume`) instead of starting a new one. */
+  resumeSessionId: sessionId.optional(),
   cwd: absolutePath,
   cols: dimension,
   rows: dimension,
@@ -126,3 +130,27 @@ export type GitCommitRequest = z.infer<typeof gitCommitRequestSchema>
 export const worktreeRemoveRequestSchema = z.object({ projectId, path: absolutePath })
 
 export type WorktreeRemoveRequest = z.infer<typeof worktreeRemoveRequestSchema>
+
+const worktreeSchema = z.object({
+  path: absolutePath,
+  branch: z.string().max(255).nullable(),
+  name: z.string().min(1).max(64),
+})
+
+const savedPaneSchema = z.object({
+  kind: z.enum(TERMINAL_KINDS),
+  worktree: worktreeSchema.optional(),
+  sessionId: sessionId.optional(),
+})
+
+const MAX_SAVED_PANES = 12
+
+/** On-disk format of workspace.json: each project's panes, restored on launch. */
+export const workspaceSnapshotSchema = z.object({
+  version: z.literal(1),
+  projects: z.record(projectId, z.object({ panes: z.array(savedPaneSchema).max(MAX_SAVED_PANES) })),
+})
+
+export type SavedPane = z.infer<typeof savedPaneSchema>
+export type WorkspaceSnapshot = z.infer<typeof workspaceSnapshotSchema>
+export { sessionId as sessionIdSchema }

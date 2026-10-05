@@ -9,6 +9,7 @@ import {
   terminalCreateRequestSchema,
   terminalResizeRequestSchema,
   terminalWriteRequestSchema,
+  workspaceSnapshotSchema,
 } from './contract'
 
 describe('terminalCreateRequestSchema', () => {
@@ -118,5 +119,32 @@ describe('git checkout targeting', () => {
     expect(
       gitProjectRequestSchema.safeParse({ projectId: 'p1', worktreePath: 'wt/s1' }).success,
     ).toBe(false)
+  })
+})
+
+describe('session persistence schemas', () => {
+  test('resume ids must look like session ids', () => {
+    const base = { kind: 'claude', projectId: 'p1', cwd: '/r', cols: 80, rows: 24 }
+    const parse = (resumeSessionId: string) =>
+      terminalCreateRequestSchema.safeParse({ ...base, resumeSessionId }).success
+    expect(parse('a1-b2')).toBe(true)
+    expect(parse('--dangerous')).toBe(false)
+  })
+
+  test('the workspace snapshot keeps kinds, worktrees and session ids', () => {
+    const snapshot = {
+      version: 1,
+      projects: {
+        p1: {
+          panes: [
+            { kind: 'claude', sessionId: 's1' },
+            { kind: 'shell', worktree: { path: '/wt/a', branch: 'dugout/a', name: 'a' } },
+          ],
+        },
+      },
+    }
+    expect(workspaceSnapshotSchema.parse(snapshot)).toEqual(snapshot)
+    const bad = { version: 1, projects: { p1: { panes: [{}] } } }
+    expect(workspaceSnapshotSchema.safeParse(bad).success).toBe(false)
   })
 })

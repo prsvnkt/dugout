@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { HookSignal } from '@shared/agentStatus'
+import type { HookDetails } from './HookServer'
 import { writeFileAtomic } from '../projects/atomicWrite'
 import { HookServer } from './HookServer'
 import { buildHookSettings } from './hookSettings'
@@ -35,7 +36,7 @@ function chooseSocketPath(dataDir: string): string {
 export async function setupAgentHooks(options: {
   readonly dataDir: string
   readonly claudeCommand?: string | undefined
-  readonly onSignal: (terminalId: string, signal: HookSignal) => void
+  readonly onSignal: (terminalId: string, signal: HookSignal, details: HookDetails) => void
 }): Promise<AgentHooks> {
   const settingsPath = join(options.dataDir, SETTINGS_FILE)
   const socketPath = chooseSocketPath(options.dataDir)

@@ -86,7 +86,12 @@ function setupWithHooks() {
     },
     onAgentStatusChange,
   })
-  const events = { onData: vi.fn(), onExit: vi.fn(), onAgentStatus: vi.fn() }
+  const events = {
+    onData: vi.fn(),
+    onExit: vi.fn(),
+    onAgentStatus: vi.fn(),
+    onAgentSession: vi.fn(),
+  }
   return { manager, spawned, events, onAgentStatusChange }
 }
 
@@ -230,5 +235,78 @@ describe('TerminalManager agent status', () => {
     manager.applyHookSignal(id, 'needs-input')
     spawned[0]?.emitExit({ exitCode: 0 })
     expect(manager.countAgentsWithStatus('needs-input')).toBe(0)
+  })
+})
+
+describe('TerminalManager sessions', () => {
+  test('resumes a previous Claude session when asked', () => {
+    const { manager, spawned, events } = setupWithHooks()
+    manager.create({ ...request, resumeSessionId: 'sess-1' }, events)
+    expect(spawned[0]?.options.env.DUGOUT_RESUME_SESSION).toBe('sess-1')
+  })
+
+  test('starts fresh without a resume id', () => {
+    const { manager, spawned, events } = setupWithHooks()
+    manager.create(request, events)
+    expect(spawned[0]?.options.env).not.toHaveProperty('DUGOUT_RESUME_SESSION')
+    expect(spawned[0]?.options.args.at(-1)).not.toContain('--resume')
+  })
+
+  test('the resume flag is part of the launch line only when resuming', () => {
+    const { manager, spawned, events } = setupWithHooks()
+    manager.create({ ...request, resumeSessionId: 'sess-1' }, events)
+    expect(spawned[0]?.options.args.at(-1)).toContain('--resume "$DUGOUT_RESUME_SESSION"')
+  })
+
+  test('defaults the claude command to "claude" on PATH', () => {
+    const spawned: FakeProcess[] = []
+    const manager = new TerminalManager({
+      backend: {
+        spawn: (options) => {
+          const process = new FakeProcess(options)
+          spawned.push(process)
+          return process
+        },
+      },
+      createId: () => 't',
+      env: {},
+      agentHooks: { settingsPath: '/s.json', socketPath: '/h.sock', token: 'x' },
+    })
+    manager.create(request, { onData: vi.fn(), onExit: vi.fn() })
+    expect(spawned[0]?.options.env.DUGOUT_CLAUDE_COMMAND).toBe('claude')
+  })
+
+  test('reports a session only once its conversation has started (empty ones cannot resume)', () => {
+    const { manager, events } = setupWithHooks()
+    const id = manager.create(request, events)
+
+    manager.applyHookSignal(id, 'ready', { sessionId: 'sess-1' })
+    expect(events.onAgentSession).not.toHaveBeenCalled()
+
+    manager.applyHookSignal(id, 'working')
+    manager.applyHookSignal(id, 'done')
+    expect(events.onAgentSession.mock.calls).toEqual([[id, 'sess-1']])
+  })
+
+  test('a new session (e.g. after /clear) is reported once it has a conversation', () => {
+    const { manager, events } = setupWithHooks()
+    const id = manager.create(request, events)
+    manager.applyHookSignal(id, 'ready', { sessionId: 'sess-1' })
+    manager.applyHookSignal(id, 'working')
+
+    manager.applyHookSignal(id, 'ready', { sessionId: 'sess-2' })
+    expect(events.onAgentSession.mock.calls).toEqual([[id, 'sess-1']])
+    manager.applyHookSignal(id, 'working')
+    expect(events.onAgentSession.mock.calls).toEqual([
+      [id, 'sess-1'],
+      [id, 'sess-2'],
+    ])
+  })
+
+  test('a resumed session already has a conversation, so it is reported when ready', () => {
+    const { manager, events } = setupWithHooks()
+    const id = manager.create({ ...request, resumeSessionId: 'old' }, events)
+    manager.applyHookSignal(id, 'ready', { sessionId: 'resumed' })
+    expect(events.onAgentSession.mock.calls).toEqual([[id, 'resumed']])
   })
 })

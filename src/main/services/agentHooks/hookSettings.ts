@@ -42,10 +42,14 @@ export interface HookSettings {
  * A shell command that tells the app about `signal`. It is a no-op outside Dugout terminals,
  * runs async, times out quickly and always succeeds, so it can never disturb Claude.
  */
+/** The ready signal forwards the hook's JSON payload (stdin), which carries the session id. */
+const FORWARDS_PAYLOAD: ReadonlySet<HookSignal> = new Set(['ready'])
+
 function signalCommand(signal: HookSignal): string {
   return [
     '[ -n "$DUGOUT_TERMINAL_ID" ] &&',
     `curl -s -X POST --max-time ${CURL_TIMEOUT_SECONDS}`,
+    ...(FORWARDS_PAYLOAD.has(signal) ? ['--data-binary @-'] : []),
     '--unix-socket "$DUGOUT_HOOK_SOCKET"',
     '-H "Authorization: Bearer $DUGOUT_HOOK_TOKEN"',
     `"http://dugout/hooks/$DUGOUT_TERMINAL_ID/${signal}"`,

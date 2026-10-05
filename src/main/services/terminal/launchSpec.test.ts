@@ -25,8 +25,23 @@ describe('buildLaunchSpec', () => {
       '-l',
       '-i',
       '-c',
-      '"${DUGOUT_CLAUDE_COMMAND:-claude}" --settings "$DUGOUT_CLAUDE_SETTINGS"',
+      '"$DUGOUT_CLAUDE_COMMAND" --settings "$DUGOUT_CLAUDE_SETTINGS"',
     ])
+  })
+
+  test('adds --resume as separate arguments when resuming', () => {
+    const args = buildLaunchSpec('claude', '/bin/zsh', { hasAgentHooks: true, isResuming: true })
+    expect(args.args.at(-1)).toBe(
+      '"$DUGOUT_CLAUDE_COMMAND" --settings "$DUGOUT_CLAUDE_SETTINGS" --resume "$DUGOUT_RESUME_SESSION"',
+    )
+  })
+
+  test('uses only plain "$VAR" expansions, which bash, zsh and fish all treat the same', () => {
+    const line = buildLaunchSpec('claude', '/bin/zsh', {
+      hasAgentHooks: true,
+      isResuming: true,
+    }).args.at(-1)
+    expect(line).not.toMatch(/\$\{/)
   })
 
   test('starts a plain login shell', () => {

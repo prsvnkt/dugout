@@ -42,6 +42,13 @@ describe('buildHookSettings', () => {
     expect(command).toMatch(/\|\| true$/)
   })
 
+  test('only the ready signal forwards the hook payload, which carries the session id', () => {
+    const ready = settings.hooks.SessionStart?.[0]?.hooks[0]?.command ?? ''
+    const done = settings.hooks.Stop?.[0]?.hooks[0]?.command ?? ''
+    expect(ready).toContain('--data-binary @-')
+    expect(done).not.toContain('--data-binary')
+  })
+
   test('does nothing outside a Dugout terminal', () => {
     const command = settings.hooks.Stop?.[0]?.hooks[0]?.command ?? ''
     expect(command).toMatch(/^\[ -n "\$DUGOUT_TERMINAL_ID" \] &&/)

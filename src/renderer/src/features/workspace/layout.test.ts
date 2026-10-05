@@ -5,6 +5,8 @@ import {
   closeWorktreePanes,
   EMPTY_LAYOUT,
   focusPane,
+  restartPane,
+  setPaneSession,
   type ProjectLayout,
 } from './layout'
 
@@ -90,5 +92,37 @@ describe('worktree panes', () => {
     expect(after.panes).toHaveLength(1)
     expect(after.panes[0]?.worktree).toBeUndefined()
     expect(after.focusedPaneId).toBe(after.panes[0]?.id)
+  })
+})
+
+describe('pane sessions', () => {
+  test('remembers the latest Claude session of a pane', () => {
+    const layout = addPane(EMPTY_LAYOUT, 'claude', createId)
+    const id = idAt(layout, 0)
+    expect(setPaneSession(layout, id, 's1').panes[0]?.sessionId).toBe('s1')
+  })
+
+  test('a fresh restart forgets the session, e.g. when resuming it failed', () => {
+    const layout = addPane(EMPTY_LAYOUT, 'claude', createId)
+    const id = idAt(layout, 0)
+    const restarted = restartPane(setPaneSession(layout, id, 's1'), id, { isFresh: true })
+    expect(restarted.panes[0]?.sessionId).toBeUndefined()
+    expect(restarted.panes[0]?.generation).toBe(1)
+  })
+
+  test('restarting a pane bumps its generation so it remounts', () => {
+    const layout = addPane(EMPTY_LAYOUT, 'claude', createId)
+    const id = idAt(layout, 0)
+    const restarted = restartPane(restartPane(layout, id), id)
+    expect(restarted.panes[0]?.generation).toBe(2)
+    expect(layout.panes[0]?.generation).toBe(0)
+  })
+})
+
+describe('unchanged updates', () => {
+  test('setting the same session id returns the same layout, so stores do not re-render', () => {
+    const layout = setPaneSession(addPane(EMPTY_LAYOUT, 'claude', createId), 'pane-x', 's1')
+    const withSession = setPaneSession(layout, idAt(layout, 0), 's1')
+    expect(setPaneSession(withSession, idAt(withSession, 0), 's1')).toBe(withSession)
   })
 })

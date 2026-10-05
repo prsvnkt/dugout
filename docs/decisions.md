@@ -66,6 +66,35 @@ renderer addresses repositories by project id only; main resolves the path. Stat
 show, every 3s while visible, on window focus and whenever an agent in the project changes
 status. Diffs use a small custom unified-diff view instead of Monaco. Discard needs two clicks.
 
+## 010 — Notifications only while Dugout is in the background (2026-10-05)
+
+`AgentNotifier` shows a native notification for `needs-input` and `done` only when no Dugout
+window is focused; inside the app the panes, sidebar and dock badge already say it. Clicking a
+notification sends `terminal.reveal`, which selects the project and focuses the pane.
+
+## 011 — Create PR opens the browser instead of using gh (2026-10-05)
+
+"Create PR" pushes (or publishes) when needed, then opens the GitHub compare page or GitLab
+new-merge-request page built from the `origin` URL. No CLI or login needed. The base branch
+comes from `origin/HEAD`, defaulting to `main`. Only github.com/gitlab.com URLs are opened.
+
+## 012 — Worktree sessions live in app data on dugout/* branches (2026-10-05)
+
+`WorktreeManager` creates worktrees at `<userData>/worktrees/<projectId>/<id>` on branch
+`dugout/<id>`, and only ever lists, targets or removes worktrees under that folder. Git requests
+may target a worktree; main validates it belongs to the project. The git panel follows the
+focused pane's checkout. Removal uses `git worktree remove` without `--force`, so uncommitted
+work is never lost; the branch is kept for merging or a PR.
+
+## 013 — Layouts persist; Claude panes resume their conversation (2026-10-05)
+
+Panes (kind, worktree, Claude session id) are saved to `<userData>/workspace.json` (debounced)
+and restored on launch. The `SessionStart` hook forwards its payload so main learns the session
+id; it is reported only once the session has had a prompt, because Claude cannot resume an empty
+session. Restored panes run `claude --resume <id>`. Launch lines use only plain `"$VAR"`
+expansions, since conditional forms behave differently in bash, zsh and fish. A pane that exits
+before Claude was ready (failed resume) offers "Start new session" instead of resuming again.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -73,5 +102,6 @@ status. Diffs use a small custom unified-diff view instead of Monaco. Discard ne
    - Projects (repo, name, colour) in a sidebar; split-pane terminals per project. ✅
    - Status from hooks (ready / working / needs you / done / exited). ✅
    - Git panel (branch, changes, diff, stage / commit / push). ✅
-3. **Next:** worktree sessions, resume on relaunch, "needs you" list + native notifications,
-   create PR.
+3. **Next:** worktree sessions ✅, resume on relaunch ✅, native notifications ✅, create PR ✅.
+4. **Later:** "needs you" inbox across projects, Codex adapter, PR/CI status in the git panel,
+   per-project MCP config editor.

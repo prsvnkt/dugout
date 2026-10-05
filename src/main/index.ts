@@ -7,6 +7,7 @@ import { registerDialogIpc } from './ipc/registerDialogIpc'
 import { registerGitIpc } from './ipc/registerGitIpc'
 import { registerProjectIpc } from './ipc/registerProjectIpc'
 import { registerTerminalIpc } from './ipc/registerTerminalIpc'
+import { registerWorkspaceIpc } from './ipc/registerWorkspaceIpc'
 import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
@@ -16,11 +17,13 @@ import { resolveRepoRoot } from './services/git/resolveRepoRoot'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
 import { TerminalManager } from './services/terminal/TerminalManager'
+import { LayoutStore } from './services/workspace/LayoutStore'
 import { WorktreeManager } from './services/worktrees/WorktreeManager'
 import { createMainWindow } from './window'
 
 const PROJECTS_FILE = 'projects.json'
 const WORKTREES_DIR = 'worktrees'
+const WORKSPACE_FILE = 'workspace.json'
 const WORKTREE_ID_BYTES = 3
 
 // Lets tests (and parallel dev instances) use an isolated data folder.
@@ -59,7 +62,8 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
     return await setupAgentHooks({
       dataDir,
       claudeCommand: process.env.DUGOUT_CLAUDE_COMMAND,
-      onSignal: (terminalId, signal) => terminalManager?.applyHookSignal(terminalId, signal),
+      onSignal: (terminalId, signal, details) =>
+        terminalManager?.applyHookSignal(terminalId, signal, details),
     })
   } catch (error) {
     console.error('[hooks] could not start; agent status disabled:', error)
@@ -111,6 +115,7 @@ async function start(): Promise<void> {
     openExternal: (url) => shell.openExternal(url),
   })
   registerWorktreeIpc(projectStore, worktrees)
+  registerWorkspaceIpc(new LayoutStore({ filePath: join(dataDir, WORKSPACE_FILE) }), projectStore)
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)
   createMainWindow()

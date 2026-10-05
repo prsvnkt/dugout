@@ -44,6 +44,15 @@
   margin-left: auto;
 }
 
+.restart {
+  padding: 1px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
 .close {
   width: 22px;
   height: 22px;

@@ -3,12 +3,16 @@ import type { ProjectId } from '@shared/project'
 import type { TerminalId, TerminalKind } from '@shared/terminal'
 import type { GitCheckout, Worktree } from '@shared/worktree'
 import { useMemo } from 'react'
+import type { WorkspaceSnapshot } from '@shared/ipc/contract'
 import {
   addPane,
   closePane,
   closeWorktreePanes,
+  restartPane,
+  setPaneSession,
   EMPTY_LAYOUT,
   focusPane,
+  type Pane,
   type PaneId,
   type ProjectLayout,
 } from './layout'
@@ -25,6 +29,10 @@ interface WorkspaceState {
   readonly gitCheckouts: Readonly<Record<ProjectId, string | null>>
   selectCheckout(projectId: ProjectId, worktreePath: string | null): void
   closeWorktreePanes(projectId: ProjectId, worktreePath: string): void
+  setPaneSession(projectId: ProjectId, paneId: PaneId, sessionId: string): void
+  restartPane(projectId: ProjectId, paneId: PaneId, options?: { isFresh?: boolean }): void
+  /** Replaces all layouts with saved panes (fresh ids), e.g. on launch. */
+  hydrate(snapshot: WorkspaceSnapshot): void
   addPane(projectId: ProjectId, kind: TerminalKind, worktree?: Worktree): void
   closePane(projectId: ProjectId, paneId: PaneId): void
   closeFocusedPane(projectId: ProjectId): void
@@ -40,15 +48,37 @@ function withoutKeys<V>(record: Readonly<Record<string, V>>, keys: readonly stri
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
+  /** Applies a pure layout change; unchanged results leave state alone (no re-render). */
   const updateLayout = (projectId: ProjectId, change: (layout: ProjectLayout) => ProjectLayout) =>
-    set((state) => ({
-      layouts: { ...state.layouts, [projectId]: change(state.layouts[projectId] ?? EMPTY_LAYOUT) },
-    }))
+    set((state) => {
+      const current = state.layouts[projectId] ?? EMPTY_LAYOUT
+      const next = change(current)
+      return next === current ? state : { layouts: { ...state.layouts, [projectId]: next } }
+    })
 
   return {
     layouts: {},
     activities: {},
     gitCheckouts: {},
+    setPaneSession: (projectId, paneId, sessionId) =>
+      updateLayout(projectId, (layout) => setPaneSession(layout, paneId, sessionId)),
+    restartPane: (projectId, paneId, options) =>
+      updateLayout(projectId, (layout) => restartPane(layout, paneId, options)),
+    hydrate: (snapshot) =>
+      set({
+        layouts: Object.fromEntries(
+          Object.entries(snapshot.projects).map(([projectId, saved]) => {
+            const panes = saved.panes.map(({ kind, worktree, sessionId }): Pane => ({
+              id: createPaneId(),
+              kind,
+              generation: 0,
+              ...(worktree && { worktree }),
+              ...(sessionId && { sessionId }),
+            }))
+            return [projectId, { panes, focusedPaneId: panes.at(-1)?.id ?? null }]
+          }),
+        ),
+      }),
     selectCheckout: (projectId, worktreePath) =>
       set((state) => ({ gitCheckouts: { ...state.gitCheckouts, [projectId]: worktreePath } })),
     closeWorktreePanes: (projectId, worktreePath) => {
@@ -63,11 +93,14 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
     },
     terminalIds: {},
     setTerminalId: (paneId, terminalId) =>
-      set((state) => ({
-        terminalIds: terminalId
-          ? { ...state.terminalIds, [paneId]: terminalId }
-          : withoutKeys(state.terminalIds, [paneId]),
-      })),
+      set((state) => {
+        if ((state.terminalIds[paneId] ?? null) === terminalId) return state
+        return {
+          terminalIds: terminalId
+            ? { ...state.terminalIds, [paneId]: terminalId }
+            : withoutKeys(state.terminalIds, [paneId]),
+        }
+      }),
     findTerminal: (terminalId) => {
       const { layouts, terminalIds } = get()
       const paneId = Object.keys(terminalIds).find((id) => terminalIds[id] === terminalId)
@@ -145,4 +178,23 @@ export function useSelectedCheckout(projectId: ProjectId): GitCheckout {
     () => (worktreePath ? { projectId, worktreePath } : { projectId }),
     [projectId, worktreePath],
   )
+}
+
+/** The persistable part of the workspace: each project's panes, without runtime ids. */
+export function toSnapshot(layouts: Readonly<Record<ProjectId, ProjectLayout>>): WorkspaceSnapshot {
+  return {
+    version: 1,
+    projects: Object.fromEntries(
+      Object.entries(layouts).map(([projectId, layout]) => [
+        projectId,
+        {
+          panes: layout.panes.map(({ kind, worktree, sessionId }) => ({
+            kind,
+            ...(worktree && { worktree }),
+            ...(sessionId && { sessionId }),
+          })),
+        },
+      ]),
+    ),
+  }
 }

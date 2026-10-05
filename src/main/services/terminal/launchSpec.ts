@@ -36,27 +36,34 @@ export function resolveShell(env: Env): string {
  * Apps launched from Finder/Dock get a minimal PATH. Running through an interactive
  * login shell loads the user's profile, so `claude` behaves exactly as in their terminal.
  */
+export interface LaunchOptions {
+  readonly hasAgentHooks?: boolean
+  /** Continue the session in `$DUGOUT_RESUME_SESSION`. */
+  readonly isResuming?: boolean
+}
+
 export function buildLaunchSpec(
   kind: TerminalKind,
   shell: string,
-  options: { readonly hasAgentHooks?: boolean } = {},
+  options: LaunchOptions = {},
 ): LaunchSpec {
   switch (kind) {
     case 'claude':
-      return { file: shell, args: ['-l', '-i', '-c', claudeCommandLine(options.hasAgentHooks)] }
+      return { file: shell, args: ['-l', '-i', '-c', claudeCommandLine(options)] }
     case 'shell':
       return { file: shell, args: ['-l'] }
   }
 }
 
 /**
- * Paths reach the shell through env vars rather than being spliced into the command, so
- * folders with spaces (e.g. "Application Support") need no quoting.
+ * Values reach the shell through env vars rather than being spliced into the command, so
+ * paths with spaces need no quoting. Only plain "$VAR" expansions are used: conditional forms
+ * like ${VAR:+...} split differently in bash and zsh, and fish does not support them at all.
  */
-function claudeCommandLine(hasAgentHooks = false): string {
-  return hasAgentHooks
-    ? '"${DUGOUT_CLAUDE_COMMAND:-claude}" --settings "$DUGOUT_CLAUDE_SETTINGS"'
-    : 'claude'
+function claudeCommandLine({ hasAgentHooks = false, isResuming = false }: LaunchOptions): string {
+  if (!hasAgentHooks) return 'claude'
+  const resume = isResuming ? ' --resume "$DUGOUT_RESUME_SESSION"' : ''
+  return `"$DUGOUT_CLAUDE_COMMAND" --settings "$DUGOUT_CLAUDE_SETTINGS"${resume}`
 }
 
 export function buildTerminalEnv(env: Env): Record<string, string> {

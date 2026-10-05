@@ -19,6 +19,8 @@ export interface TerminalHandle {
   readonly agentStatus: AgentStatus | null
   /** The main-process terminal id, once the PTY has started. */
   readonly terminalId: string | null
+  /** The Claude session id reported by hooks (Claude terminals only). */
+  readonly sessionId: string | null
   focus(): void
 }
 
@@ -47,15 +49,19 @@ export interface TerminalOptions {
   readonly kind: TerminalKind
   readonly projectId: string
   readonly cwd: string
+  /** Claude session to resume. Read once at start; later changes do not restart the PTY. */
+  readonly resumeSessionId?: string | undefined
 }
 
 export function useTerminal(
   containerRef: RefObject<HTMLDivElement | null>,
-  { kind, projectId, cwd }: TerminalOptions,
+  { kind, projectId, cwd, resumeSessionId }: TerminalOptions,
 ): TerminalHandle {
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
   const [connectedId, setConnectedId] = useState<string | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const resumeRef = useRef(resumeSessionId)
   const terminalRef = useRef<Terminal | null>(null)
 
   useEffect(() => {
@@ -89,6 +95,9 @@ export function useTerminal(
         dugout.terminal.onAgentStatus((sourceId, next) => {
           if (sourceId === id) setAgentStatus(next)
         }),
+        dugout.terminal.onAgentSession((sourceId, next) => {
+          if (sourceId === id) setSessionId(next)
+        }),
         () => input.dispose(),
         () => resize.dispose(),
       )
@@ -96,7 +105,14 @@ export function useTerminal(
 
     const start = () => {
       dugout.terminal
-        .create({ kind, projectId, cwd, cols: terminal.cols, rows: terminal.rows })
+        .create({
+          kind,
+          projectId,
+          cwd,
+          cols: terminal.cols,
+          rows: terminal.rows,
+          ...(resumeRef.current && { resumeSessionId: resumeRef.current }),
+        })
         .then((result) => {
           if (!result.ok) {
             if (!isDisposed) setStatus({ state: 'error', message: result.error })
@@ -134,5 +150,5 @@ export function useTerminal(
   }, [containerRef, kind, projectId, cwd])
 
   const focus = useCallback(() => terminalRef.current?.focus(), [])
-  return { status, agentStatus, terminalId: connectedId, focus }
+  return { status, agentStatus, terminalId: connectedId, sessionId, focus }
 }

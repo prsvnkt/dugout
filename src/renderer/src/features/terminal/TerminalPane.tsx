@@ -21,10 +21,15 @@ interface TerminalPaneProps {
   /** True when this pane should own keyboard focus (focused pane of the visible project). */
   readonly shouldFocus: boolean
   readonly isFocused: boolean
+  /** Resume this Claude conversation when the pane starts. */
+  readonly resumeSessionId?: string | undefined
   onFocus(): void
   onClose(): void
   onActivity(activity: PaneActivity): void
   onTerminalId(terminalId: string | null): void
+  onSessionId(sessionId: string): void
+  /** `isFresh` when resuming failed (Claude exited before it was ready). */
+  onRestart(options: { isFresh: boolean }): void
 }
 
 const KIND_LABEL: Record<TerminalKind, string> = { claude: 'Claude Code', shell: 'Shell' }
@@ -37,13 +42,18 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 
 export function TerminalPane(props: TerminalPaneProps) {
   const { kind, projectId, cwd, branch, accentColor, shouldFocus, isFocused } = props
-  const { onFocus, onClose, onActivity, onTerminalId } = props
+  const { resumeSessionId, onFocus, onClose, onActivity, onTerminalId, onSessionId, onRestart } =
+    props
   const containerRef = useRef<HTMLDivElement>(null)
-  const { status, agentStatus, terminalId, focus } = useTerminal(containerRef, {
+  const { status, agentStatus, terminalId, sessionId, focus } = useTerminal(containerRef, {
     kind,
     projectId,
     cwd,
+    resumeSessionId,
   })
+  const canRestart = status.state === 'exited' || status.state === 'error'
+  // If Claude never got ready, resuming failed (e.g. the session no longer exists).
+  const neverReady = kind === 'claude' && (agentStatus === null || agentStatus === 'starting')
   const isDoneSeen = useDoneSeen(agentStatus, shouldFocus)
   const activity = toPaneActivity(status, agentStatus, isDoneSeen)
 
@@ -53,6 +63,9 @@ export function TerminalPane(props: TerminalPaneProps) {
 
   useEffect(() => onActivity(activity), [activity, onActivity])
   useEffect(() => onTerminalId(terminalId), [terminalId, onTerminalId])
+  useEffect(() => {
+    if (sessionId) onSessionId(sessionId)
+  }, [sessionId, onSessionId])
 
   return (
     <section
@@ -74,6 +87,20 @@ export function TerminalPane(props: TerminalPaneProps) {
           label={describe(activity, status)}
           className={styles.status}
         />
+        {canRestart && (
+          <button
+            className={styles.restart}
+            onClick={() => onRestart({ isFresh: neverReady })}
+            onMouseDown={(event) => event.stopPropagation()}
+            title={
+              kind === 'claude' && !neverReady
+                ? 'Restart, resuming the conversation'
+                : 'Restart with a new session'
+            }
+          >
+            {neverReady && kind === 'claude' ? 'Start new session' : 'Restart'}
+          </button>
+        )}
         <button
           className={styles.close}
           onClick={onClose}

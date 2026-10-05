@@ -1,6 +1,7 @@
 import type { AgentStatus, HookSignal } from '@shared/agentStatus'
 import type { TerminalCreateRequest } from '@shared/ipc/contract'
 import type { TerminalExit, TerminalId, TerminalKind } from '@shared/terminal'
+import type { HookDetails } from '../agentHooks/HookServer'
 import type { AgentHooksConfig } from '../agentHooks/setupAgentHooks'
 import type { AgentStatusChange } from '../notifications/AgentNotifier'
 import type { TerminalBackend, TerminalProcess } from './TerminalBackend'
@@ -10,6 +11,8 @@ export interface TerminalEvents {
   onData(id: TerminalId, data: string): void
   onExit(id: TerminalId, exit: TerminalExit): void
   onAgentStatus?(id: TerminalId, status: AgentStatus): void
+  /** The Claude session id, reported when it starts or changes (e.g. after /clear). */
+  onAgentSession?(id: TerminalId, sessionId: string): void
 }
 
 export interface TerminalManagerDeps {
@@ -27,7 +30,16 @@ interface ManagedTerminal {
   readonly projectId: string
   readonly events: TerminalEvents
   readonly agentStatus: AgentStatus | null
+  /** Current Claude session, from SessionStart. */
+  readonly sessionId: string | null
+  /** True once the session has had a prompt; empty sessions cannot be resumed. */
+  readonly hasConversation: boolean
+  /** Last session id reported to the renderer (or the one it resumed). */
+  readonly reportedSessionId: string | null
 }
+
+const DEFAULT_CLAUDE_COMMAND = 'claude'
+const CONVERSATION_STATUSES: ReadonlySet<AgentStatus> = new Set(['working', 'needs-input', 'done'])
 
 const SIGNAL_STATUS: Readonly<Record<HookSignal, AgentStatus>> = {
   ready: 'idle',
@@ -49,13 +61,20 @@ export class TerminalManager {
   create(request: TerminalCreateRequest, events: TerminalEvents): TerminalId {
     const id = this.deps.createId()
     const hooks = request.kind === 'claude' ? this.deps.agentHooks : undefined
+    const isResuming = hooks !== undefined && request.resumeSessionId !== undefined
     const launch = buildLaunchSpec(request.kind, resolveShell(this.deps.env), {
       hasAgentHooks: hooks !== undefined,
+      isResuming,
     })
     const process = this.deps.backend.spawn({
       ...launch,
       cwd: request.cwd,
-      env: { ...buildTerminalEnv(this.deps.env), ...(hooks && hookEnv(id, hooks)) },
+      env: {
+        ...buildTerminalEnv(this.deps.env),
+        ...(hooks && hookEnv(id, hooks)),
+        ...(isResuming &&
+          request.resumeSessionId && { DUGOUT_RESUME_SESSION: request.resumeSessionId }),
+      },
       cols: request.cols,
       rows: request.rows,
     })
@@ -79,6 +98,9 @@ export class TerminalManager {
       projectId: request.projectId,
       events,
       agentStatus: hooks ? 'starting' : null,
+      sessionId: null,
+      hasConversation: request.resumeSessionId !== undefined,
+      reportedSessionId: request.resumeSessionId ?? null,
     })
     return id
   }
@@ -109,16 +131,24 @@ export class TerminalManager {
   }
 
   /** Applies a hook signal to a Claude terminal. Returns false if it is not one. */
-  applyHookSignal(id: TerminalId, signal: HookSignal): boolean {
+  applyHookSignal(id: TerminalId, signal: HookSignal, details: HookDetails = {}): boolean {
     const terminal = this.terminals.get(id)
     if (!terminal || terminal.agentStatus === null) return false
 
-    const status = SIGNAL_STATUS[signal]
-    if (status === terminal.agentStatus) return true
+    const next = nextAgentState(terminal, SIGNAL_STATUS[signal], details.sessionId)
+    this.terminals.set(id, next)
 
-    this.terminals.set(id, { ...terminal, agentStatus: status })
-    terminal.events.onAgentStatus?.(id, status)
-    this.deps.onAgentStatusChange?.({ terminalId: id, projectId: terminal.projectId, status })
+    if (next.reportedSessionId !== terminal.reportedSessionId && next.reportedSessionId) {
+      terminal.events.onAgentSession?.(id, next.reportedSessionId)
+    }
+    if (next.agentStatus !== terminal.agentStatus && next.agentStatus) {
+      terminal.events.onAgentStatus?.(id, next.agentStatus)
+      this.deps.onAgentStatusChange?.({
+        terminalId: id,
+        projectId: terminal.projectId,
+        status: next.agentStatus,
+      })
+    }
     return true
   }
 
@@ -130,12 +160,36 @@ export class TerminalManager {
   }
 }
 
+/**
+ * A later session in the same process (e.g. after /clear) starts without a conversation; the
+ * first one keeps whatever the terminal started with (true when it resumed one).
+ */
+function nextAgentState(
+  terminal: ManagedTerminal,
+  status: AgentStatus,
+  reportedId: string | undefined,
+): ManagedTerminal {
+  const isNewSession = reportedId !== undefined && reportedId !== terminal.sessionId
+  const sessionId = reportedId ?? terminal.sessionId
+  const startedFresh = isNewSession && terminal.sessionId !== null
+  const hasConversation =
+    CONVERSATION_STATUSES.has(status) || (startedFresh ? false : terminal.hasConversation)
+  const shouldReport = hasConversation && sessionId !== null
+  return {
+    ...terminal,
+    agentStatus: status,
+    sessionId,
+    hasConversation,
+    reportedSessionId: shouldReport ? sessionId : terminal.reportedSessionId,
+  }
+}
+
 function hookEnv(id: TerminalId, hooks: AgentHooksConfig): Record<string, string> {
   return {
     DUGOUT_TERMINAL_ID: id,
     DUGOUT_HOOK_SOCKET: hooks.socketPath,
     DUGOUT_HOOK_TOKEN: hooks.token,
     DUGOUT_CLAUDE_SETTINGS: hooks.settingsPath,
-    ...(hooks.claudeCommand && { DUGOUT_CLAUDE_COMMAND: hooks.claudeCommand }),
+    DUGOUT_CLAUDE_COMMAND: hooks.claudeCommand ?? DEFAULT_CLAUDE_COMMAND,
   }
 }

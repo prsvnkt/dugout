@@ -6,6 +6,7 @@ import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { ProjectWorkspace } from '@renderer/features/workspace/ProjectWorkspace'
 import { StatusBar } from '@renderer/features/workspace/StatusBar'
 import { useAppCommands } from '@renderer/features/workspace/useAppCommands'
+import { useWorkspacePersistence } from '@renderer/features/workspace/useWorkspacePersistence'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { dugout } from '@renderer/lib/dugout'
 import styles from './App.module.css'
@@ -45,6 +46,7 @@ export function App() {
   }, [])
   const addProject = useCallback(() => void startAddProject(), [startAddProject])
   useAppCommands(addProject)
+  useWorkspacePersistence(isLoaded && loadError === null)
 
   const editProject = (project: Project) => setDialog({ mode: 'edit', project })
   const onRemoved = (project: Project) => removeLayout(project.id)

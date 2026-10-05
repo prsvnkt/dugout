@@ -1,7 +1,12 @@
 import type { AgentStatus } from './agentStatus'
 import type { AppCommand } from './commands'
 import type { GitDiff, GitStatus } from './git'
-import type { ProjectAddRequest, ProjectUpdateRequest, TerminalCreateRequest } from './ipc/contract'
+import type {
+  ProjectAddRequest,
+  ProjectUpdateRequest,
+  TerminalCreateRequest,
+  WorkspaceSnapshot,
+} from './ipc/contract'
 import type { Project, ProjectId } from './project'
 import type { Result } from './result'
 import type { TerminalExit, TerminalId } from './terminal'
@@ -20,6 +25,8 @@ export interface DugoutApi {
     onExit(listener: (id: TerminalId, exit: TerminalExit) => void): Unsubscribe
     /** Status of Claude terminals, reported by Claude Code hooks. */
     onAgentStatus(listener: (id: TerminalId, status: AgentStatus) => void): Unsubscribe
+    /** Claude session ids, used to resume conversations after a restart. */
+    onAgentSession(listener: (id: TerminalId, sessionId: string) => void): Unsubscribe
   }
   readonly projects: {
     list(): Promise<Result<readonly Project[]>>
@@ -44,6 +51,11 @@ export interface DugoutApi {
     list(projectId: ProjectId): Promise<Result<readonly Worktree[]>>
     create(projectId: ProjectId): Promise<Result<Worktree>>
     remove(projectId: ProjectId, path: string): Promise<Result<void>>
+  }
+  /** Saved panes per project, restored on launch. */
+  readonly workspace: {
+    load(): Promise<Result<WorkspaceSnapshot>>
+    save(snapshot: WorkspaceSnapshot): Promise<Result<void>>
   }
   readonly dialog: {
     /** Resolves to the chosen absolute folder path, or null if cancelled. */

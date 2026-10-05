@@ -20,6 +20,7 @@ const api: DugoutApi = {
     onData: (listener) => subscribe(IpcChannel.terminalData, listener),
     onExit: (listener) => subscribe(IpcChannel.terminalExit, listener),
     onAgentStatus: (listener) => subscribe(IpcChannel.terminalAgentStatus, listener),
+    onAgentSession: (listener) => subscribe(IpcChannel.terminalAgentSession, listener),
   },
   projects: {
     list: () => ipcRenderer.invoke(IpcChannel.projectList),
@@ -43,6 +44,10 @@ const api: DugoutApi = {
     list: (projectId) => ipcRenderer.invoke(IpcChannel.worktreeList, { projectId }),
     create: (projectId) => ipcRenderer.invoke(IpcChannel.worktreeCreate, { projectId }),
     remove: (projectId, path) => ipcRenderer.invoke(IpcChannel.worktreeRemove, { projectId, path }),
+  },
+  workspace: {
+    load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),
+    save: (snapshot) => ipcRenderer.invoke(IpcChannel.workspaceSave, snapshot),
   },
   dialog: {
     pickFolder: () => ipcRenderer.invoke(IpcChannel.dialogPickFolder),

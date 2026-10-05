@@ -34,8 +34,9 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 src/
   main/       Electron main process (Node). Owns PTYs, git, filesystem, dialogs.
     ipc/        One register*Ipc.ts per domain. Validates every payload with zod.
-    services/   Domain logic, framework-light and unit-tested (terminal/, projects/,
-                git/ for the review panel, agentHooks/ for Claude status via hooks).
+    services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
+                git/ (review panel, PR URLs), agentHooks/ (Claude status + session ids),
+                worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/.
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
@@ -65,6 +66,10 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   from `tests/e2e/helpers.ts` via `DUGOUT_CLAUDE_COMMAND`; never scrape terminal output.
 - **All git commands go through `GitService`/`runGit`** so they inherit the no-lock, no-prompt,
   literal-pathspec environment (decision 009). Never call `git` from elsewhere.
+- **Shell command lines use only plain `"$VAR"` expansions** (decision 013). `${VAR:+…}` splits
+  differently in zsh and bash and does not exist in fish.
+- **Store updates that change nothing must return the same object.** Panes report values from
+  effects; returning a new object for an unchanged value causes an infinite render loop.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` (the e2e helpers do).
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.

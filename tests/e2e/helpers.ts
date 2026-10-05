@@ -78,19 +78,25 @@ export async function clickMenuItem(
 /**
  * A stand-in for the `claude` CLI that runs the hook commands from the `--settings` file
  * exactly as Claude Code would, driven by lines typed into the terminal:
- * prompt | ask | tool | notify-idle | stop | stop-later
+ * prompt | ask | tool | notify-idle | stop | stop-later | exit
+ * It resumes the session passed with --resume, or starts a new one, and prints which.
  */
 const FAKE_CLAUDE_SOURCE = String.raw`
 const { readFileSync } = require('node:fs')
 const { spawnSync } = require('node:child_process')
-const settingsPath = process.argv[process.argv.indexOf('--settings') + 1]
-const { hooks } = JSON.parse(readFileSync(settingsPath, 'utf8'))
+const argValue = (flag) => {
+  const index = process.argv.indexOf(flag)
+  return index === -1 ? undefined : process.argv[index + 1]
+}
+const { hooks } = JSON.parse(readFileSync(argValue('--settings'), 'utf8'))
+const resumed = argValue('--resume')
+const sessionId = resumed ?? 'fake-session-' + process.pid
 
 function fire(event, matchValue) {
   for (const group of hooks[event] ?? []) {
     if (group.matcher && !group.matcher.split('|').includes(matchValue)) continue
     for (const hook of group.hooks) {
-      const input = JSON.stringify({ hook_event_name: event, session_id: 'fake' })
+      const input = JSON.stringify({ hook_event_name: event, session_id: sessionId })
       spawnSync('bash', ['-c', hook.command], { input, stdio: ['pipe', 'ignore', 'ignore'] })
     }
   }
@@ -103,10 +109,11 @@ const actions = {
   'notify-idle': () => fire('Notification', 'idle_prompt'),
   stop: () => fire('Stop'),
   'stop-later': () => setTimeout(() => fire('Stop'), 2500),
+  exit: () => process.exit(0),
 }
 
 fire('SessionStart', 'startup')
-process.stdout.write('fake-claude ready\r\n')
+process.stdout.write('fake-claude ready resume=' + (resumed ?? 'none') + ' session=' + sessionId + '\r\n')
 process.stdin.setEncoding('utf8')
 process.stdin.on('data', (chunk) => {
   for (const line of chunk.split(/\r?\n|\r/)) actions[line.trim()]?.()
