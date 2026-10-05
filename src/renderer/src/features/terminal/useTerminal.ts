@@ -17,6 +17,8 @@ export interface TerminalHandle {
   readonly status: TerminalStatus
   /** Claude terminals only; null for shells or before the first hook fires. */
   readonly agentStatus: AgentStatus | null
+  /** The main-process terminal id, once the PTY has started. */
+  readonly terminalId: string | null
   focus(): void
 }
 
@@ -41,13 +43,19 @@ function hasUsableSize(container: HTMLElement): boolean {
 }
 
 /** Mounts an xterm into `containerRef` and connects it to a new PTY in the main process. */
+export interface TerminalOptions {
+  readonly kind: TerminalKind
+  readonly projectId: string
+  readonly cwd: string
+}
+
 export function useTerminal(
   containerRef: RefObject<HTMLDivElement | null>,
-  kind: TerminalKind,
-  cwd: string,
+  { kind, projectId, cwd }: TerminalOptions,
 ): TerminalHandle {
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
+  const [connectedId, setConnectedId] = useState<string | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
 
   useEffect(() => {
@@ -67,6 +75,7 @@ export function useTerminal(
 
     const connect = (id: string) => {
       terminalId = id
+      setConnectedId(id)
       setStatus({ state: 'running' })
       // The pane may have resized while the PTY was starting; sync before listening.
       dugout.terminal.resize(id, terminal.cols, terminal.rows)
@@ -87,7 +96,7 @@ export function useTerminal(
 
     const start = () => {
       dugout.terminal
-        .create({ kind, cwd, cols: terminal.cols, rows: terminal.rows })
+        .create({ kind, projectId, cwd, cols: terminal.cols, rows: terminal.rows })
         .then((result) => {
           if (!result.ok) {
             if (!isDisposed) setStatus({ state: 'error', message: result.error })
@@ -122,8 +131,8 @@ export function useTerminal(
       terminalRef.current = null
       terminal.dispose()
     }
-  }, [containerRef, kind, cwd])
+  }, [containerRef, kind, projectId, cwd])
 
   const focus = useCallback(() => terminalRef.current?.focus(), [])
-  return { status, agentStatus, focus }
+  return { status, agentStatus, terminalId: connectedId, focus }
 }

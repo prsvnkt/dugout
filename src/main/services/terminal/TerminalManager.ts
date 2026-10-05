@@ -2,6 +2,7 @@ import type { AgentStatus, HookSignal } from '@shared/agentStatus'
 import type { TerminalCreateRequest } from '@shared/ipc/contract'
 import type { TerminalExit, TerminalId, TerminalKind } from '@shared/terminal'
 import type { AgentHooksConfig } from '../agentHooks/setupAgentHooks'
+import type { AgentStatusChange } from '../notifications/AgentNotifier'
 import type { TerminalBackend, TerminalProcess } from './TerminalBackend'
 import { buildLaunchSpec, buildTerminalEnv, resolveShell, type Env } from './launchSpec'
 
@@ -16,13 +17,14 @@ export interface TerminalManagerDeps {
   readonly createId: () => TerminalId
   readonly env: Env
   readonly agentHooks?: AgentHooksConfig
-  /** Called after any agent's status changes, e.g. to update the dock badge. */
-  readonly onAgentStatusChange?: () => void
+  /** Called after any agent's status changes (null status once it exits). */
+  readonly onAgentStatusChange?: (change: AgentStatusChange) => void
 }
 
 interface ManagedTerminal {
   readonly process: TerminalProcess
   readonly kind: TerminalKind
+  readonly projectId: string
   readonly events: TerminalEvents
   readonly agentStatus: AgentStatus | null
 }
@@ -63,11 +65,18 @@ export class TerminalManager {
       const wasAgent = this.terminals.get(id)?.agentStatus != null
       this.terminals.delete(id)
       events.onExit(id, exit)
-      if (wasAgent) this.deps.onAgentStatusChange?.()
+      if (wasAgent) {
+        this.deps.onAgentStatusChange?.({
+          terminalId: id,
+          projectId: request.projectId,
+          status: null,
+        })
+      }
     })
     this.terminals.set(id, {
       process,
       kind: request.kind,
+      projectId: request.projectId,
       events,
       agentStatus: hooks ? 'starting' : null,
     })
@@ -109,7 +118,7 @@ export class TerminalManager {
 
     this.terminals.set(id, { ...terminal, agentStatus: status })
     terminal.events.onAgentStatus?.(id, status)
-    this.deps.onAgentStatusChange?.()
+    this.deps.onAgentStatusChange?.({ terminalId: id, projectId: terminal.projectId, status })
     return true
   }
 

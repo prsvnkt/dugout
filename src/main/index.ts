@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Notification } from 'electron'
 import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
@@ -10,6 +10,7 @@ import { registerTerminalIpc } from './ipc/registerTerminalIpc'
 import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
 import { GitService } from './services/git/GitService'
+import { AgentNotifier, type AgentNotification } from './services/notifications/AgentNotifier'
 import { resolveRepoRoot } from './services/git/resolveRepoRoot'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
@@ -28,6 +29,19 @@ let terminalManager: TerminalManager | null = null
 function sendCommand(command: AppCommand): void {
   const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
   window?.webContents.send(IpcChannel.appCommand, command)
+}
+
+function showNotification({ terminalId, title, body }: AgentNotification): void {
+  if (!Notification.isSupported()) return
+  const notification = new Notification({ title, body })
+  notification.on('click', () => {
+    const window = BrowserWindow.getAllWindows()[0]
+    if (!window) return
+    if (window.isMinimized()) window.restore()
+    window.focus()
+    sendCommand({ type: 'terminal.reveal', terminalId })
+  })
+  notification.show()
 }
 
 function updateDockBadge(manager: TerminalManager): void {
@@ -51,16 +65,6 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
 
 async function start(): Promise<void> {
   const dataDir = app.getPath('userData')
-  agentHooks = await startAgentHooks(dataDir)
-  const manager = new TerminalManager({
-    backend: new NodePtyBackend(),
-    createId: randomUUID,
-    env: process.env,
-    ...(agentHooks && { agentHooks: agentHooks.config }),
-    onAgentStatusChange: () => updateDockBadge(manager),
-  })
-  terminalManager = manager
-
   const projectStore = new ProjectStore({
     filePath: join(dataDir, PROJECTS_FILE),
     createId: randomUUID,
@@ -68,6 +72,25 @@ async function start(): Promise<void> {
     resolveRepoRoot,
   })
   await projectStore.load()
+
+  const notifier = new AgentNotifier({
+    isAppFocused: () => BrowserWindow.getFocusedWindow() !== null,
+    projectName: (id) => projectStore.list().find((project) => project.id === id)?.name,
+    show: showNotification,
+  })
+
+  agentHooks = await startAgentHooks(dataDir)
+  const manager = new TerminalManager({
+    backend: new NodePtyBackend(),
+    createId: randomUUID,
+    env: process.env,
+    ...(agentHooks && { agentHooks: agentHooks.config }),
+    onAgentStatusChange: (change) => {
+      updateDockBadge(manager)
+      notifier.handle(change)
+    },
+  })
+  terminalManager = manager
 
   registerTerminalIpc(manager)
   registerProjectIpc(projectStore)

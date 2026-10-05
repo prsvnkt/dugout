@@ -8,6 +8,7 @@ import type { DugoutApi } from '../../src/shared/api'
 interface TestWindow {
   readonly dugout: DugoutApi
   terminalOutput: string[]
+  terminalIds: string[]
 }
 
 export function makeTempDir(prefix = 'dugout-e2e-'): string {
@@ -43,9 +44,18 @@ export async function recordTerminalOutput(page: Page): Promise<() => Promise<st
   await page.evaluate(() => {
     const testWindow = globalThis as unknown as TestWindow
     testWindow.terminalOutput = []
-    testWindow.dugout.terminal.onData((_id, data) => testWindow.terminalOutput.push(data))
+    testWindow.terminalIds = []
+    testWindow.dugout.terminal.onData((id, data) => {
+      testWindow.terminalOutput.push(data)
+      if (!testWindow.terminalIds.includes(id)) testWindow.terminalIds.push(id)
+    })
   })
   return () => page.evaluate(() => (globalThis as unknown as TestWindow).terminalOutput.join(''))
+}
+
+/** Terminal ids in the order they first produced output (needs `recordTerminalOutput`). */
+export function terminalIdsSeen(page: Page): Promise<string[]> {
+  return page.evaluate(() => (globalThis as unknown as TestWindow).terminalIds)
 }
 
 /** Clicks a native menu item, which is what its keyboard shortcut triggers. */

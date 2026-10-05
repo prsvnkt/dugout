@@ -11,7 +11,7 @@ import {
 } from './contract'
 
 describe('terminalCreateRequestSchema', () => {
-  const valid = { kind: 'claude', cwd: '/Users/me/repo', cols: 120, rows: 40 }
+  const valid = { kind: 'claude', projectId: 'p1', cwd: '/Users/me/repo', cols: 120, rows: 40 }
 
   test('accepts a valid request', () => {
     expect(terminalCreateRequestSchema.parse(valid)).toEqual(valid)
@@ -19,6 +19,11 @@ describe('terminalCreateRequestSchema', () => {
 
   test('rejects an unknown terminal kind', () => {
     expect(terminalCreateRequestSchema.safeParse({ ...valid, kind: 'bash' }).success).toBe(false)
+  })
+
+  test('requires the owning project', () => {
+    const withoutProject = { kind: valid.kind, cwd: valid.cwd, cols: valid.cols, rows: valid.rows }
+    expect(terminalCreateRequestSchema.safeParse(withoutProject).success).toBe(false)
   })
 
   test('rejects a relative cwd', () => {

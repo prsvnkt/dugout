@@ -90,7 +90,7 @@ function setupWithHooks() {
   return { manager, spawned, events, onAgentStatusChange }
 }
 
-const request = { kind: 'claude', cwd: '/repo', cols: 100, rows: 30 } as const
+const request = { kind: 'claude', projectId: 'proj-1', cwd: '/repo', cols: 100, rows: 30 } as const
 
 describe('TerminalManager', () => {
   let ctx: ReturnType<typeof setup>
@@ -201,6 +201,11 @@ describe('TerminalManager agent status', () => {
     ])
     expect(manager.countAgentsWithStatus('needs-input')).toBe(1)
     expect(onAgentStatusChange).toHaveBeenCalledTimes(3)
+    expect(onAgentStatusChange).toHaveBeenLastCalledWith({
+      terminalId: id,
+      projectId: 'proj-1',
+      status: 'needs-input',
+    })
   })
 
   test('repeated signals do not re-emit an unchanged status', () => {

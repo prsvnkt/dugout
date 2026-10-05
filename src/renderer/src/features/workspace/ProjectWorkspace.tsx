@@ -48,6 +48,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
   const closePane = useWorkspaceStore((state) => state.closePane)
   const focusPane = useWorkspaceStore((state) => state.focusPane)
   const setActivity = useWorkspaceStore((state) => state.setActivity)
+  const setTerminalId = useWorkspaceStore((state) => state.setTerminalId)
   const accent = projectColorVar(project.color)
 
   if (layout.panes.length === 0) return <EmptyWorkspace onAdd={onAdd} />
@@ -59,6 +60,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
           <Panel id={pane.id} minSize={MIN_PANE_SIZE_PX}>
             <TerminalPane
               kind={pane.kind}
+              projectId={project.id}
               cwd={project.rootPath}
               accentColor={accent}
               isFocused={layout.focusedPaneId === pane.id}
@@ -66,6 +68,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               onFocus={() => focusPane(project.id, pane.id)}
               onClose={() => closePane(project.id, pane.id)}
               onActivity={(activity) => setActivity(pane.id, activity)}
+              onTerminalId={(terminalId) => setTerminalId(pane.id, terminalId)}
             />
           </Panel>
         </Fragment>

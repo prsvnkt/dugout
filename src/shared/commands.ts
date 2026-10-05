@@ -5,3 +5,5 @@ export type AppCommand =
   | { readonly type: 'project.add' }
   | { readonly type: 'project.select'; readonly index: number }
   | { readonly type: 'git.togglePanel' }
+  /** Show the pane running this terminal, e.g. after clicking a notification. */
+  | { readonly type: 'terminal.reveal'; readonly terminalId: string }

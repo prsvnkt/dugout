@@ -27,6 +27,13 @@ export function useAppCommands(onAddProject: () => void): void {
         case 'git.togglePanel':
           useGitStore.getState().togglePanel()
           return
+        case 'terminal.reveal': {
+          const target = workspace.findTerminal(command.terminalId)
+          if (!target) return
+          useProjectsStore.getState().select(target.projectId)
+          workspace.focusPane(target.projectId, target.paneId)
+          return
+        }
       }
     }
     return dugout.onCommand(handle)

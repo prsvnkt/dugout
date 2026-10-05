@@ -13,6 +13,7 @@ import styles from './TerminalPane.module.css'
 
 interface TerminalPaneProps {
   readonly kind: TerminalKind
+  readonly projectId: string
   readonly cwd: string
   readonly accentColor: string
   /** True when this pane should own keyboard focus (focused pane of the visible project). */
@@ -21,6 +22,7 @@ interface TerminalPaneProps {
   onFocus(): void
   onClose(): void
   onActivity(activity: PaneActivity): void
+  onTerminalId(terminalId: string | null): void
 }
 
 const KIND_LABEL: Record<TerminalKind, string> = { claude: 'Claude Code', shell: 'Shell' }
@@ -32,9 +34,14 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 }
 
 export function TerminalPane(props: TerminalPaneProps) {
-  const { kind, cwd, accentColor, shouldFocus, isFocused, onFocus, onClose, onActivity } = props
+  const { kind, projectId, cwd, accentColor, shouldFocus, isFocused } = props
+  const { onFocus, onClose, onActivity, onTerminalId } = props
   const containerRef = useRef<HTMLDivElement>(null)
-  const { status, agentStatus, focus } = useTerminal(containerRef, kind, cwd)
+  const { status, agentStatus, terminalId, focus } = useTerminal(containerRef, {
+    kind,
+    projectId,
+    cwd,
+  })
   const isDoneSeen = useDoneSeen(agentStatus, shouldFocus)
   const activity = toPaneActivity(status, agentStatus, isDoneSeen)
 
@@ -43,6 +50,7 @@ export function TerminalPane(props: TerminalPaneProps) {
   }, [shouldFocus, focus])
 
   useEffect(() => onActivity(activity), [activity, onActivity])
+  useEffect(() => onTerminalId(terminalId), [terminalId, onTerminalId])
 
   return (
     <section

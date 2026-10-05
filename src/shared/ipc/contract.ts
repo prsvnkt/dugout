@@ -15,8 +15,11 @@ const absolutePath = z
   .min(1)
   .refine((path) => path.startsWith('/'), 'Path must be absolute')
 
+const projectIdField = z.string().min(1).max(64)
+
 export const terminalCreateRequestSchema = z.object({
   kind: z.enum(TERMINAL_KINDS),
+  projectId: projectIdField,
   cwd: absolutePath,
   cols: dimension,
   rows: dimension,

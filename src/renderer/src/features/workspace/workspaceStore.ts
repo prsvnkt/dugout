@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ProjectId } from '@shared/project'
-import type { TerminalKind } from '@shared/terminal'
+import type { TerminalId, TerminalKind } from '@shared/terminal'
 import {
   addPane,
   closePane,
@@ -14,6 +14,10 @@ import { projectAttention, type PaneActivity } from './paneActivity'
 interface WorkspaceState {
   readonly layouts: Readonly<Record<ProjectId, ProjectLayout>>
   readonly activities: Readonly<Record<PaneId, PaneActivity>>
+  readonly terminalIds: Readonly<Record<PaneId, TerminalId>>
+  setTerminalId(paneId: PaneId, terminalId: TerminalId | null): void
+  /** Finds the pane running a terminal, e.g. to reveal it from a notification. */
+  findTerminal(terminalId: TerminalId): { projectId: ProjectId; paneId: PaneId } | null
   addPane(projectId: ProjectId, kind: TerminalKind): void
   closePane(projectId: ProjectId, paneId: PaneId): void
   closeFocusedPane(projectId: ProjectId): void
@@ -37,11 +41,30 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
   return {
     layouts: {},
     activities: {},
+    terminalIds: {},
+    setTerminalId: (paneId, terminalId) =>
+      set((state) => ({
+        terminalIds: terminalId
+          ? { ...state.terminalIds, [paneId]: terminalId }
+          : withoutKeys(state.terminalIds, [paneId]),
+      })),
+    findTerminal: (terminalId) => {
+      const { layouts, terminalIds } = get()
+      const paneId = Object.keys(terminalIds).find((id) => terminalIds[id] === terminalId)
+      if (!paneId) return null
+      const projectId = Object.keys(layouts).find((id) =>
+        layouts[id]?.panes.some((pane) => pane.id === paneId),
+      )
+      return projectId ? { projectId, paneId } : null
+    },
     addPane: (projectId, kind) =>
       updateLayout(projectId, (layout) => addPane(layout, kind, createPaneId)),
     closePane: (projectId, paneId) => {
       updateLayout(projectId, (layout) => closePane(layout, paneId))
-      set((state) => ({ activities: withoutKeys(state.activities, [paneId]) }))
+      set((state) => ({
+        activities: withoutKeys(state.activities, [paneId]),
+        terminalIds: withoutKeys(state.terminalIds, [paneId]),
+      }))
     },
     closeFocusedPane: (projectId) => {
       const focused = get().layouts[projectId]?.focusedPaneId
@@ -61,6 +84,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
         return {
           layouts: withoutKeys(state.layouts, [projectId]),
           activities: withoutKeys(state.activities, paneIds),
+          terminalIds: withoutKeys(state.terminalIds, paneIds),
         }
       }),
   }

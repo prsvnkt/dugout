@@ -5,6 +5,7 @@ import {
   makeGitRepo,
   makeTempDir,
   recordTerminalOutput,
+  terminalIdsSeen,
   stubFolderPicker,
 } from './helpers'
 
@@ -114,4 +115,30 @@ test('a newly split pane starts its process at the full pane width', async () =>
   // The bug left the PTY at 2 columns; three panes beside the git panel are ~30 columns each.
   expect(Number(cols)).toBeGreaterThan(20)
   expect(Number(rows)).toBeGreaterThan(20)
+})
+
+test('revealing a terminal (as a notification click does) switches to its project', async () => {
+  // Arrange: a shell in alpha, then switch to beta
+  const output = await recordTerminalOutput(page)
+  await addProject(makeGitRepo('alpha'), () =>
+    page.getByRole('button', { name: 'Add project…' }).click(),
+  )
+  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await expect.poll(output).not.toBe('')
+  const [terminalId] = await terminalIdsSeen(page)
+  await addProject(makeGitRepo('beta'), () =>
+    page.getByRole('button', { name: '+ Add project' }).click(),
+  )
+  await expect(page.getByRole('contentinfo')).toContainText('beta')
+
+  // Act
+  await app.evaluate(({ BrowserWindow }, id) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('app:command', {
+      type: 'terminal.reveal',
+      terminalId: id,
+    })
+  }, terminalId)
+
+  // Assert
+  await expect(page.getByRole('contentinfo')).toContainText('alpha')
 })
