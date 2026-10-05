@@ -53,6 +53,12 @@ export function buildMenuTemplate(
     {
       label: 'View',
       submenu: [
+        {
+          label: 'Toggle Git Panel',
+          accelerator: 'CmdOrCtrl+Shift+G',
+          click: () => send({ type: 'git.togglePanel' }),
+        },
+        { type: 'separator' },
         ...(isDev ? [{ role: 'reload' as const }, { role: 'toggleDevTools' as const }] : []),
         { role: 'togglefullscreen' },
       ],

@@ -39,6 +39,11 @@
   color: var(--text-secondary);
 }
 
+.toolbarActions button[aria-pressed='true'] {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
 .toolbarActions button:hover:not(:disabled) {
   color: var(--text-primary);
 }
@@ -46,6 +51,17 @@
 .toolbarActions button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+}
+
+.terminals {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .panes {

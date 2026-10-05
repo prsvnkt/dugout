@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { AppCommand } from '@shared/commands'
 import { dugout } from '@renderer/lib/dugout'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
+import { useGitStore } from '@renderer/features/git/gitStore'
 import { useWorkspaceStore } from './workspaceStore'
 
 /** Routes native menu commands (and their shortcuts) to the stores. */
@@ -22,6 +23,9 @@ export function useAppCommands(onAddProject: () => void): void {
           return
         case 'pane.close':
           if (selectedId) workspace.closeFocusedPane(selectedId)
+          return
+        case 'git.togglePanel':
+          useGitStore.getState().togglePanel()
           return
       }
     }

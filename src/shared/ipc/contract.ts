@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MAX_COMMIT_MESSAGE_LENGTH, MAX_GIT_PATHS_PER_REQUEST } from '../git'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
 import { TERMINAL_KINDS } from '../terminal'
 
@@ -79,3 +80,35 @@ export type ProjectAddRequest = z.infer<typeof projectAddRequestSchema>
 export type ProjectUpdateRequest = z.infer<typeof projectUpdateRequestSchema>
 export type ProjectRemoveRequest = z.infer<typeof projectRemoveRequestSchema>
 export type ProjectsFile = z.infer<typeof projectsFileSchema>
+
+/** A path inside a repository: relative, with no `..` segments, so it cannot escape it. */
+const repoRelativePath = z
+  .string()
+  .min(1)
+  .max(4096)
+  .refine((path) => !path.includes('\0'), 'Invalid character in path')
+  .refine((path) => !path.startsWith('/'), 'Path must be relative to the repository')
+  .refine((path) => !path.split('/').includes('..'), 'Path must stay inside the repository')
+
+export const gitProjectRequestSchema = z.object({ projectId })
+
+export const gitDiffRequestSchema = z.object({
+  projectId,
+  path: repoRelativePath,
+  staged: z.boolean(),
+})
+
+export const gitPathsRequestSchema = z.object({
+  projectId,
+  paths: z.array(repoRelativePath).min(1).max(MAX_GIT_PATHS_PER_REQUEST),
+})
+
+export const gitCommitRequestSchema = z.object({
+  projectId,
+  message: z.string().trim().min(1).max(MAX_COMMIT_MESSAGE_LENGTH),
+})
+
+export type GitProjectRequest = z.infer<typeof gitProjectRequestSchema>
+export type GitDiffRequest = z.infer<typeof gitDiffRequestSchema>
+export type GitPathsRequest = z.infer<typeof gitPathsRequestSchema>
+export type GitCommitRequest = z.infer<typeof gitCommitRequestSchema>

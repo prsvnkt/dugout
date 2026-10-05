@@ -31,7 +31,11 @@ async function addProject(name: string): Promise<void> {
   await expect(dialog).toBeHidden()
 }
 
-const paneHeader = () => page.locator('[data-active="true"] header')
+const paneHeader = () =>
+  page
+    .locator('[data-active="true"]')
+    .getByRole('region', { name: /terminal$/ })
+    .locator('header')
 const sidebarItem = (name: string) =>
   page.getByRole('navigation').getByRole('listitem').filter({ hasText: name })
 const dockBadge = () => app.evaluate(({ app: electronApp }) => electronApp.dock?.getBadge() ?? '')

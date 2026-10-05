@@ -4,3 +4,4 @@ export type AppCommand =
   | { readonly type: 'pane.close' }
   | { readonly type: 'project.add' }
   | { readonly type: 'project.select'; readonly index: number }
+  | { readonly type: 'git.togglePanel' }

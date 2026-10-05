@@ -34,8 +34,8 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 src/
   main/       Electron main process (Node). Owns PTYs, git, filesystem, dialogs.
     ipc/        One register*Ipc.ts per domain. Validates every payload with zod.
-    services/   Domain logic, framework-light and unit-tested (terminal/, projects/, git/,
-                agentHooks/ for Claude status via hooks).
+    services/   Domain logic, framework-light and unit-tested (terminal/, projects/,
+                git/ for the review panel, agentHooks/ for Claude status via hooks).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
@@ -63,6 +63,8 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   so errors reach the UI as readable messages.
 - **Agent status comes only from hooks** (see decision 008). E2E tests use the fake `claude`
   from `tests/e2e/helpers.ts` via `DUGOUT_CLAUDE_COMMAND`; never scrape terminal output.
+- **All git commands go through `GitService`/`runGit`** so they inherit the no-lock, no-prompt,
+  literal-pathspec environment (decision 009). Never call `git` from elsewhere.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` (the e2e helpers do).
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.

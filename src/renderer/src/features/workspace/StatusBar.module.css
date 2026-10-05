@@ -26,6 +26,11 @@
   opacity: 0.8;
 }
 
+.branch {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .spacer {
   flex: 1;
 }

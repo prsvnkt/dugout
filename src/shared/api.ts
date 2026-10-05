@@ -1,5 +1,6 @@
 import type { AgentStatus } from './agentStatus'
 import type { AppCommand } from './commands'
+import type { GitDiff, GitStatus } from './git'
 import type { ProjectAddRequest, ProjectUpdateRequest, TerminalCreateRequest } from './ipc/contract'
 import type { Project, ProjectId } from './project'
 import type { Result } from './result'
@@ -24,6 +25,16 @@ export interface DugoutApi {
     add(request: ProjectAddRequest): Promise<Result<Project>>
     update(request: ProjectUpdateRequest): Promise<Result<Project>>
     remove(id: ProjectId): Promise<Result<void>>
+  }
+  /** Git operations on a project's repository, addressed by project id. */
+  readonly git: {
+    status(projectId: ProjectId): Promise<Result<GitStatus>>
+    diff(projectId: ProjectId, path: string, staged: boolean): Promise<Result<GitDiff>>
+    stage(projectId: ProjectId, paths: readonly string[]): Promise<Result<void>>
+    unstage(projectId: ProjectId, paths: readonly string[]): Promise<Result<void>>
+    discard(projectId: ProjectId, paths: readonly string[]): Promise<Result<void>>
+    commit(projectId: ProjectId, message: string): Promise<Result<void>>
+    push(projectId: ProjectId): Promise<Result<void>>
   }
   readonly dialog: {
     /** Resolves to the chosen absolute folder path, or null if cancelled. */

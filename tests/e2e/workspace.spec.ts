@@ -111,6 +111,7 @@ test('a newly split pane starts its process at the full pane width', async () =>
 
   await expect.poll(output).toMatch(/pty-size:\d+ \d+/)
   const [, rows, cols] = /pty-size:(\d+) (\d+)/.exec(await output()) ?? []
-  expect(Number(cols)).toBeGreaterThan(40)
+  // The bug left the PTY at 2 columns; three panes beside the git panel are ~30 columns each.
+  expect(Number(cols)).toBeGreaterThan(20)
   expect(Number(rows)).toBeGreaterThan(20)
 })

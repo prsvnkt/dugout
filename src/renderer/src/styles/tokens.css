@@ -23,6 +23,8 @@
   --status-working: #60a5fa;
   --status-needs-input: #fbbf24;
   --status-done: #4ade80;
+  --diff-added-bg: rgb(74 222 128 / 12%);
+  --diff-removed-bg: rgb(248 113 113 / 12%);
   --status-idle: #6b7282;
   --status-working: #60a5fa;
   --status-needs-input: #fbbf24;
@@ -45,6 +47,7 @@
   --titlebar-height: 38px;
   --titlebar-inset: 80px;
   --sidebar-width: 220px;
+  --git-panel-default-width: 380px;
   --statusbar-height: 24px;
   --pane-header-height: 32px;
 }

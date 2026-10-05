@@ -4,10 +4,12 @@ import { app, BrowserWindow } from 'electron'
 import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
+import { registerGitIpc } from './ipc/registerGitIpc'
 import { registerProjectIpc } from './ipc/registerProjectIpc'
 import { registerTerminalIpc } from './ipc/registerTerminalIpc'
 import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
+import { GitService } from './services/git/GitService'
 import { resolveRepoRoot } from './services/git/resolveRepoRoot'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
@@ -69,6 +71,7 @@ async function start(): Promise<void> {
 
   registerTerminalIpc(manager)
   registerProjectIpc(projectStore)
+  registerGitIpc(projectStore, new GitService({ env: process.env }))
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)
   createMainWindow()

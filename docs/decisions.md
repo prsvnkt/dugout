@@ -57,12 +57,21 @@ The dock badge counts panes that need the user. If the hook server fails to star
 still work without status. `DUGOUT_CLAUDE_COMMAND` overrides the `claude` binary (used by e2e
 tests with a fake CLI that runs the generated hooks).
 
+## 009 — Git panel runs the git CLI directly (2026-10-05)
+
+`GitService` spawns `git` with `GIT_OPTIONAL_LOCKS=0` (refreshing never takes the index lock an
+agent may need), `GIT_LITERAL_PATHSPECS=1` (paths are never globs), `GIT_TERMINAL_PROMPT=0` and
+BatchMode SSH (it can never hang on a credential prompt), and output caps for large diffs. The
+renderer addresses repositories by project id only; main resolves the path. Status refreshes on
+show, every 3s while visible, on window focus and whenever an agent in the project changes
+status. Diffs use a small custom unified-diff view instead of Monaco. Discard needs two clicks.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
 2. **MVP:**
    - Projects (repo, name, colour) in a sidebar; split-pane terminals per project. ✅
    - Status from hooks (ready / working / needs you / done / exited). ✅
-   - Git panel (branch, changes, diff, stage / commit / push).
+   - Git panel (branch, changes, diff, stage / commit / push). ✅
 3. **Next:** worktree sessions, resume on relaunch, "needs you" list + native notifications,
    create PR.

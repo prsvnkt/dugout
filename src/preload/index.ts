@@ -27,6 +27,17 @@ const api: DugoutApi = {
     update: (request) => ipcRenderer.invoke(IpcChannel.projectUpdate, request),
     remove: (id) => ipcRenderer.invoke(IpcChannel.projectRemove, { id }),
   },
+  git: {
+    status: (projectId) => ipcRenderer.invoke(IpcChannel.gitStatus, { projectId }),
+    diff: (projectId, path, staged) =>
+      ipcRenderer.invoke(IpcChannel.gitDiff, { projectId, path, staged }),
+    stage: (projectId, paths) => ipcRenderer.invoke(IpcChannel.gitStage, { projectId, paths }),
+    unstage: (projectId, paths) => ipcRenderer.invoke(IpcChannel.gitUnstage, { projectId, paths }),
+    discard: (projectId, paths) => ipcRenderer.invoke(IpcChannel.gitDiscard, { projectId, paths }),
+    commit: (projectId, message) =>
+      ipcRenderer.invoke(IpcChannel.gitCommit, { projectId, message }),
+    push: (projectId) => ipcRenderer.invoke(IpcChannel.gitPush, { projectId }),
+  },
   dialog: {
     pickFolder: () => ipcRenderer.invoke(IpcChannel.dialogPickFolder),
   },

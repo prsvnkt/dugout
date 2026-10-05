@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { useSelectedProject } from '@renderer/features/projects/projectsStore'
+import { useProjectGit } from '@renderer/features/git/gitStore'
 import { useActivityCount, useProjectLayout } from './workspaceStore'
 import styles from './StatusBar.module.css'
 
@@ -20,6 +21,17 @@ function ProjectStatus({ projectId }: { projectId: string }) {
   return <span>{parts.join(' · ')}</span>
 }
 
+function BranchStatus({ projectId }: { projectId: string }) {
+  const status = useProjectGit(projectId).status
+  if (!status) return null
+  const sync = [status.ahead > 0 && `↑${status.ahead}`, status.behind > 0 && `↓${status.behind}`]
+  return (
+    <span className={styles.branch}>
+      ⎇ {status.branch ?? 'detached'} {sync.filter(Boolean).join(' ')}
+    </span>
+  )
+}
+
 export function StatusBar() {
   const project = useSelectedProject()
   if (!project) return <footer className={styles.bar} />
@@ -34,6 +46,7 @@ export function StatusBar() {
       <span className={styles.path} title={project.rootPath}>
         {project.rootPath}
       </span>
+      <BranchStatus projectId={project.id} />
       <span className={styles.spacer} />
       <ProjectStatus projectId={project.id} />
     </footer>

@@ -15,5 +15,12 @@ export const IpcChannel = {
   projectAdd: 'project:add',
   projectUpdate: 'project:update',
   projectRemove: 'project:remove',
+  gitStatus: 'git:status',
+  gitDiff: 'git:diff',
+  gitStage: 'git:stage',
+  gitUnstage: 'git:unstage',
+  gitDiscard: 'git:discard',
+  gitCommit: 'git:commit',
+  gitPush: 'git:push',
   appCommand: 'app:command',
 } as const

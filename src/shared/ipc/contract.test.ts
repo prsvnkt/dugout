@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
+  gitCommitRequestSchema,
+  gitPathsRequestSchema,
   projectAddRequestSchema,
   projectsFileSchema,
   projectUpdateRequestSchema,
@@ -75,5 +77,28 @@ describe('project schemas', () => {
     expect(projectsFileSchema.safeParse({ version: 1, projects: [{ id: 'p1' }] }).success).toBe(
       false,
     )
+  })
+})
+
+describe('git schemas', () => {
+  test('accepts relative repository paths', () => {
+    const request = { projectId: 'p1', paths: ['src/a.ts', 'weird name*.txt'] }
+    expect(gitPathsRequestSchema.safeParse(request).success).toBe(true)
+  })
+
+  test('rejects paths that could escape the repository', () => {
+    for (const path of ['/etc/passwd', '../outside', 'src/../../x', '', 'a\0b']) {
+      expect(gitPathsRequestSchema.safeParse({ projectId: 'p1', paths: [path] }).success).toBe(
+        false,
+      )
+    }
+  })
+
+  test('requires at least one path', () => {
+    expect(gitPathsRequestSchema.safeParse({ projectId: 'p1', paths: [] }).success).toBe(false)
+  })
+
+  test('rejects an empty commit message', () => {
+    expect(gitCommitRequestSchema.safeParse({ projectId: 'p1', message: '  ' }).success).toBe(false)
   })
 })
