@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { useSelectedProject } from '@renderer/features/projects/projectsStore'
-import { useProjectLayout } from './workspaceStore'
+import { useActivityCount, useProjectLayout } from './workspaceStore'
 import styles from './StatusBar.module.css'
 
 function terminalCount(count: number): string {
@@ -10,7 +10,14 @@ function terminalCount(count: number): string {
 
 function ProjectStatus({ projectId }: { projectId: string }) {
   const layout = useProjectLayout(projectId)
-  return <span>{terminalCount(layout.panes.length)}</span>
+  const needsInput = useActivityCount(projectId, 'needs-input')
+  const working = useActivityCount(projectId, 'working')
+  const parts = [
+    needsInput > 0 && `${needsInput} needs you`,
+    working > 0 && `${working} working`,
+    terminalCount(layout.panes.length),
+  ].filter(Boolean)
+  return <span>{parts.join(' · ')}</span>
 }
 
 export function StatusBar() {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
+import type { AgentStatus } from '@shared/agentStatus'
 import type { TerminalExit, TerminalKind } from '@shared/terminal'
 import { dugout } from '@renderer/lib/dugout'
 import { XTERM_OPTIONS } from './xtermOptions'
@@ -14,6 +15,8 @@ export type TerminalStatus =
 
 export interface TerminalHandle {
   readonly status: TerminalStatus
+  /** Claude terminals only; null for shells or before the first hook fires. */
+  readonly agentStatus: AgentStatus | null
   focus(): void
 }
 
@@ -44,6 +47,7 @@ export function useTerminal(
   cwd: string,
 ): TerminalHandle {
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
+  const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
 
   useEffect(() => {
@@ -72,6 +76,9 @@ export function useTerminal(
         dugout.terminal.onData((sourceId, data) => sourceId === id && terminal.write(data)),
         dugout.terminal.onExit((sourceId, exit) => {
           if (sourceId === id) setStatus({ state: 'exited', exit })
+        }),
+        dugout.terminal.onAgentStatus((sourceId, next) => {
+          if (sourceId === id) setAgentStatus(next)
         }),
         () => input.dispose(),
         () => resize.dispose(),
@@ -118,5 +125,5 @@ export function useTerminal(
   }, [containerRef, kind, cwd])
 
   const focus = useCallback(() => terminalRef.current?.focus(), [])
-  return { status, focus }
+  return { status, agentStatus, focus }
 }

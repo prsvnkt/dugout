@@ -46,12 +46,23 @@ Each project shows up to 6 resizable side-by-side panes. Every project's workspa
 while hidden so terminals keep running across project switches. Grid splits and saving layouts
 between launches are deferred.
 
+## 008 — Agent status from hooks over a private socket (2026-10-05)
+
+Claude terminals start as `claude --settings <userData>/claude-hooks.json`. Its async command
+hooks `curl` a signal (`ready`, `working`, `needs-input`, `done`) to an HTTP server on a Unix
+socket (mode 0600) with a per-launch bearer token; the terminal id, socket, token and settings
+path reach the shell as `DUGOUT_*` env vars. Hooks are no-ops outside Dugout, time out after 2s
+and always succeed, so they can never disturb Claude. "Done" clears once the user views the pane.
+The dock badge counts panes that need the user. If the hook server fails to start, terminals
+still work without status. `DUGOUT_CLAUDE_COMMAND` overrides the `claude` binary (used by e2e
+tests with a fake CLI that runs the generated hooks).
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
 2. **MVP:**
    - Projects (repo, name, colour) in a sidebar; split-pane terminals per project. ✅
-   - Status from hooks (running / waiting / done / exited).
+   - Status from hooks (ready / working / needs you / done / exited). ✅
    - Git panel (branch, changes, diff, stage / commit / push).
 3. **Next:** worktree sessions, resume on relaunch, "needs you" list + native notifications,
    create PR.

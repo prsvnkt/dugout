@@ -61,8 +61,33 @@ function setup() {
     createId: () => `t${++nextId}`,
     env: { SHELL: '/bin/zsh', PATH: '/usr/bin', ELECTRON_RUN_AS_NODE: '1' },
   })
-  const events = { onData: vi.fn(), onExit: vi.fn() }
+  const events = { onData: vi.fn(), onExit: vi.fn(), onAgentStatus: vi.fn() }
   return { manager, spawned, events }
+}
+
+function setupWithHooks() {
+  const spawned: FakeProcess[] = []
+  const onAgentStatusChange = vi.fn()
+  const manager = new TerminalManager({
+    backend: {
+      spawn: (options) => {
+        const process = new FakeProcess(options)
+        spawned.push(process)
+        return process
+      },
+    },
+    createId: () => 'agent-1',
+    env: { SHELL: '/bin/zsh' },
+    agentHooks: {
+      settingsPath: '/data/claude-hooks.json',
+      socketPath: '/data/hooks.sock',
+      token: 'tok',
+      claudeCommand: '/opt/fake/claude',
+    },
+    onAgentStatusChange,
+  })
+  const events = { onData: vi.fn(), onExit: vi.fn(), onAgentStatus: vi.fn() }
+  return { manager, spawned, events, onAgentStatusChange }
 }
 
 const request = { kind: 'claude', cwd: '/repo', cols: 100, rows: 30 } as const
@@ -135,5 +160,70 @@ describe('TerminalManager', () => {
     ctx.manager.killAll()
     expect(ctx.spawned.every((p) => p.isKilled)).toBe(true)
     expect(ctx.manager.size).toBe(0)
+  })
+})
+
+describe('TerminalManager agent status', () => {
+  test('gives claude terminals the hook environment and settings', () => {
+    const { manager, spawned, events } = setupWithHooks()
+    manager.create(request, events)
+
+    const options = spawned[0]?.options
+    expect(options?.args.at(-1)).toContain('--settings "$DUGOUT_CLAUDE_SETTINGS"')
+    expect(options?.env).toMatchObject({
+      DUGOUT_TERMINAL_ID: 'agent-1',
+      DUGOUT_HOOK_SOCKET: '/data/hooks.sock',
+      DUGOUT_HOOK_TOKEN: 'tok',
+      DUGOUT_CLAUDE_SETTINGS: '/data/claude-hooks.json',
+      DUGOUT_CLAUDE_COMMAND: '/opt/fake/claude',
+    })
+  })
+
+  test('shell terminals get no hook environment', () => {
+    const { manager, spawned, events } = setupWithHooks()
+    manager.create({ ...request, kind: 'shell' }, events)
+    expect(spawned[0]?.options.env).not.toHaveProperty('DUGOUT_HOOK_TOKEN')
+  })
+
+  test('claude terminals start in the starting state and follow hook signals', () => {
+    const { manager, events, onAgentStatusChange } = setupWithHooks()
+    const id = manager.create(request, events)
+    expect(manager.agentStatus(id)).toBe('starting')
+
+    manager.applyHookSignal(id, 'ready')
+    manager.applyHookSignal(id, 'working')
+    manager.applyHookSignal(id, 'needs-input')
+
+    expect(events.onAgentStatus.mock.calls).toEqual([
+      [id, 'idle'],
+      [id, 'working'],
+      [id, 'needs-input'],
+    ])
+    expect(manager.countAgentsWithStatus('needs-input')).toBe(1)
+    expect(onAgentStatusChange).toHaveBeenCalledTimes(3)
+  })
+
+  test('repeated signals do not re-emit an unchanged status', () => {
+    const { manager, events } = setupWithHooks()
+    const id = manager.create(request, events)
+    manager.applyHookSignal(id, 'working')
+    manager.applyHookSignal(id, 'working')
+    expect(events.onAgentStatus).toHaveBeenCalledTimes(1)
+  })
+
+  test('ignores signals for unknown or shell terminals', () => {
+    const { manager, events } = setupWithHooks()
+    const shell = manager.create({ ...request, kind: 'shell' }, events)
+    expect(manager.applyHookSignal('missing', 'done')).toBe(false)
+    expect(manager.applyHookSignal(shell, 'done')).toBe(false)
+    expect(events.onAgentStatus).not.toHaveBeenCalled()
+  })
+
+  test('an exited agent no longer counts', () => {
+    const { manager, spawned, events } = setupWithHooks()
+    const id = manager.create(request, events)
+    manager.applyHookSignal(id, 'needs-input')
+    spawned[0]?.emitExit({ exitCode: 0 })
+    expect(manager.countAgentsWithStatus('needs-input')).toBe(0)
   })
 })

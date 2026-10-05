@@ -1,0 +1,61 @@
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-idle);
+}
+
+[data-activity='running'] .dot {
+  background: var(--status-running);
+}
+
+[data-activity='working'] .dot {
+  background: var(--status-working);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+[data-activity='needs-input'] {
+  color: var(--status-needs-input);
+  font-weight: 600;
+}
+
+[data-activity='needs-input'] .dot {
+  background: var(--status-needs-input);
+}
+
+[data-activity='done'] {
+  color: var(--status-done);
+}
+
+[data-activity='done'] .dot {
+  background: var(--status-done);
+}
+
+[data-activity='error'] {
+  color: var(--status-error);
+}
+
+[data-activity='error'] .dot {
+  background: var(--status-error);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-activity='working'] .dot {
+    animation: none;
+  }
+}

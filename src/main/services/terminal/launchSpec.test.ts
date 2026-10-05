@@ -20,6 +20,15 @@ describe('buildLaunchSpec', () => {
     })
   })
 
+  test('passes the generated hook settings to claude when hooks are enabled', () => {
+    expect(buildLaunchSpec('claude', '/bin/zsh', { hasAgentHooks: true }).args).toEqual([
+      '-l',
+      '-i',
+      '-c',
+      '"${DUGOUT_CLAUDE_COMMAND:-claude}" --settings "$DUGOUT_CLAUDE_SETTINGS"',
+    ])
+  })
+
   test('starts a plain login shell', () => {
     expect(buildLaunchSpec('shell', '/bin/zsh')).toEqual({ file: '/bin/zsh', args: ['-l'] })
   })
@@ -51,6 +60,12 @@ describe('buildTerminalEnv', () => {
     })
     expect(env).toEqual(expect.objectContaining({ HOME: '/Users/me' }))
     expect(Object.keys(env).filter((key) => /CLAUDE|AI_AGENT|CODEX/.test(key))).toEqual([])
+  })
+
+  test('does not inherit Dugout variables from the environment that launched the app', () => {
+    const env = buildTerminalEnv({ DUGOUT_TERMINAL_ID: 'stale', DUGOUT_USER_DATA_DIR: '/tmp' })
+    expect(env).not.toHaveProperty('DUGOUT_TERMINAL_ID')
+    expect(env).not.toHaveProperty('DUGOUT_USER_DATA_DIR')
   })
 
   test('advertises a 256-colour, truecolor terminal', () => {

@@ -19,6 +19,7 @@ const api: DugoutApi = {
     kill: (id) => ipcRenderer.send(IpcChannel.terminalKill, { id }),
     onData: (listener) => subscribe(IpcChannel.terminalData, listener),
     onExit: (listener) => subscribe(IpcChannel.terminalExit, listener),
+    onAgentStatus: (listener) => subscribe(IpcChannel.terminalAgentStatus, listener),
   },
   projects: {
     list: () => ipcRenderer.invoke(IpcChannel.projectList),

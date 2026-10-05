@@ -19,6 +19,14 @@
   --bg-overlay: rgb(0 0 0 / 55%);
 
   --status-running: #4ade80;
+  --status-idle: #6b7282;
+  --status-working: #60a5fa;
+  --status-needs-input: #fbbf24;
+  --status-done: #4ade80;
+  --status-idle: #6b7282;
+  --status-working: #60a5fa;
+  --status-needs-input: #fbbf24;
+  --status-done: #4ade80;
   --status-exited: #6b7282;
   --status-error: #f87171;
 

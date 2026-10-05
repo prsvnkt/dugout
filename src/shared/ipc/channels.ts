@@ -9,6 +9,7 @@ export const IpcChannel = {
   terminalKill: 'terminal:kill',
   terminalData: 'terminal:data',
   terminalExit: 'terminal:exit',
+  terminalAgentStatus: 'terminal:agent-status',
   dialogPickFolder: 'dialog:pick-folder',
   projectList: 'project:list',
   projectAdd: 'project:add',

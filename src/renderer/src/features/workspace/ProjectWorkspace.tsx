@@ -40,6 +40,7 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
   const addPane = useWorkspaceStore((state) => state.addPane)
   const closePane = useWorkspaceStore((state) => state.closePane)
   const focusPane = useWorkspaceStore((state) => state.focusPane)
+  const setActivity = useWorkspaceStore((state) => state.setActivity)
   const accent = projectColorVar(project.color)
   const canAddPane = layout.panes.length < MAX_PANES_PER_PROJECT
   const add = (kind: TerminalKind) => addPane(project.id, kind)
@@ -75,6 +76,7 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
                   shouldFocus={isActive && layout.focusedPaneId === pane.id}
                   onFocus={() => focusPane(project.id, pane.id)}
                   onClose={() => closePane(project.id, pane.id)}
+                  onActivity={(activity) => setActivity(pane.id, activity)}
                 />
               </Panel>
             </Fragment>

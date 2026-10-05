@@ -60,8 +60,19 @@
   border-radius: 50%;
 }
 
-.name {
+.label {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.attention {
+  font-size: 11px;
+}
+
+.name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -33,7 +33,8 @@ See @docs/decisions.md for the decisions behind this and the roadmap.
 src/
   main/       Electron main process (Node). Owns PTYs, git, filesystem, dialogs.
     ipc/        One register*Ipc.ts per domain. Validates every payload with zod.
-    services/   Domain logic, framework-light and unit-tested (terminal/, projects/, git/).
+    services/   Domain logic, framework-light and unit-tested (terminal/, projects/, git/,
+                agentHooks/ for Claude status via hooks).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
@@ -59,6 +60,8 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   xterm fit to 2 columns and garbles the Claude TUI. `useTerminal` also skips fitting when hidden.
 - **Request-response IPC returns `Result<T>`** (`handleRequest` in main, `unwrap` in renderer)
   so errors reach the UI as readable messages.
+- **Agent status comes only from hooks** (see decision 008). E2E tests use the fake `claude`
+  from `tests/e2e/helpers.ts` via `DUGOUT_CLAUDE_COMMAND`; never scrape terminal output.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` (the e2e helpers do).
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.

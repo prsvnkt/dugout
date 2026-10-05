@@ -1,6 +1,13 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalKind } from '@shared/terminal'
+import {
+  ACTIVITY_LABEL,
+  toPaneActivity,
+  type PaneActivity,
+} from '@renderer/features/workspace/paneActivity'
+import { ActivityIndicator } from './ActivityIndicator'
+import { useDoneSeen } from './useDoneSeen'
 import { useTerminal, type TerminalStatus } from './useTerminal'
 import styles from './TerminalPane.module.css'
 
@@ -13,31 +20,29 @@ interface TerminalPaneProps {
   readonly isFocused: boolean
   onFocus(): void
   onClose(): void
+  onActivity(activity: PaneActivity): void
 }
 
 const KIND_LABEL: Record<TerminalKind, string> = { claude: 'Claude Code', shell: 'Shell' }
 
-function describeStatus(status: TerminalStatus): string {
-  switch (status.state) {
-    case 'starting':
-      return 'Starting…'
-    case 'running':
-      return 'Running'
-    case 'exited':
-      return `Exited (${status.exit.exitCode})`
-    case 'error':
-      return status.message
-  }
+function describe(activity: PaneActivity, status: TerminalStatus): string {
+  if (status.state === 'exited') return `Exited (${status.exit.exitCode})`
+  if (status.state === 'error') return status.message
+  return ACTIVITY_LABEL[activity]
 }
 
 export function TerminalPane(props: TerminalPaneProps) {
-  const { kind, cwd, accentColor, shouldFocus, isFocused, onFocus, onClose } = props
+  const { kind, cwd, accentColor, shouldFocus, isFocused, onFocus, onClose, onActivity } = props
   const containerRef = useRef<HTMLDivElement>(null)
-  const { status, focus } = useTerminal(containerRef, kind, cwd)
+  const { status, agentStatus, focus } = useTerminal(containerRef, kind, cwd)
+  const isDoneSeen = useDoneSeen(agentStatus, shouldFocus)
+  const activity = toPaneActivity(status, agentStatus, isDoneSeen)
 
   useEffect(() => {
     if (shouldFocus) focus()
   }, [shouldFocus, focus])
+
+  useEffect(() => onActivity(activity), [activity, onActivity])
 
   return (
     <section
@@ -49,10 +54,11 @@ export function TerminalPane(props: TerminalPaneProps) {
     >
       <header className={styles.header}>
         <span className={styles.kind}>{KIND_LABEL[kind]}</span>
-        <span className={styles.status} data-state={status.state}>
-          <span className={styles.statusDot} aria-hidden />
-          {describeStatus(status)}
-        </span>
+        <ActivityIndicator
+          activity={activity}
+          label={describe(activity, status)}
+          className={styles.status}
+        />
         <button
           className={styles.close}
           onClick={onClose}

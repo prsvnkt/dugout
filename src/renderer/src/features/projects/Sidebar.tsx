@@ -1,9 +1,25 @@
 import type { Project } from '@shared/project'
+import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
+import { ACTIVITY_LABEL } from '@renderer/features/workspace/paneActivity'
+import { useProjectAttention } from '@renderer/features/workspace/workspaceStore'
 import { projectColorVar } from './projectColor'
 import { useProjectsStore } from './projectsStore'
 import styles from './Sidebar.module.css'
 
 const SHORTCUT_LIMIT = 9
+
+/** The most urgent agent status in a project, e.g. "Needs you". */
+function ProjectAttention({ projectId }: { projectId: string }) {
+  const attention = useProjectAttention(projectId)
+  if (!attention) return null
+  return (
+    <ActivityIndicator
+      activity={attention}
+      label={ACTIVITY_LABEL[attention]}
+      className={styles.attention}
+    />
+  )
+}
 
 interface SidebarProps {
   onAddProject(): void
@@ -31,7 +47,10 @@ export function Sidebar({ onAddProject, onEditProject }: SidebarProps) {
                 style={{ background: projectColorVar(project.color) }}
                 aria-hidden
               />
-              <span className={styles.name}>{project.name}</span>
+              <span className={styles.label}>
+                <span className={styles.name}>{project.name}</span>
+                <ProjectAttention projectId={project.id} />
+              </span>
               {index < SHORTCUT_LIMIT && (
                 <kbd className={styles.shortcut} aria-hidden>
                   ⌘{index + 1}

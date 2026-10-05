@@ -1,3 +1,4 @@
+import type { AgentStatus } from './agentStatus'
 import type { AppCommand } from './commands'
 import type { ProjectAddRequest, ProjectUpdateRequest, TerminalCreateRequest } from './ipc/contract'
 import type { Project, ProjectId } from './project'
@@ -15,6 +16,8 @@ export interface DugoutApi {
     kill(id: TerminalId): void
     onData(listener: (id: TerminalId, data: string) => void): Unsubscribe
     onExit(listener: (id: TerminalId, exit: TerminalExit) => void): Unsubscribe
+    /** Status of Claude terminals, reported by Claude Code hooks. */
+    onAgentStatus(listener: (id: TerminalId, status: AgentStatus) => void): Unsubscribe
   }
   readonly projects: {
     list(): Promise<Result<readonly Project[]>>
