@@ -164,6 +164,16 @@ GitHub with the user's token — the agent never sees it. The hook settings pre-
 `mcp__dugout`. The first prompt is placed before `--mcp-config`, which takes a list. Providers
 are behind `TaskService`, so Jira or local storage can be added later.
 
+## 019 — "Needs you" inbox across projects (2026-10-06)
+
+Hooks for ready, needs-input and done forward their payload, and the hook server extracts a
+short detail (≤140 chars): "Tool: command/file" for permission requests, the notification
+message, or the first line of the agent's last message on Stop. The detail travels with the
+status (also used as the notification body); the renderer keeps `{ detail, since }` per pane.
+The title-bar Inbox (⇧⌘I) lists every agent pane in any project that needs you (first) or has
+an unseen Done, newest first; clicking one selects the project and focuses the pane. The list is
+derived (pure `inboxEntries`), not stored.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅

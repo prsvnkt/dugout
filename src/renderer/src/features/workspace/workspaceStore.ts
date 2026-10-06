@@ -41,7 +41,9 @@ interface WorkspaceState {
   closePane(projectId: ProjectId, paneId: PaneId): void
   closeFocusedPane(projectId: ProjectId): void
   focusPane(projectId: ProjectId, paneId: PaneId): void
-  setActivity(paneId: PaneId, activity: PaneActivity): void
+  /** What each agent pane is asking or finished, and since when (for the inbox). */
+  readonly details: Readonly<Record<PaneId, PaneDetail>>
+  setActivity(paneId: PaneId, activity: PaneActivity, detail?: string | null): void
   removeProject(projectId: ProjectId): void
   /** Where keyboard focus last was per project, so ⌘W closes a tab or a pane accordingly. */
   readonly focusedAreas: Readonly<Record<ProjectId, FocusArea>>
@@ -49,6 +51,12 @@ interface WorkspaceState {
 }
 
 export type FocusArea = 'editor' | 'terminal'
+
+export interface PaneDetail {
+  readonly detail: string | null
+  /** Epoch ms when the pane entered its current activity. */
+  readonly since: number
+}
 
 const createPaneId = () => crypto.randomUUID()
 
@@ -150,12 +158,20 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       const pane = get().layouts[projectId]?.panes.find((candidate) => candidate.id === paneId)
       if (pane) get().selectCheckout(projectId, pane.worktree?.path ?? null)
     },
-    setActivity: (paneId, activity) =>
-      set((state) =>
-        state.activities[paneId] === activity
-          ? state
-          : { activities: { ...state.activities, [paneId]: activity } },
-      ),
+    details: {},
+    setActivity: (paneId, activity, detail = null) =>
+      set((state) => {
+        const isNewActivity = state.activities[paneId] !== activity
+        const current = state.details[paneId]
+        if (!isNewActivity && current?.detail === detail) return state
+        const since = isNewActivity || !current ? Date.now() : current.since
+        return {
+          activities: isNewActivity
+            ? { ...state.activities, [paneId]: activity }
+            : state.activities,
+          details: { ...state.details, [paneId]: { detail, since } },
+        }
+      }),
     removeProject: (projectId) =>
       set((state) => {
         const paneIds = state.layouts[projectId]?.panes.map((pane) => pane.id) ?? []

@@ -42,11 +42,12 @@ describe('buildHookSettings', () => {
     expect(command).toMatch(/\|\| true$/)
   })
 
-  test('only the ready signal forwards the hook payload, which carries the session id', () => {
-    const ready = settings.hooks.SessionStart?.[0]?.hooks[0]?.command ?? ''
-    const done = settings.hooks.Stop?.[0]?.hooks[0]?.command ?? ''
-    expect(ready).toContain('--data-binary @-')
-    expect(done).not.toContain('--data-binary')
+  test('ready, needs-input and done forward the payload (session id, what is asked, summary)', () => {
+    const command = (event: string) => settings.hooks[event]?.[0]?.hooks[0]?.command ?? ''
+    expect(command('SessionStart')).toContain('--data-binary @-')
+    expect(command('PermissionRequest')).toContain('--data-binary @-')
+    expect(command('Stop')).toContain('--data-binary @-')
+    expect(command('PostToolUse')).not.toContain('--data-binary')
   })
 
   test("pre-approves Dugout's own task tools", () => {

@@ -7,6 +7,8 @@ export interface AgentStatusChange {
   readonly projectId: ProjectId
   /** Null once the terminal has exited. */
   readonly status: AgentStatus | null
+  /** Why it is waiting or what it finished, when the hook said. */
+  readonly detail?: string | undefined
 }
 
 export interface AgentNotification {
@@ -33,8 +35,9 @@ export class AgentNotifier {
   constructor(private readonly deps: AgentNotifierDeps) {}
 
   handle(change: AgentStatusChange): void {
-    const body = change.status ? MESSAGES[change.status] : undefined
-    if (!body || this.deps.isAppFocused()) return
+    const fallback = change.status ? MESSAGES[change.status] : undefined
+    if (!fallback || this.deps.isAppFocused()) return
+    const body = change.detail ?? fallback
 
     const title = this.deps.projectName(change.projectId) ?? FALLBACK_TITLE
     try {

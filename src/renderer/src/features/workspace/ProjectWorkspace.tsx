@@ -121,7 +121,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               shouldFocus={isActive && layout.focusedPaneId === pane.id}
               onFocus={() => focusPane(project.id, pane.id)}
               onClose={() => closePane(project.id, pane.id)}
-              onActivity={(activity) => setActivity(pane.id, activity)}
+              onActivity={(activity, detail) => setActivity(pane.id, activity, detail)}
               onTerminalId={(terminalId) => {
                 setTerminalId(pane.id, terminalId)
                 if (terminalId) clearInitialPrompt(project.id, pane.id)

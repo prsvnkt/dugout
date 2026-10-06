@@ -8,6 +8,7 @@ export type AppCommand =
   | { readonly type: 'project.select'; readonly index: number }
   | { readonly type: 'git.togglePanel' }
   | { readonly type: 'explorer.toggle' }
+  | { readonly type: 'inbox.toggle' }
   | { readonly type: 'editor.save' }
   | { readonly type: 'editor.saveAll' }
   /** Show the pane running this terminal, e.g. after clicking a notification. */

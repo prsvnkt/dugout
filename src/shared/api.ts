@@ -32,7 +32,10 @@ export interface DugoutApi {
     onData(listener: (id: TerminalId, data: string) => void): Unsubscribe
     onExit(listener: (id: TerminalId, exit: TerminalExit) => void): Unsubscribe
     /** Status of Claude terminals, reported by Claude Code hooks. */
-    onAgentStatus(listener: (id: TerminalId, status: AgentStatus) => void): Unsubscribe
+    /** `detail`: why the agent is waiting or what it finished, when known. */
+    onAgentStatus(
+      listener: (id: TerminalId, status: AgentStatus, detail?: string) => void,
+    ): Unsubscribe
     /** Claude session ids, used to resume conversations after a restart. */
     onAgentSession(listener: (id: TerminalId, sessionId: string) => void): Unsubscribe
   }

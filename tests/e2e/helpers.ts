@@ -97,11 +97,11 @@ const { hooks } = JSON.parse(readFileSync(argValue('--settings'), 'utf8'))
 const resumed = argValue('--resume')
 const sessionId = resumed ?? 'fake-session-' + process.pid
 
-function fire(event, matchValue) {
+function fire(event, matchValue, extra = {}) {
   for (const group of hooks[event] ?? []) {
     if (group.matcher && !group.matcher.split('|').includes(matchValue)) continue
     for (const hook of group.hooks) {
-      const input = JSON.stringify({ hook_event_name: event, session_id: sessionId })
+      const input = JSON.stringify({ hook_event_name: event, session_id: sessionId, ...extra })
       spawnSync('bash', ['-c', hook.command], { input, stdio: ['pipe', 'ignore', 'ignore'] })
     }
   }
@@ -109,11 +109,12 @@ function fire(event, matchValue) {
 
 const actions = {
   prompt: () => fire('UserPromptSubmit'),
-  ask: () => fire('PermissionRequest'),
+  ask: () => fire('PermissionRequest', undefined, { tool_name: 'Bash', tool_input: { command: 'npm install' } }),
   tool: () => fire('PostToolUse', 'Bash'),
   'notify-idle': () => fire('Notification', 'idle_prompt'),
-  stop: () => fire('Stop'),
-  'stop-later': () => setTimeout(() => fire('Stop'), 2500),
+  stop: () => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }),
+  'stop-later': () =>
+    setTimeout(() => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }), 2500),
   exit: () => process.exit(0),
   'agent-comment': () =>
     void callDugoutTool('comment_on_task', { number: 1, body: 'Progress from the agent' }),

@@ -71,6 +71,11 @@ export function buildMenuTemplate(
       label: 'View',
       submenu: [
         {
+          label: 'Show Inbox',
+          accelerator: 'CmdOrCtrl+Shift+I',
+          click: () => send({ type: 'inbox.toggle' }),
+        },
+        {
           label: 'Toggle Explorer',
           accelerator: 'CmdOrCtrl+B',
           click: () => send({ type: 'explorer.toggle' }),

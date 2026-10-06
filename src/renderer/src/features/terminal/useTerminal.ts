@@ -17,6 +17,8 @@ export interface TerminalHandle {
   readonly status: TerminalStatus
   /** Claude terminals only; null for shells or before the first hook fires. */
   readonly agentStatus: AgentStatus | null
+  /** Why the agent is waiting or what it finished (from its hooks), if known. */
+  readonly agentDetail: string | null
   /** The main-process terminal id, once the PTY has started. */
   readonly terminalId: string | null
   /** The Claude session id reported by hooks (Claude terminals only). */
@@ -61,6 +63,7 @@ export function useTerminal(
 ): TerminalHandle {
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
+  const [agentDetail, setAgentDetail] = useState<string | null>(null)
   const [connectedId, setConnectedId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const resumeRef = useRef(resumeSessionId)
@@ -95,8 +98,10 @@ export function useTerminal(
         dugout.terminal.onExit((sourceId, exit) => {
           if (sourceId === id) setStatus({ state: 'exited', exit })
         }),
-        dugout.terminal.onAgentStatus((sourceId, next) => {
-          if (sourceId === id) setAgentStatus(next)
+        dugout.terminal.onAgentStatus((sourceId, next, detail) => {
+          if (sourceId !== id) return
+          setAgentStatus(next)
+          setAgentDetail(detail ?? null)
         }),
         dugout.terminal.onAgentSession((sourceId, next) => {
           if (sourceId === id) setSessionId(next)
@@ -154,5 +159,5 @@ export function useTerminal(
   }, [containerRef, kind, projectId, cwd])
 
   const focus = useCallback(() => terminalRef.current?.focus(), [])
-  return { status, agentStatus, terminalId: connectedId, sessionId, focus }
+  return { status, agentStatus, agentDetail, terminalId: connectedId, sessionId, focus }
 }

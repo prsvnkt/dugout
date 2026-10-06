@@ -85,3 +85,26 @@ test('a turn that finishes in a background project shows as Done until viewed', 
   await expect(paneHeader()).toContainText('Ready')
   await expect(sidebarItem('alpha')).not.toContainText('Done')
 })
+
+test('the inbox lists agents that need you across projects and jumps to them', async () => {
+  // Arrange: an agent in alpha asks for approval, then we switch to beta
+  await addProject('alpha')
+  await clickMenuItem(app, 'File', 'New Claude Pane')
+  await expect(paneHeader()).toContainText('Ready')
+  await send('ask')
+  await expect(paneHeader()).toContainText('Needs you')
+  await addProject('beta')
+  await expect(page.getByRole('contentinfo')).toContainText('beta')
+
+  // Act
+  const inboxButton = page.getByRole('banner').getByRole('button', { name: /^Inbox, 1 need you/ })
+  await inboxButton.click()
+  const inbox = page.getByRole('dialog', { name: 'Inbox' })
+  await expect(inbox.getByRole('region', { name: 'Needs you' })).toContainText('Bash: npm install')
+  await inbox.getByRole('button', { name: /alpha · Claude: Bash: npm install/ }).click()
+
+  // Assert: back in alpha, focused on that agent
+  await expect(inbox).toBeHidden()
+  await expect(page.getByRole('contentinfo')).toContainText('alpha')
+  await expect(paneHeader()).toContainText('Needs you')
+})

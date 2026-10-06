@@ -7,6 +7,47 @@ import { sessionIdSchema } from '@shared/ipc/contract'
 /** Details a hook payload may carry along with its signal. */
 export interface HookDetails {
   readonly sessionId?: string
+  /** Why the agent is waiting, or what it just finished; short, for the inbox. */
+  readonly detail?: string
+}
+
+const MAX_DETAIL_LENGTH = 140
+
+interface HookPayload {
+  session_id?: unknown
+  hook_event_name?: unknown
+  tool_name?: unknown
+  tool_input?: { command?: unknown; file_path?: unknown; url?: unknown } | null
+  message?: unknown
+  last_assistant_message?: unknown
+}
+
+function shorten(text: string): string {
+  const line = text.trim().split('\n')[0]?.trim() ?? ''
+  return line.length > MAX_DETAIL_LENGTH ? `${line.slice(0, MAX_DETAIL_LENGTH - 1)}…` : line
+}
+
+/** "Bash: npm install", "Edit: src/a.ts", a notification message, or the last reply's first line. */
+function detailOf(payload: HookPayload): string | undefined {
+  const asText = (value: unknown) => (typeof value === 'string' && value.trim() ? value : undefined)
+  switch (payload.hook_event_name) {
+    case 'PermissionRequest': {
+      const tool = asText(payload.tool_name)
+      const input = payload.tool_input
+      const target = asText(input?.command) ?? asText(input?.file_path) ?? asText(input?.url)
+      return tool ? shorten(target ? `${tool}: ${target}` : tool) : undefined
+    }
+    case 'Notification': {
+      const message = asText(payload.message)
+      return message && shorten(message)
+    }
+    case 'Stop': {
+      const message = asText(payload.last_assistant_message)
+      return message && shorten(message)
+    }
+    default:
+      return undefined
+  }
 }
 
 export interface HookServerDeps {
@@ -113,10 +154,13 @@ export class HookServer {
 function parseDetails(body: string): HookDetails {
   if (!body) return {}
   try {
-    const payload: unknown = JSON.parse(body)
-    const id = (payload as { session_id?: unknown } | null)?.session_id
-    const parsed = sessionIdSchema.safeParse(id)
-    return parsed.success ? { sessionId: parsed.data } : {}
+    const payload = (JSON.parse(body) ?? {}) as HookPayload
+    const sessionId = sessionIdSchema.safeParse(payload.session_id)
+    const detail = detailOf(payload)
+    return {
+      ...(sessionId.success && { sessionId: sessionId.data }),
+      ...(detail && { detail }),
+    }
   } catch {
     return {}
   }

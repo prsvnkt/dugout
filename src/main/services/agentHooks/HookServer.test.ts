@@ -69,6 +69,43 @@ describe('HookServer', () => {
     ])
   })
 
+  test.each([
+    [
+      {
+        hook_event_name: 'PermissionRequest',
+        tool_name: 'Bash',
+        tool_input: { command: 'npm install' },
+      },
+      'Bash: npm install',
+    ],
+    [
+      {
+        hook_event_name: 'PermissionRequest',
+        tool_name: 'Edit',
+        tool_input: { file_path: '/repo/src/a.ts' },
+      },
+      'Edit: /repo/src/a.ts',
+    ],
+    [
+      { hook_event_name: 'Notification', message: 'Claude needs your permission to use Bash' },
+      'Claude needs your permission to use Bash',
+    ],
+    [
+      { hook_event_name: 'Stop', last_assistant_message: 'Fixed the login timeout.\n\nDetails…' },
+      'Fixed the login timeout.',
+    ],
+  ])('extracts a short detail from %o', async (payload, detail) => {
+    await post(socketPath, '/hooks/t/done', TOKEN, JSON.stringify(payload))
+    expect(onSignal).toHaveBeenCalledWith('t', 'done', { detail })
+  })
+
+  test('truncates long details', async () => {
+    const payload = { hook_event_name: 'Stop', last_assistant_message: 'x'.repeat(500) }
+    await post(socketPath, '/hooks/t/done', TOKEN, JSON.stringify(payload))
+    const details = onSignal.mock.calls[0]?.[2] as { detail: string }
+    expect(details.detail.length).toBeLessThanOrEqual(140)
+  })
+
   test('rejects oversized payloads', async () => {
     const huge = 'x'.repeat(200 * 1024)
     expect(await post(socketPath, '/hooks/t/ready', TOKEN, huge)).toBe(413)

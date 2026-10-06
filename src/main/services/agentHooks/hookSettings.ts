@@ -46,8 +46,11 @@ const ALLOWED_TOOLS = ['mcp__dugout']
  * A shell command that tells the app about `signal`. It is a no-op outside Dugout terminals,
  * runs async, times out quickly and always succeeds, so it can never disturb Claude.
  */
-/** The ready signal forwards the hook's JSON payload (stdin), which carries the session id. */
-const FORWARDS_PAYLOAD: ReadonlySet<HookSignal> = new Set(['ready'])
+/**
+ * Signals that forward the hook's JSON payload (stdin): the session id (ready), what the agent
+ * is asking (needs-input) and its last message (done). Frequent ones (working) send nothing.
+ */
+const FORWARDS_PAYLOAD: ReadonlySet<HookSignal> = new Set(['ready', 'needs-input', 'done'])
 
 function signalCommand(signal: HookSignal): string {
   return [

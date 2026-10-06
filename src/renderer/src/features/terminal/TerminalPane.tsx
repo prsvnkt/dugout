@@ -29,7 +29,7 @@ interface TerminalPaneProps {
   readonly task?: { number: number; title: string } | undefined
   onFocus(): void
   onClose(): void
-  onActivity(activity: PaneActivity): void
+  onActivity(activity: PaneActivity, detail: string | null): void
   onTerminalId(terminalId: string | null): void
   onSessionId(sessionId: string): void
   /** `isFresh` when resuming failed (Claude exited before it was ready). */
@@ -49,13 +49,16 @@ export function TerminalPane(props: TerminalPaneProps) {
   const { resumeSessionId, initialPrompt, task } = props
   const { onFocus, onClose, onActivity, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
-  const { status, agentStatus, terminalId, sessionId, focus } = useTerminal(containerRef, {
-    kind,
-    projectId,
-    cwd,
-    resumeSessionId,
-    initialPrompt,
-  })
+  const { status, agentStatus, agentDetail, terminalId, sessionId, focus } = useTerminal(
+    containerRef,
+    {
+      kind,
+      projectId,
+      cwd,
+      resumeSessionId,
+      initialPrompt,
+    },
+  )
   const canRestart = status.state === 'exited' || status.state === 'error'
   // If Claude never got ready, resuming failed (e.g. the session no longer exists).
   const neverReady = kind === 'claude' && (agentStatus === null || agentStatus === 'starting')
@@ -66,7 +69,7 @@ export function TerminalPane(props: TerminalPaneProps) {
     if (shouldFocus) focus()
   }, [shouldFocus, focus])
 
-  useEffect(() => onActivity(activity), [activity, onActivity])
+  useEffect(() => onActivity(activity, agentDetail), [activity, agentDetail, onActivity])
   useEffect(() => onTerminalId(terminalId), [terminalId, onTerminalId])
   useEffect(() => {
     if (sessionId) onSessionId(sessionId)

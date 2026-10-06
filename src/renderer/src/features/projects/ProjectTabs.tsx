@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { Project } from '@shared/project'
 import { AccountButton } from '@renderer/features/github/AccountButton'
+import { InboxButton } from '@renderer/features/inbox/InboxButton'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
 import { ACTIVITY_LABEL } from '@renderer/features/workspace/paneActivity'
 import { useProjectAttention } from '@renderer/features/workspace/workspaceStore'
@@ -120,6 +121,7 @@ export function ProjectTabs({ onAddProject, onCloneProject, onEditProject }: Pro
         <NewProjectMenu onAddProject={onAddProject} onCloneProject={onCloneProject} />
       </nav>
       <div className={styles.end}>
+        <InboxButton />
         <AccountButton />
       </div>
     </header>

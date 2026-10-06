@@ -10,7 +10,7 @@ import { buildLaunchSpec, buildTerminalEnv, resolveShell, type Env } from './lau
 export interface TerminalEvents {
   onData(id: TerminalId, data: string): void
   onExit(id: TerminalId, exit: TerminalExit): void
-  onAgentStatus?(id: TerminalId, status: AgentStatus): void
+  onAgentStatus?(id: TerminalId, status: AgentStatus, detail?: string): void
   /** The Claude session id, reported when it starts or changes (e.g. after /clear). */
   onAgentSession?(id: TerminalId, sessionId: string): void
 }
@@ -36,6 +36,8 @@ interface ManagedTerminal {
   readonly hasConversation: boolean
   /** Last session id reported to the renderer (or the one it resumed). */
   readonly reportedSessionId: string | null
+  /** The detail that came with the latest status. */
+  readonly detail: string | null
 }
 
 const DEFAULT_CLAUDE_COMMAND = 'claude'
@@ -108,6 +110,7 @@ export class TerminalManager {
       sessionId: null,
       hasConversation: request.resumeSessionId !== undefined,
       reportedSessionId: request.resumeSessionId ?? null,
+      detail: null,
     })
     return id
   }
@@ -147,18 +150,23 @@ export class TerminalManager {
     const terminal = this.terminals.get(id)
     if (!terminal || terminal.agentStatus === null) return false
 
-    const next = nextAgentState(terminal, SIGNAL_STATUS[signal], details.sessionId)
+    const next = {
+      ...nextAgentState(terminal, SIGNAL_STATUS[signal], details.sessionId),
+      detail: details.detail ?? null,
+    }
     this.terminals.set(id, next)
 
     if (next.reportedSessionId !== terminal.reportedSessionId && next.reportedSessionId) {
       terminal.events.onAgentSession?.(id, next.reportedSessionId)
     }
-    if (next.agentStatus !== terminal.agentStatus && next.agentStatus) {
-      terminal.events.onAgentStatus?.(id, next.agentStatus)
+    const isNewDetail = details.detail !== undefined && details.detail !== terminal.detail
+    if ((next.agentStatus !== terminal.agentStatus || isNewDetail) && next.agentStatus) {
+      terminal.events.onAgentStatus?.(id, next.agentStatus, details.detail)
       this.deps.onAgentStatusChange?.({
         terminalId: id,
         projectId: terminal.projectId,
         status: next.agentStatus,
+        ...(details.detail && { detail: details.detail }),
       })
     }
     return true

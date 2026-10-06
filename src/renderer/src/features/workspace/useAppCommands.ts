@@ -6,6 +6,7 @@ import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { checkoutOf, fileKeyOf } from '@renderer/features/editor/fileKey'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
+import { useInboxStore } from '@renderer/features/inbox/inboxStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { useWorkspaceStore } from './workspaceStore'
 
@@ -55,6 +56,9 @@ export function useAppCommands(onAddProject: () => void, onCloneProject: () => v
         }
         case 'editor.saveAll':
           if (selectedId) void useEditorStore.getState().saveAll(selectedId)
+          return
+        case 'inbox.toggle':
+          useInboxStore.getState().toggle()
           return
         case 'explorer.toggle':
           useExplorerStore.getState().toggleOpen()

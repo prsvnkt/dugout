@@ -199,7 +199,7 @@ describe('TerminalManager agent status', () => {
     manager.applyHookSignal(id, 'working')
     manager.applyHookSignal(id, 'needs-input')
 
-    expect(events.onAgentStatus.mock.calls).toEqual([
+    expect(events.onAgentStatus.mock.calls.map((call) => call.slice(0, 2))).toEqual([
       [id, 'idle'],
       [id, 'working'],
       [id, 'needs-input'],
@@ -373,5 +373,19 @@ describe('TerminalManager task sessions', () => {
     const id = manager.create(request, { onData: vi.fn(), onExit: vi.fn() })
     expect(manager.projectOf(id)).toBe('proj-1')
     expect(manager.projectOf('missing')).toBeNull()
+  })
+})
+
+describe('TerminalManager status details', () => {
+  test('passes what the agent is asking or reporting along with the status', () => {
+    const { manager, events, onAgentStatusChange } = setupWithHooks()
+    const id = manager.create(request, events)
+
+    manager.applyHookSignal(id, 'needs-input', { detail: 'Bash: npm install' })
+
+    expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm install')
+    expect(onAgentStatusChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'needs-input', detail: 'Bash: npm install' }),
+    )
   })
 })
