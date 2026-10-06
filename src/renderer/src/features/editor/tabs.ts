@@ -1,6 +1,6 @@
 import type { CompareTarget } from '@shared/compare'
 
-export type EditorTabKind = 'file' | 'diff' | 'compare'
+export type EditorTabKind = 'file' | 'diff' | 'compare' | 'agent-settings'
 
 export interface EditorTab {
   readonly id: string

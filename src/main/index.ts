@@ -5,7 +5,9 @@ import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
 import { taskRpcSchemas } from '@shared/ipc/contract'
 import { registerCloneIpc } from './ipc/registerCloneIpc'
+import { registerAgentConfigIpc } from './ipc/registerAgentConfigIpc'
 import { registerCompareIpc } from './ipc/registerCompareIpc'
+import { AgentConfigService } from './services/agentConfig/AgentConfigService'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
 import { registerFileIpc } from './ipc/registerFileIpc'
 import { registerGitHubIpc } from './ipc/registerGitHubIpc'
@@ -280,6 +282,7 @@ async function start(): Promise<void> {
   })
   registerWorktreeIpc(projectStore, worktrees)
   registerCompareIpc(projectStore, worktrees, git)
+  registerAgentConfigIpc(projectStore, new AgentConfigService())
   registerGitHubIpc({
     auth: githubAuth,
     api: githubApi,

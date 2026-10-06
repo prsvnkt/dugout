@@ -243,3 +243,39 @@ export const compareChangesRequestSchema = z.object({
   projectId,
   worktreePaths: z.array(absolutePath).min(2).max(4),
 })
+
+const mcpRecord = z.record(z.string().min(1).max(256), z.string().max(4096))
+const mcpServerName = z.string().min(1).max(128)
+export const mcpServerSchema = z.discriminatedUnion('type', [
+  z.object({
+    name: mcpServerName,
+    type: z.literal('stdio'),
+    command: z.string().trim().min(1).max(4096),
+    args: z.array(z.string().max(4096)).max(100),
+    env: mcpRecord,
+  }),
+  z.object({
+    name: mcpServerName,
+    type: z.enum(['http', 'sse']),
+    url: z
+      .string()
+      .max(4096)
+      .refine(
+        (value) => /^https?:\/\//.test(value) || value.startsWith('${'),
+        'Use an http(s) URL.',
+      ),
+    headers: mcpRecord,
+  }),
+])
+export const agentConfigRequestSchema = z.object({ projectId })
+export const agentConfigSaveMcpRequestSchema = z.object({
+  projectId,
+  version: z.string().max(128),
+  servers: z
+    .array(mcpServerSchema)
+    .max(100)
+    .refine(
+      (servers) => new Set(servers.map((s) => s.name)).size === servers.length,
+      'Server names must be unique.',
+    ),
+})

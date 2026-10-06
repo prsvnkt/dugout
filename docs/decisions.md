@@ -201,6 +201,25 @@ left the base branch (`GitService.changesSince`: merge-base diff plus untracked 
 files as one agent's or both, and diffs the two versions read-only. You pick a winner with the
 usual Create PR; nothing is merged automatically.
 
+## 022 — Agent settings: .mcp.json servers and AGENTS.md as the shared instructions (2026-10-06)
+
+An "Agent settings" tab (View → Agent Settings, ⇧⌘,) edits the project's `.mcp.json` at the main
+checkout. Only the fields Dugout shows are checked and rewritten; unknown fields on the file and on
+each server are kept, writes are atomic, and a save is refused if the file changed since it was
+read. Values that look like secrets written out in full get a warning (the file is usually
+committed; use `${VAR}`). Claude Code keeps loading `.mcp.json` itself. Codex panes get the same
+servers as `-c mcp_servers.<name>=…`, read from the pane's checkout when it starts. Codex does not
+expand `${VAR}`, so a `${KEY}` env entry becomes `env_vars`, `Authorization: Bearer ${VAR}` becomes
+`bearer_token_env_var`, and a whole-value `${VAR}` header becomes `env_http_headers`; servers that
+need anything else (SSE, `${VAR}` inside a command, URL or longer value) stay Claude-only, and the
+tab says why. Values are never expanded into Codex's arguments, so no secret reaches a process
+list. There is no per-project "share with Codex" switch; sharing what Codex can run is the point
+(add one if a project needs it).
+
+"Make AGENTS.md the source" moves CLAUDE.md into a new AGENTS.md (or keeps an existing one) and
+leaves CLAUDE.md as an `@AGENTS.md` import (`@../AGENTS.md` from `.claude/CLAUDE.md`) plus a
+Claude-only section, so both agents follow one set of instructions.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -212,4 +231,4 @@ usual Create PR; nothing is merged automatically.
 4. **Done since:** explorer + center editor ✅, GitHub sign-in ✅, clone ✅.
 5. **Done since:** tasks from GitHub Issues ✅, "needs you" inbox ✅, PR/CI status ✅,
    Codex adapter with Compare ✅.
-6. **Later:** per-project MCP config editor with AGENTS.md as the shared instructions.
+6. **Done since:** agent settings (`.mcp.json` editor, AGENTS.md as shared instructions) ✅.

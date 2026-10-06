@@ -57,6 +57,8 @@ interface EditorState {
   openDiff(projectId: ProjectId, worktreePath: string | null, path: string, staged: boolean): void
   /** Opens (or focuses) a Compare tab for two worktrees, e.g. two agents on one task. */
   openCompare(projectId: ProjectId, key: string, target: CompareTarget): void
+  /** Opens (or focuses) the project's Agent settings tab. */
+  openAgentSettings(projectId: ProjectId): void
   activate(projectId: ProjectId, tabId: string): void
   pin(projectId: ProjectId, tabId: string): void
   /** Closes a tab, or asks first when its file has unsaved changes. */
@@ -212,6 +214,17 @@ export const useEditorStore = create<EditorState>()((set, get) => {
         staged: false,
         worktreePath: null,
         compare: target,
+      }
+      setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
+    },
+
+    openAgentSettings(projectId) {
+      const tab = {
+        id: 'agent-settings',
+        kind: 'agent-settings' as const,
+        path: 'Agent settings',
+        staged: false,
+        worktreePath: null,
       }
       setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
     },

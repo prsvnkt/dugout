@@ -57,6 +57,9 @@ export function useAppCommands(onAddProject: () => void, onCloneProject: () => v
         case 'editor.saveAll':
           if (selectedId) void useEditorStore.getState().saveAll(selectedId)
           return
+        case 'agentSettings.open':
+          if (selectedId) useEditorStore.getState().openAgentSettings(selectedId)
+          return
         case 'inbox.toggle':
           useInboxStore.getState().toggle()
           return

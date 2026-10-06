@@ -56,5 +56,8 @@ export const IpcChannel = {
   tasksOpen: 'tasks:open',
   tasksStartSession: 'tasks:start-session',
   compareChanges: 'compare:changes',
+  agentConfigRead: 'agent-config:read',
+  agentConfigSaveMcp: 'agent-config:save-mcp',
+  agentConfigLinkInstructions: 'agent-config:link-instructions',
   appCommand: 'app:command',
 } as const

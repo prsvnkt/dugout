@@ -10,6 +10,7 @@ import { useProjectTabs } from '@renderer/features/editor/editorStore'
 import { ExplorerPanel } from '@renderer/features/explorer/ExplorerPanel'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { WorktreeError } from '@renderer/features/worktrees/WorktreeError'
+import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { MAX_PANES_PER_PROJECT } from './layout'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
@@ -66,6 +67,7 @@ function TerminalsHeader({
 }) {
   const layout = useProjectLayout(project.id)
   const startWorktreeSession = useWorktreeStore((state) => state.startSession)
+  const openAgentSettings = useEditorStore((state) => state.openAgentSettings)
   const canAddPane = layout.panes.length < MAX_PANES_PER_PROJECT
   return (
     <div className={styles.terminalsHeader}>
@@ -86,6 +88,12 @@ function TerminalsHeader({
         </button>
         <button disabled={!canAddPane} onClick={() => onAdd('shell')} title="New shell (⇧⌘T)">
           + Shell
+        </button>
+        <button
+          onClick={() => openAgentSettings(project.id)}
+          title="MCP servers and agent instructions for this project (⇧⌘,)"
+        >
+          Agent settings
         </button>
       </div>
     </div>

@@ -16,7 +16,7 @@ export interface McpServerEntry {
   readonly env: Readonly<Record<string, string>>
 }
 
-type TomlValue =
+export type TomlValue =
   string | number | boolean | readonly TomlValue[] | { readonly [key: string]: TomlValue }
 
 const BARE_KEY = /^[A-Za-z0-9_-]+$/

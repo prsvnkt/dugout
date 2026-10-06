@@ -73,7 +73,7 @@ export class TerminalManager {
     const isResuming = hooks !== undefined && request.resumeSessionId !== undefined
     const initialPrompt = hooks && !isResuming ? request.initialPrompt : undefined
     const mcpConfigPath = isCodex ? undefined : hooks?.writeMcpConfig?.(id)
-    const codexOverrides = isCodex ? (hooks?.codexOverrides?.(id) ?? []) : []
+    const codexOverrides = isCodex ? (hooks?.codexOverrides?.(id, request.cwd) ?? []) : []
     const launch = buildLaunchSpec(request.kind, resolveShell(this.deps.env), {
       hasAgentHooks: hooks !== undefined,
       isResuming,

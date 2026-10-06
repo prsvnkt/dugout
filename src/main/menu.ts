@@ -81,6 +81,11 @@ export function buildMenuTemplate(
           click: () => send({ type: 'inbox.toggle' }),
         },
         {
+          label: 'Agent Settings',
+          accelerator: 'CmdOrCtrl+Shift+,',
+          click: () => send({ type: 'agentSettings.open' }),
+        },
+        {
           label: 'Toggle Explorer',
           accelerator: 'CmdOrCtrl+B',
           click: () => send({ type: 'explorer.toggle' }),

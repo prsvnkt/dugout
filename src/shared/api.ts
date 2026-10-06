@@ -1,4 +1,5 @@
 import type { AgentStatus } from './agentStatus'
+import type { AgentConfig, McpServer } from './agentConfig'
 import type { CloneDefaults, CloneProgress } from './clone'
 import type { WorktreeChanges } from './compare'
 import type { AppCommand } from './commands'
@@ -132,6 +133,16 @@ export interface DugoutApi {
       projectId: ProjectId,
       worktreePaths: readonly string[],
     ): Promise<Result<readonly WorktreeChanges[]>>
+  }
+  /** A project's MCP servers (`.mcp.json`) and agent instructions (AGENTS.md / CLAUDE.md). */
+  readonly agentConfig: {
+    read(projectId: ProjectId): Promise<Result<AgentConfig>>
+    saveMcp(
+      projectId: ProjectId,
+      servers: readonly McpServer[],
+      version: string,
+    ): Promise<Result<void>>
+    linkInstructions(projectId: ProjectId): Promise<Result<void>>
   }
   /** Saved panes per project, restored on launch. */
   readonly workspace: {

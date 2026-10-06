@@ -117,6 +117,8 @@ const hooks = Object.fromEntries(
     .map(([key, value]) => [key.slice('hooks.'.length), value]),
 )
 const dugoutServer = () => overrides['mcp_servers.dugout']
+const mcpNames = Object.keys(overrides).filter((key) => key.startsWith('mcp_servers.'))
+process.stdout.write('mcp=' + mcpNames.map((key) => key.slice('mcp_servers.'.length)).join(',') + '\r\n')
 `
 
 /**

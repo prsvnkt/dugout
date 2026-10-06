@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import type { ProjectId } from '@shared/project'
 import { splitPath } from '@renderer/features/git/changeKind'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
+import { AgentSettingsView } from '@renderer/features/agentConfig/AgentSettingsView'
 import { CompareView } from '@renderer/features/compare/CompareView'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
 import { checkoutOf, fileKeyOf } from './fileKey'
@@ -11,7 +12,7 @@ import styles from './EditorArea.module.css'
 const EditorSurface = lazy(() => import('./monaco/EditorSurface'))
 
 function tabLabel(tab: EditorTab): string {
-  if (tab.kind === 'compare') return tab.path
+  if (tab.kind === 'compare' || tab.kind === 'agent-settings') return tab.path
   const { name } = splitPath(tab.path)
   if (tab.kind === 'file') return name
   return `${name} (${tab.staged ? 'staged' : 'changes'})`
@@ -79,10 +80,11 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
   const active = tabs.find((tab) => tab.id === activeTabId)
   if (!active) return null
   const isCompare = active.kind === 'compare'
+  const isAgentSettings = active.kind === 'agent-settings'
   const fileKey = fileKeyOf(checkoutOf(projectId, active.worktreePath), active.path)
   const buffer = buffers[fileKey]
   const pendingTab = tabs.find((tab) => tab.id === pendingClose)
-  const needsBuffer = !isCompare && (active.kind === 'file' || !active.staged)
+  const needsBuffer = !isCompare && !isAgentSettings && (active.kind === 'file' || !active.staged)
   const isEditable = buffer && !buffer.error && !buffer.isBinary && !buffer.isTooLarge
 
   return (
@@ -137,7 +139,9 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
       </div>
       {pendingTab && <ClosePrompt projectId={projectId} path={pendingTab.path} />}
       {buffer && needsBuffer && <DiskBanner buffer={buffer} />}
-      {isCompare && active.compare ? (
+      {isAgentSettings ? (
+        <AgentSettingsView projectId={projectId} />
+      ) : isCompare && active.compare ? (
         <CompareView projectId={projectId} tabId={active.id} target={active.compare} />
       ) : needsBuffer && !isEditable ? (
         <Notice buffer={buffer} />

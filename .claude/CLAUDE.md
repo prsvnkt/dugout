@@ -35,10 +35,11 @@ src/
   main/       Electron main process (Node). Owns PTYs, git, filesystem, dialogs.
     ipc/        One register*Ipc.ts per domain. Validates every payload with zod.
     services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
-                git/ (review panel, PR URLs), agentHooks/ (Claude status + session ids),
+                git/ (review panel, PR URLs), agentHooks/ (Claude + Codex status, session ids),
                 worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API),
-                settings/ (small app preferences), tasks/ (GitHub Issues as tasks).
+                settings/ (small app preferences), tasks/ (GitHub Issues as tasks),
+                agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions).
     mcp/        The "dugout" MCP server agents use for tasks (separate build entry: mcp.js).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.

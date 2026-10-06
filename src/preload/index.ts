@@ -86,6 +86,13 @@ const api: DugoutApi = {
     startSession: (projectId, number, agents) =>
       ipcRenderer.invoke(IpcChannel.tasksStartSession, { projectId, number, agents }),
   },
+  agentConfig: {
+    read: (projectId) => ipcRenderer.invoke(IpcChannel.agentConfigRead, { projectId }),
+    saveMcp: (projectId, servers, version) =>
+      ipcRenderer.invoke(IpcChannel.agentConfigSaveMcp, { projectId, servers, version }),
+    linkInstructions: (projectId) =>
+      ipcRenderer.invoke(IpcChannel.agentConfigLinkInstructions, { projectId }),
+  },
   compare: {
     changes: (projectId, worktreePaths) =>
       ipcRenderer.invoke(IpcChannel.compareChanges, { projectId, worktreePaths }),

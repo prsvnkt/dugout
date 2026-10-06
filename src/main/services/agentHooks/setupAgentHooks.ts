@@ -6,6 +6,7 @@ import type { HookSignal } from '@shared/agentStatus'
 import type { HookDetails, HookServerDeps } from './HookServer'
 import { writeFileAtomic } from '../projects/atomicWrite'
 import { HookServer } from './HookServer'
+import { codexProjectServerOverrides } from '../agentConfig/AgentConfigService'
 import { codexConfigOverrides } from './codexConfig'
 import { buildHookSettings } from './hookSettings'
 
@@ -18,7 +19,7 @@ export interface AgentHooksConfig {
   readonly writeMcpConfig?: (terminalId: string) => string
   readonly removeMcpConfig?: (terminalId: string) => void
   /** Codex `-c` overrides for a terminal: status hooks plus the dugout MCP server. */
-  readonly codexOverrides?: (terminalId: string) => string[]
+  readonly codexOverrides?: (terminalId: string, cwd: string) => string[]
   readonly codexCommand?: string | undefined
 }
 
@@ -126,10 +127,12 @@ export async function setupAgentHooks(options: {
       ...(mcp && { writeMcpConfig: mcp.write, removeMcpConfig: mcp.remove }),
       codexCommand: options.codexCommand,
       ...(options.mcpServer && {
-        codexOverrides: (terminalId: string) =>
-          codexConfigOverrides(
+        codexOverrides: (terminalId: string, cwd: string) => [
+          ...codexConfigOverrides(
             mcpServerEntry(options.mcpServer as McpServerLaunch, socketPath, token, terminalId),
           ),
+          ...codexProjectServerOverrides(cwd),
+        ],
       }),
     },
     close: () => server.close(),
