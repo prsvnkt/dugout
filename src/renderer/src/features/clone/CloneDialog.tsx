@@ -2,7 +2,11 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { CloneProgress } from '@shared/clone'
 import type { GitHubRepo } from '@shared/github'
 import { nextProjectColor } from '@shared/project'
-import { isAuthError, useAuthStore } from '@renderer/features/github/authStore'
+import {
+  isAuthError,
+  isSignedIn as isSignedInState,
+  useAuthStore,
+} from '@renderer/features/github/authStore'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { dugout } from '@renderer/lib/dugout'
 import { folderNameFromUrl } from './folderName'
@@ -16,7 +20,7 @@ function RepoList({ onPick, picked }: { onPick(repo: GitHubRepo): void; picked: 
   const [repos, setRepos] = useState<readonly GitHubRepo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const isSignedIn = auth.status === 'signed-in'
+  const isSignedIn = isSignedInState(auth)
 
   useEffect(() => {
     if (!isSignedIn) return

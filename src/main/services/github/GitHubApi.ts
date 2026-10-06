@@ -12,6 +12,29 @@ export class GitHubUnauthorizedError extends Error {
   }
 }
 
+/** GitHub could not be reached (offline, DNS, timeout) or answered with a server error. */
+export class GitHubUnavailableError extends Error {
+  override readonly name = 'GitHubUnavailableError'
+  constructor() {
+    super('Can’t reach GitHub right now.')
+  }
+}
+
+const SERVER_ERROR = 500
+
+/** fetch, with network failures and GitHub 5xx responses reported as GitHubUnavailableError. */
+export async function fetchGitHub(
+  fetchImpl: typeof globalThis.fetch,
+  url: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const response = await fetchImpl(url, init).catch(() => {
+    throw new GitHubUnavailableError()
+  })
+  if (response.status >= SERVER_ERROR) throw new GitHubUnavailableError()
+  return response
+}
+
 const PAGE_SIZE = 100
 const MAX_PAGES = 5
 
@@ -55,7 +78,7 @@ export class GitHubApi {
   }
 
   private async get<T>(path: string, token: string): Promise<T> {
-    const response = await this.deps.fetch(`${this.deps.apiBaseUrl}${path}`, {
+    const response = await fetchGitHub(this.deps.fetch, `${this.deps.apiBaseUrl}${path}`, {
       headers: {
         accept: 'application/vnd.github+json',
         authorization: `Bearer ${token}`,

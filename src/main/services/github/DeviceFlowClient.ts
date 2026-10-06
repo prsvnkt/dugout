@@ -1,4 +1,5 @@
 import type { GitHubCredentials } from './credentials'
+import { fetchGitHub } from './GitHubApi'
 
 /** GitHub refused the refresh token (revoked, expired or already used). Sign in again. */
 export class RefreshRejectedError extends Error {
@@ -122,7 +123,7 @@ export class DeviceFlowClient {
   }
 
   private async post<T>(path: string, body: Record<string, string>): Promise<T> {
-    const response = await this.deps.fetch(`${this.deps.webBaseUrl}${path}`, {
+    const response = await fetchGitHub(this.deps.fetch, `${this.deps.webBaseUrl}${path}`, {
       method: 'POST',
       headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams(body).toString(),

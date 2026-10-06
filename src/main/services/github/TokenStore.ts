@@ -1,6 +1,6 @@
 import { readFile, rm } from 'node:fs/promises'
 import { writeFileAtomic } from '../projects/atomicWrite'
-import type { GitHubCredentials } from './credentials'
+import type { StoredSession } from './credentials'
 
 /** Electron's safeStorage (macOS Keychain-backed), injected so tests can fake it. */
 export interface Encryption {
@@ -24,7 +24,7 @@ function isMissing(error: unknown): boolean {
 export class TokenStore {
   constructor(private readonly deps: TokenStoreDeps) {}
 
-  async load(): Promise<GitHubCredentials | null> {
+  async load(): Promise<StoredSession | null> {
     try {
       const data = await readFile(this.deps.filePath)
       return parseCredentials(this.deps.encryption.decrypt(data))
@@ -36,11 +36,11 @@ export class TokenStore {
     }
   }
 
-  async save(credentials: GitHubCredentials): Promise<void> {
+  async save(session: StoredSession): Promise<void> {
     if (!this.deps.encryption.isAvailable()) {
       throw new Error('Secure storage is not available, so the GitHub token cannot be saved.')
     }
-    const encrypted = this.deps.encryption.encrypt(JSON.stringify(credentials))
+    const encrypted = this.deps.encryption.encrypt(JSON.stringify(session))
     await writeFileAtomic(this.deps.filePath, encrypted.toString('latin1'), OWNER_ONLY, 'latin1')
   }
 
@@ -50,15 +50,16 @@ export class TokenStore {
 }
 
 /** Current format is JSON; earlier versions stored the bare (non-expiring) token. */
-function parseCredentials(text: string): GitHubCredentials {
+function parseCredentials(text: string): StoredSession {
   try {
-    const parsed = JSON.parse(text) as Partial<GitHubCredentials>
+    const parsed = JSON.parse(text) as Partial<StoredSession>
     if (typeof parsed.accessToken === 'string') {
       return {
         accessToken: parsed.accessToken,
         refreshToken: parsed.refreshToken ?? null,
         accessTokenExpiresAt: parsed.accessTokenExpiresAt ?? null,
         refreshTokenExpiresAt: parsed.refreshTokenExpiresAt ?? null,
+        ...(parsed.account && { account: parsed.account }),
       }
     }
   } catch {

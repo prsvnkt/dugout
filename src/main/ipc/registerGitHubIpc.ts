@@ -17,6 +17,7 @@ export function registerGitHubIpc({ auth, api, webBaseUrl, openExternal }: GitHu
   handleRequest(IpcChannel.authStart, z.undefined(), () => auth.startSignIn())
   handleRequest(IpcChannel.authCancel, z.undefined(), () => auth.cancelSignIn())
   handleRequest(IpcChannel.authSignOut, z.undefined(), () => auth.signOut())
+  handleRequest(IpcChannel.authRetry, z.undefined(), () => auth.retryNow())
 
   // Opens only the verification page GitHub itself returned, and only on the GitHub host.
   handleRequest(IpcChannel.authOpenVerification, z.undefined(), async () => {

@@ -180,6 +180,10 @@ async function start(): Promise<void> {
     }),
     api: githubApi,
     onChange: (state) => broadcast(IpcChannel.authState, state),
+    schedule: (run, delayMs) => {
+      const timer = setTimeout(run, delayMs)
+      return () => clearTimeout(timer)
+    },
   })
   void githubAuth.init().catch((error: unknown) => console.error('[github] init failed:', error))
 

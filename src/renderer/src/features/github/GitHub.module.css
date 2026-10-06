@@ -125,3 +125,16 @@
   display: flex;
   justify-content: flex-end;
 }
+
+.account[data-offline='true'] .avatar {
+  opacity: 0.5;
+}
+
+.offline {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--status-needs-input);
+  font-size: 10px;
+  text-transform: uppercase;
+}

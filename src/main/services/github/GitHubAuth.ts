@@ -1,7 +1,7 @@
 import type { DeviceCodePrompt, GitHubAccount, GitHubAuthState } from '@shared/github'
-import type { GitHubCredentials } from './credentials'
+import type { GitHubCredentials, StoredSession } from './credentials'
 import { RefreshRejectedError, type DeviceCode } from './DeviceFlowClient'
-import { GitHubUnauthorizedError } from './GitHubApi'
+import { GitHubUnauthorizedError, GitHubUnavailableError } from './GitHubApi'
 
 export interface GitHubAuthDeps {
   readonly isConfigured: boolean
@@ -12,17 +12,21 @@ export interface GitHubAuthDeps {
     refresh(refreshToken: string): Promise<GitHubCredentials>
   }
   readonly tokens: {
-    load(): Promise<GitHubCredentials | null>
-    save(credentials: GitHubCredentials): Promise<void>
+    load(): Promise<StoredSession | null>
+    save(session: StoredSession): Promise<void>
     clear(): Promise<void>
   }
   readonly api: { getUser(token: string): Promise<GitHubAccount> }
   readonly onChange: (state: GitHubAuthState) => void
+  /** Runs `run` after `delayMs`; returns a cancel function. (setTimeout in the app.) */
+  readonly schedule: (run: () => void, delayMs: number) => () => void
 }
 
 /** Renew access tokens this long before they expire, so calls never race the expiry. */
 const REFRESH_MARGIN_MS = 5 * 60_000
 const EXPIRED_MESSAGE = 'Your GitHub sign-in expired. Please sign in again.'
+/** Delays between automatic retries while GitHub is unreachable; the last one repeats. */
+const RETRY_DELAYS_MS = [15_000, 30_000, 60_000, 120_000, 300_000] as const
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : 'GitHub sign-in failed.'
@@ -35,6 +39,10 @@ function message(error: unknown): string {
 export class GitHubAuth {
   private current: GitHubAuthState = { status: 'signed-out' }
   private credentials: GitHubCredentials | null = null
+  /** Shown while offline; saved with the session. */
+  private account: GitHubAccount | null = null
+  private retryAttempt = 0
+  private cancelRetry: (() => void) | null = null
   private renewal: Promise<GitHubCredentials | null> | null = null
   private pending: { controller: AbortController; done: Promise<void> } | null = null
 
@@ -46,18 +54,17 @@ export class GitHubAuth {
 
   async init(): Promise<void> {
     if (!this.deps.isConfigured) return this.setState({ status: 'unconfigured' })
-    this.credentials = await this.deps.tokens.load()
-    if (!this.credentials) return this.setState({ status: 'signed-out' })
-    try {
-      const token = await this.freshToken()
-      if (!token) return
-      const account = await this.deps.api.getUser(token)
-      this.setState({ status: 'signed-in', account })
-    } catch (error) {
-      if (error instanceof GitHubUnauthorizedError) return this.endSession()
-      // Offline or GitHub down: keep the credentials, show signed out until verified.
-      this.setState({ status: 'signed-out', error: message(error) })
-    }
+    const session = await this.deps.tokens.load()
+    if (!session) return this.setState({ status: 'signed-out' })
+    const { account, ...credentials } = session
+    this.credentials = credentials
+    this.account = account ?? null
+    await this.verify()
+  }
+
+  /** Re-checks the session now if GitHub was unreachable (e.g. the Mac is back online). */
+  async retryNow(): Promise<void> {
+    if (this.current.status === 'offline') await this.verify()
   }
 
   /**
@@ -67,7 +74,12 @@ export class GitHubAuth {
    */
   async freshToken(): Promise<string | null> {
     if (!this.credentials) return null
-    if (this.isExpiringSoon(this.credentials)) await this.renew()
+    try {
+      if (this.isExpiringSoon(this.credentials)) await this.renew()
+    } catch (error) {
+      if (error instanceof GitHubUnavailableError) this.goOffline()
+      throw error
+    }
     return this.credentials?.accessToken ?? null
   }
 
@@ -76,8 +88,11 @@ export class GitHubAuth {
     const token = await this.freshToken()
     if (!token) throw new Error('Sign in to GitHub first.')
     try {
-      return await call(token)
+      const result = await call(token)
+      if (this.current.status === 'offline') this.backOnline()
+      return result
     } catch (error) {
+      if (error instanceof GitHubUnavailableError) this.goOffline()
       if (!(error instanceof GitHubUnauthorizedError)) throw error
       const renewed = this.canRenew(this.credentials) ? await this.renew() : null
       if (!renewed) {
@@ -116,7 +131,9 @@ export class GitHubAuth {
 
   async signOut(): Promise<void> {
     this.cancelSignIn()
+    this.stopRetrying()
     this.credentials = null
+    this.account = null
     await this.deps.tokens.clear()
     this.setState({ status: 'signed-out' })
   }
@@ -148,7 +165,7 @@ export class GitHubAuth {
     }
     try {
       const renewed = await this.deps.deviceFlow.refresh(credentials.refreshToken)
-      await this.deps.tokens.save(renewed)
+      await this.deps.tokens.save(this.sessionFor(renewed))
       this.credentials = renewed
       return renewed
     } catch (error) {
@@ -162,7 +179,9 @@ export class GitHubAuth {
 
   /** The session can no longer be used (expired or revoked): forget it and say why. */
   private async endSession(): Promise<void> {
+    this.stopRetrying()
     this.credentials = null
+    this.account = null
     await this.deps.tokens.clear()
     this.setState({ status: 'signed-out', error: EXPIRED_MESSAGE })
   }
@@ -171,13 +190,64 @@ export class GitHubAuth {
     try {
       const credentials = await this.deps.deviceFlow.waitForToken(code, signal)
       const account = await this.deps.api.getUser(credentials.accessToken)
-      await this.deps.tokens.save(credentials)
       this.credentials = credentials
-      this.setState({ status: 'signed-in', account })
+      this.account = account
+      await this.deps.tokens.save(this.sessionFor(credentials))
+      this.goOnline(account)
     } catch (error) {
       if (signal.aborted) return
       this.setState({ status: 'signed-out', error: message(error) })
     }
+  }
+
+  /** Confirms the session with GitHub: online, offline (retrying) or ended. */
+  private async verify(): Promise<void> {
+    try {
+      const token = await this.freshToken()
+      if (!token) return
+      const account = await this.deps.api.getUser(token)
+      if (JSON.stringify(account) !== JSON.stringify(this.account) && this.credentials) {
+        this.account = account
+        await this.deps.tokens.save(this.sessionFor(this.credentials))
+      }
+      this.goOnline(account)
+    } catch (error) {
+      if (error instanceof GitHubUnauthorizedError) return this.endSession()
+      if (error instanceof GitHubUnavailableError) return this.goOffline()
+      this.setState({ status: 'signed-out', error: message(error) })
+    }
+  }
+
+  /** A GitHub call just succeeded, so GitHub is reachable again. */
+  private backOnline(): void {
+    if (this.account) this.goOnline(this.account)
+    else void this.verify() // older sessions: fetch the account to show
+  }
+
+  private goOnline(account: GitHubAccount): void {
+    this.stopRetrying()
+    this.setState({ status: 'signed-in', account })
+  }
+
+  /** Keeps the session and shows it as offline, retrying with growing delays. */
+  private goOffline(): void {
+    if (!this.credentials) return
+    if (this.current.status !== 'offline')
+      this.setState({ status: 'offline', account: this.account })
+    this.cancelRetry?.()
+    const delay = RETRY_DELAYS_MS[Math.min(this.retryAttempt, RETRY_DELAYS_MS.length - 1)] ?? 0
+    this.retryAttempt += 1
+    this.cancelRetry = this.deps.schedule(() => void this.retryNow(), delay)
+  }
+
+  private stopRetrying(): void {
+    this.cancelRetry?.()
+    this.cancelRetry = null
+    this.retryAttempt = 0
+  }
+
+  private sessionFor(credentials: GitHubCredentials): StoredSession {
+    return this.account ? { ...credentials, account: this.account } : credentials
   }
 
   private setState(state: GitHubAuthState): void {

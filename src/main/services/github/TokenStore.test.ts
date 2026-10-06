@@ -59,3 +59,12 @@ describe('TokenStore', () => {
     await expect(store.save(CREDENTIALS)).rejects.toThrow('Secure storage')
   })
 })
+
+describe('TokenStore account details', () => {
+  test('keeps the account (not secret) with the credentials, for offline display', async () => {
+    const { store } = setup()
+    const account = { login: 'octo', name: 'Octo', avatarUrl: 'https://a/1.png' }
+    await store.save({ ...CREDENTIALS, account })
+    expect(await store.load()).toEqual({ ...CREDENTIALS, account })
+  })
+})

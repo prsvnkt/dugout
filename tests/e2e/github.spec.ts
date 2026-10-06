@@ -106,3 +106,26 @@ test('expiring tokens are renewed automatically, and a revoked session signs out
   await expect(sidebar().getByRole('button', { name: 'Sign in to GitHub' })).toBeVisible()
   expect(existsSync(join(userDataDir, 'github-token.bin'))).toBe(false)
 })
+
+test('stays signed in while GitHub is unreachable and recovers when it is back', async () => {
+  // Arrange: signed in, then GitHub goes down before the next launch
+  await start(gitHubTestEnv(stub.baseUrl))
+  await sidebar().getByRole('button', { name: 'Sign in to GitHub' }).click()
+  await expect(sidebar().getByRole('button', { name: 'GitHub account octocat' })).toBeVisible()
+  await app.close()
+  stub.setUnavailable(true)
+
+  // Act
+  await start(gitHubTestEnv(stub.baseUrl))
+
+  // Assert: still signed in, shown as offline, session kept
+  await expect(
+    sidebar().getByRole('button', { name: 'GitHub account octocat (offline)' }),
+  ).toBeVisible()
+  expect(existsSync(join(userDataDir, 'github-token.bin'))).toBe(true)
+
+  // GitHub comes back and the Mac reports it is online: back to normal without signing in
+  stub.setUnavailable(false)
+  await page.evaluate(() => globalThis.dispatchEvent(new Event('online')))
+  await expect(sidebar().getByRole('button', { name: 'GitHub account octocat' })).toBeVisible()
+})

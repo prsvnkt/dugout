@@ -39,6 +39,7 @@ export const IpcChannel = {
   authCancel: 'auth:cancel',
   authSignOut: 'auth:sign-out',
   authOpenVerification: 'auth:open-verification',
+  authRetry: 'auth:retry',
   authState: 'auth:state',
   githubListRepos: 'github:list-repos',
   cloneDefaults: 'clone:defaults',

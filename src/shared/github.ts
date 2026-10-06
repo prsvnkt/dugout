@@ -17,6 +17,11 @@ export type GitHubAuthState =
   | { readonly status: 'signed-out'; readonly error?: string }
   | { readonly status: 'pending'; readonly prompt: DeviceCodePrompt }
   | { readonly status: 'signed-in'; readonly account: GitHubAccount }
+  /**
+   * Still signed in, but GitHub cannot be reached right now (offline or GitHub down). Retries
+   * automatically. `account` is null only for sessions saved before account details were kept.
+   */
+  | { readonly status: 'offline'; readonly account: GitHubAccount | null }
 
 export interface GitHubRepo {
   readonly fullName: string

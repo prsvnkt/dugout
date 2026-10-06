@@ -1,3 +1,5 @@
+import type { GitHubAccount } from '@shared/github'
+
 /** What GitHub returns for a signed-in user. Expiry fields are null for non-expiring tokens. */
 export interface GitHubCredentials {
   readonly accessToken: string
@@ -6,4 +8,9 @@ export interface GitHubCredentials {
   readonly accessTokenExpiresAt: number | null
   /** Epoch ms when the refresh token stops working. */
   readonly refreshTokenExpiresAt: number | null
+}
+
+/** What is saved for a session: the credentials plus the account shown while offline. */
+export interface StoredSession extends GitHubCredentials {
+  readonly account?: GitHubAccount
 }

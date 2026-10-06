@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { DeviceFlowClient, RefreshRejectedError } from './DeviceFlowClient'
+import { GitHubUnavailableError } from './GitHubApi'
 import { fakeFetch } from './fakeFetch'
 
 const CODE = {
@@ -133,5 +134,19 @@ describe('DeviceFlowClient expiring tokens', () => {
       'POST /login/oauth/access_token': [{ json: { error: 'bad_refresh_token' } }],
     })
     await expect(device.refresh('ghr_old')).rejects.toBeInstanceOf(RefreshRejectedError)
+  })
+})
+
+describe('DeviceFlowClient availability', () => {
+  test('a refresh that cannot reach GitHub is reported as unavailable, not rejected', async () => {
+    const device = new DeviceFlowClient({
+      fetch: async () => Promise.reject(new TypeError('fetch failed')),
+      webBaseUrl: 'https://github.com',
+      clientId: 'client-1',
+      scopes: [],
+      sleep: async () => {},
+      now: () => 0,
+    })
+    await expect(device.refresh('ghr_x')).rejects.toBeInstanceOf(GitHubUnavailableError)
   })
 })

@@ -62,6 +62,7 @@ const api: DugoutApi = {
     cancelSignIn: () => ipcRenderer.invoke(IpcChannel.authCancel),
     signOut: () => ipcRenderer.invoke(IpcChannel.authSignOut),
     openVerificationPage: () => ipcRenderer.invoke(IpcChannel.authOpenVerification),
+    retry: () => ipcRenderer.invoke(IpcChannel.authRetry),
     listRepos: () => ipcRenderer.invoke(IpcChannel.githubListRepos),
     onStateChange: (listener) => subscribe(IpcChannel.authState, listener),
   },

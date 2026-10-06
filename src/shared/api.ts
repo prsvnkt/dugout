@@ -85,6 +85,8 @@ export interface DugoutApi {
     cancelSignIn(): Promise<Result<void>>
     signOut(): Promise<Result<void>>
     openVerificationPage(): Promise<Result<void>>
+    /** Re-check the session now if GitHub was unreachable (e.g. back online). */
+    retry(): Promise<Result<void>>
     listRepos(): Promise<Result<readonly GitHubRepo[]>>
     onStateChange(listener: (state: GitHubAuthState) => void): Unsubscribe
   }

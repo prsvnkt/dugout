@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { fakeFetch } from './fakeFetch'
-import { GitHubApi, GitHubUnauthorizedError } from './GitHubApi'
+import { GitHubApi, GitHubUnauthorizedError, GitHubUnavailableError } from './GitHubApi'
 
 const api = (routes: Parameters<typeof fakeFetch>[0]) => {
   const fake = fakeFetch(routes)
@@ -62,5 +62,22 @@ describe('GitHubApi', () => {
     })
     expect(new URL(requests[0]?.url ?? '').searchParams.get('sort')).toBe('pushed')
     expect(new URL(requests[1]?.url ?? '').searchParams.get('page')).toBe('2')
+  })
+})
+
+describe('GitHubApi availability', () => {
+  test('reports GitHub server errors as unavailable', async () => {
+    const { api: client } = api({
+      'GET /user': [{ status: 503, json: { message: 'Unavailable' } }],
+    })
+    await expect(client.getUser('gho_x')).rejects.toBeInstanceOf(GitHubUnavailableError)
+  })
+
+  test('reports network failures as unavailable', async () => {
+    const offline = new GitHubApi({
+      fetch: async () => Promise.reject(new TypeError('fetch failed')),
+      apiBaseUrl: 'https://api.github.com',
+    })
+    await expect(offline.getUser('gho_x')).rejects.toBeInstanceOf(GitHubUnavailableError)
   })
 })

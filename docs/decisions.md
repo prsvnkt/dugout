@@ -117,7 +117,11 @@ an organization later to keep the same ID) lives in `services/github/config.ts`
 tokens last ~8h and are renewed with the (rotating, ~6-month) refresh token, which for device-flow
 tokens needs no client secret. `GitHubAuth.freshToken()` renews when a token expires within 5
 minutes (one shared request for concurrent callers); `withToken()` renews and retries once on a 401. A rejected or expired refresh token signs the user out with a clear message. Credentials are
-stored as JSON; plain tokens from earlier versions are still read (as non-expiring). The token is
+stored as JSON; plain tokens from earlier versions are still read (as non-expiring).
+Being unable to reach GitHub (network failure or 5xx) never signs anyone out: the session stays,
+the state becomes `offline` (showing the account saved with the session), and Dugout retries
+after 15s, 30s, 1m, 2m, then every 5m, immediately when the system reports it is back online,
+and whenever a GitHub call succeeds. The token is
 encrypted with Electron `safeStorage` (Keychain) in `<userData>/github-token.bin` (0600) and
 never sent to the renderer, which only sees `{ login, name, avatarUrl }`. Network git commands
 (push, clone) get the token through a credential helper scoped to the GitHub host that reads it

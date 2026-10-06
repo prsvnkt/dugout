@@ -21,6 +21,7 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
   let generation = 1
   let isRefreshRevoked = false
   let refreshes = 0
+  let isUnavailable = false
   const accessToken = () => (options.expiringTokens ? `ghu_stub_${generation}` : STUB_TOKEN)
   const tokenResponse = () =>
     options.expiringTokens
@@ -41,6 +42,7 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
     let body = ''
     req.on('data', (chunk: Buffer) => (body += chunk.toString()))
     req.on('end', () => {
+      if (isUnavailable) return json({ message: 'Service unavailable' }, 503)
       const origin = `http://${req.headers.host}`
       const form = new URLSearchParams(body)
       if (url.pathname === '/login/device/code') {
@@ -95,6 +97,10 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
   return {
     baseUrl: `http://127.0.0.1:${port}`,
     refreshCount: () => refreshes,
+    /** Simulates GitHub being down (every request answers 503). */
+    setUnavailable: (unavailable: boolean) => {
+      isUnavailable = unavailable
+    },
     revokeRefreshToken: () => {
       isRefreshRevoked = true
     },

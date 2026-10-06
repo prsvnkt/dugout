@@ -23,10 +23,17 @@ export const useAuthStore = create<AuthStoreState>()((set, get) => ({
     void dugout.github.getState().then((result) => {
       if (result.ok) set({ auth: result.data })
     })
-    return dugout.github.onStateChange((auth) => {
+    const unsubscribe = dugout.github.onStateChange((auth) => {
       set({ auth })
       if (auth.status === 'signed-in') set({ isDialogOpen: false })
     })
+    // Recheck as soon as the Mac reports it is back online, instead of waiting for the retry.
+    const retry = () => void dugout.github.retry()
+    window.addEventListener('online', retry)
+    return () => {
+      unsubscribe()
+      window.removeEventListener('online', retry)
+    }
   },
 
   async signIn() {
@@ -52,4 +59,9 @@ const AUTH_FAILURE =
 /** True for git errors caused by missing or rejected GitHub credentials. */
 export function isAuthError(message: string): boolean {
   return AUTH_FAILURE.test(message)
+}
+
+/** Signed in, whether or not GitHub is reachable right now. */
+export function isSignedIn(auth: GitHubAuthState): boolean {
+  return auth.status === 'signed-in' || auth.status === 'offline'
 }
