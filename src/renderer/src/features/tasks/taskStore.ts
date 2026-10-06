@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { TaskCreateRequest, TaskUpdateRequest } from '@shared/ipc/contract'
 import type { ProjectId } from '@shared/project'
 import type { Task, TaskDetail } from '@shared/tasks'
+import type { AgentKind } from '@shared/terminal'
 import { unwrap } from '@shared/result'
 import { dugout } from '@renderer/lib/dugout'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
@@ -31,7 +32,7 @@ interface TaskState {
   update(request: TaskUpdateRequest): Promise<void>
   comment(projectId: ProjectId, number: number, body: string): Promise<void>
   /** Worktree + Claude pane for the task, which moves to In progress. */
-  startAgent(projectId: ProjectId, number: number): Promise<void>
+  startAgent(projectId: ProjectId, number: number, agents: readonly AgentKind[]): Promise<void>
 }
 
 const refreshing = new Set<ProjectId>()
@@ -95,13 +96,15 @@ export const useTaskStore = create<TaskState>()((set, get) => {
     comment: (projectId, number, body) =>
       mutate(projectId, async () => unwrap(await dugout.tasks.comment(projectId, number, body))),
 
-    startAgent: (projectId, number) =>
+    startAgent: (projectId, number, agents) =>
       mutate(projectId, async () => {
-        const session = unwrap(await dugout.tasks.startSession(projectId, number))
-        useWorkspaceStore.getState().addPane(projectId, 'claude', session.worktree, {
-          task: session.task,
-          initialPrompt: session.prompt,
-        })
+        const started = unwrap(await dugout.tasks.startSession(projectId, number, agents))
+        for (const session of started.sessions) {
+          useWorkspaceStore.getState().addPane(projectId, session.agent, session.worktree, {
+            task: started.task,
+            initialPrompt: started.prompt,
+          })
+        }
       }),
   }
 })

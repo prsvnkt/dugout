@@ -52,7 +52,7 @@ const ALLOWED_TOOLS = ['mcp__dugout']
  */
 const FORWARDS_PAYLOAD: ReadonlySet<HookSignal> = new Set(['ready', 'needs-input', 'done'])
 
-function signalCommand(signal: HookSignal): string {
+export function signalCommand(signal: HookSignal): string {
   return [
     '[ -n "$DUGOUT_TERMINAL_ID" ] &&',
     `curl -s -X POST --max-time ${CURL_TIMEOUT_SECONDS}`,

@@ -389,3 +389,49 @@ describe('TerminalManager status details', () => {
     )
   })
 })
+
+describe('TerminalManager codex terminals', () => {
+  function setupCodex() {
+    const spawned: FakeProcess[] = []
+    const written: string[] = []
+    const manager = new TerminalManager({
+      backend: {
+        spawn: (options) => {
+          const process = new FakeProcess(options)
+          spawned.push(process)
+          return process
+        },
+      },
+      createId: () => 'cx-1',
+      env: {},
+      agentHooks: {
+        settingsPath: '/s.json',
+        socketPath: '/h.sock',
+        token: 'tok',
+        writeMcpConfig: (id) => {
+          written.push(id)
+          return `/mcp/${id}.json`
+        },
+        codexOverrides: (id) => [`hooks.Stop=[]`, `mcp_servers.dugout={id="${id}"}`],
+      },
+    })
+    const events = { onData: vi.fn(), onExit: vi.fn(), onAgentStatus: vi.fn() }
+    return { manager, spawned, written, events }
+  }
+
+  test('passes each config override in its own variable and tracks status like Claude', () => {
+    const { manager, spawned, written, events } = setupCodex()
+    const id = manager.create({ ...request, kind: 'codex' }, events)
+
+    const env = spawned[0]?.options.env
+    expect(env?.DUGOUT_CODEX_COMMAND).toBe('codex')
+    expect(env?.DUGOUT_CODEX_C0).toBe('hooks.Stop=[]')
+    expect(env?.DUGOUT_CODEX_C1).toBe('mcp_servers.dugout={id="cx-1"}')
+    expect(env).not.toHaveProperty('DUGOUT_CLAUDE_SETTINGS')
+    expect(written).toEqual([])
+
+    expect(manager.agentStatus(id)).toBe('starting')
+    manager.applyHookSignal(id, 'needs-input')
+    expect(events.onAgentStatus).toHaveBeenCalledWith(id, 'needs-input', undefined)
+  })
+})

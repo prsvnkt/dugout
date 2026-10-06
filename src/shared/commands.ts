@@ -1,6 +1,6 @@
 /** Commands the native application menu sends to the renderer. */
 export type AppCommand =
-  | { readonly type: 'pane.new'; readonly kind: 'claude' | 'shell' }
+  | { readonly type: 'pane.new'; readonly kind: 'claude' | 'codex' | 'shell' }
   | { readonly type: 'pane.newWorktree' }
   | { readonly type: 'pane.close' }
   | { readonly type: 'project.add' }

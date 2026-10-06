@@ -329,3 +329,23 @@ describe('GitService.clone', () => {
     expect(existsSync(destination)).toBe(false)
   })
 })
+
+describe('GitService.changesSince', () => {
+  test('lists committed, uncommitted and new files since the base branch', async () => {
+    const repo = makeRepoWithCommit()
+    git(repo, 'checkout', '-q', '-b', 'work')
+    writeFileSync(join(repo, 'committed.ts'), 'a\n')
+    git(repo, 'add', '.')
+    git(repo, 'commit', '-qm', 'work')
+    writeFileSync(join(repo, 'readme.md'), 'edited\n')
+    writeFileSync(join(repo, 'new.ts'), 'n\n')
+
+    const changes = await service.changesSince(repo, 'main')
+
+    expect(changes).toEqual([
+      { path: 'committed.ts', kind: 'added' },
+      { path: 'new.ts', kind: 'added' },
+      { path: 'readme.md', kind: 'modified' },
+    ])
+  })
+})

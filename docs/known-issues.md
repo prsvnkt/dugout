@@ -54,3 +54,16 @@ to appear, and large expanded trees are re-read on every tick.
 
 **Likely fix:** a main-process watcher (`@parcel/watcher`) per active checkout that pushes
 change events, keeping the poll only as a fallback.
+
+## Codex asks to trust Dugout's hooks once
+
+- **Area:** `src/main/services/agentHooks/codexConfig.ts`
+- **Found:** 2026-10-06, verified with codex-cli 0.155
+
+**What happens:** the first Codex pane shows "Hooks need review". Until you choose *Trust all and
+continue* (or review them with `/hooks`), Codex runs without them and the pane never leaves
+"Starting". Codex stores the trust in `~/.codex/config.toml` (`[hooks.state]`), so later panes
+start straight away. If a Dugout update changes the hook commands, Codex asks again.
+
+**Possible improvement:** detect a Codex pane stuck in "Starting" and show a hint about the
+review prompt.

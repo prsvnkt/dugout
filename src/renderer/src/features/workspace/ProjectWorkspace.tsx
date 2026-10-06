@@ -74,6 +74,9 @@ function TerminalsHeader({
         <button disabled={!canAddPane} onClick={() => onAdd('claude')} title="New Claude pane (⌘T)">
           + Claude
         </button>
+        <button disabled={!canAddPane} onClick={() => onAdd('codex')} title="New Codex pane (⌥⇧⌘T)">
+          + Codex
+        </button>
         <button
           disabled={!canAddPane}
           onClick={() => void startWorktreeSession(project.id)}

@@ -76,14 +76,10 @@ export async function clickMenuItem(
 }
 
 /**
- * A stand-in for the `claude` CLI that runs the hook commands from the `--settings` file
- * exactly as Claude Code would, driven by lines typed into the terminal:
- * prompt | ask | tool | notify-idle | stop | stop-later | exit
- * It resumes the session passed with --resume, or starts a new one, and prints which.
+ * How the fake `claude` reads its arguments: hooks from the `--settings` file, the MCP server from
+ * `--mcp-config`, the session from `--resume`.
  */
-const FAKE_CLAUDE_SOURCE = String.raw`
-const { readFileSync } = require('node:fs')
-const { spawnSync } = require('node:child_process')
+const CLAUDE_ARGS_SOURCE = String.raw`
 const argValue = (flag) => {
   const index = process.argv.indexOf(flag)
   return index === -1 ? undefined : process.argv[index + 1]
@@ -95,6 +91,41 @@ const firstPrompt = process.argv
   .find((arg, i, args) => !arg.startsWith('--') && !VALUE_FLAGS.has(args[i - 1]))
 const { hooks } = JSON.parse(readFileSync(argValue('--settings'), 'utf8'))
 const resumed = argValue('--resume')
+const dugoutServer = () => JSON.parse(readFileSync(argValue('--mcp-config'), 'utf8')).mcpServers.dugout
+`
+
+/**
+ * How the fake `codex` reads its arguments: `codex [prompt] -c key=value…` or
+ * `codex resume <id> -c key=value…`, with hooks and MCP servers as TOML config overrides.
+ */
+const CODEX_ARGS_SOURCE = String.raw`
+const { parse } = require(PROJECT_ROOT + '/node_modules/smol-toml/dist/index.cjs')
+const args = process.argv.slice(2)
+const overrides = {}
+const positional = []
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '-c') {
+    const [key, ...rest] = args[++i].split('=')
+    overrides[key] = parse('v = ' + rest.join('=')).v
+  } else positional.push(args[i])
+}
+const resumed = positional[0] === 'resume' ? positional[1] : undefined
+const firstPrompt = resumed ? undefined : positional[0]
+const hooks = Object.fromEntries(
+  Object.entries(overrides)
+    .filter(([key]) => key.startsWith('hooks.'))
+    .map(([key, value]) => [key.slice('hooks.'.length), value]),
+)
+const dugoutServer = () => overrides['mcp_servers.dugout']
+`
+
+/**
+ * A stand-in for an agent CLI that runs Dugout's hook commands exactly as the real one would,
+ * driven by lines typed into the terminal:
+ * prompt | ask | tool | notify-idle | stop | stop-later | exit | agent-comment | edit
+ * It resumes the session it was asked to, or starts a new one, and prints which.
+ */
+const FAKE_AGENT_SOURCE = String.raw`
 const sessionId = resumed ?? 'fake-session-' + process.pid
 
 function fire(event, matchValue, extra = {}) {
@@ -118,20 +149,25 @@ const actions = {
   exit: () => process.exit(0),
   'agent-comment': () =>
     void callDugoutTool('comment_on_task', { number: 1, body: 'Progress from the agent' }),
+  // Leaves changes in the working directory: one file of its own and one both agents edit.
+  edit: () => {
+    writeFileSync(AGENT_NAME + '.txt', 'by ' + AGENT_NAME + '\n')
+    writeFileSync('shared.txt', 'shared by ' + AGENT_NAME + '\n')
+    process.stdout.write('edited\r\n')
+  },
 }
 
 fire('SessionStart', 'startup')
-process.stdout.write('fake-claude ready resume=' + (resumed ?? 'none') + ' session=' + sessionId + '\r\n')
+process.stdout.write(AGENT_NAME + ' ready resume=' + (resumed ?? 'none') + ' session=' + sessionId + '\r\n')
 if (firstPrompt) process.stdout.write('prompt=' + firstPrompt.split('\n')[0] + '\r\n')
 
-/** Acts like an agent using a Dugout task tool: starts the MCP server from --mcp-config. */
+/** Acts like an agent using a Dugout task tool: starts the "dugout" MCP server it was given. */
 async function callDugoutTool(name, args) {
   const sdk = (path) => require(PROJECT_ROOT + '/node_modules/@modelcontextprotocol/sdk/dist/cjs/' + path)
   const { Client } = sdk('client/index.js')
   const { StdioClientTransport } = sdk('client/stdio.js')
-  const { mcpServers } = JSON.parse(readFileSync(argValue('--mcp-config'), 'utf8'))
-  const server = mcpServers.dugout
-  const client = new Client({ name: 'fake-claude', version: '1' })
+  const server = dugoutServer()
+  const client = new Client({ name: AGENT_NAME, version: '1' })
   await client.connect(new StdioClientTransport({ command: server.command, args: server.args, env: { ...process.env, ...server.env } }))
   const result = await client.callTool({ name, arguments: args })
   process.stdout.write('tool-result=' + JSON.stringify(result.content[0].text).slice(0, 200) + '\r\n')
@@ -143,11 +179,25 @@ process.stdin.on('data', (chunk) => {
 })
 `
 
-export function makeFakeClaude(): string {
-  const path = join(makeTempDir('dugout-fake-claude-'), 'claude')
-  const header = `#!${process.execPath}\nconst PROJECT_ROOT = ${JSON.stringify(process.cwd())}\n`
-  writeFileSync(path, header + FAKE_CLAUDE_SOURCE, { mode: 0o755 })
+function writeFakeAgent(name: 'claude' | 'codex', argsSource: string): string {
+  const path = join(makeTempDir(`dugout-fake-${name}-`), name)
+  const header = [
+    `#!${process.execPath}`,
+    `const PROJECT_ROOT = ${JSON.stringify(process.cwd())}`,
+    `const AGENT_NAME = 'fake-${name}'`,
+    `const { readFileSync, writeFileSync } = require('node:fs')`,
+    `const { spawnSync } = require('node:child_process')`,
+  ].join('\n')
+  writeFileSync(path, header + argsSource + FAKE_AGENT_SOURCE, { mode: 0o755 })
   return path
+}
+
+export function makeFakeClaude(): string {
+  return writeFakeAgent('claude', CLAUDE_ARGS_SOURCE)
+}
+
+export function makeFakeCodex(): string {
+  return writeFakeAgent('codex', CODEX_ARGS_SOURCE)
 }
 
 /** Opens the folder-picker flow from the "+" next to the project tabs. */

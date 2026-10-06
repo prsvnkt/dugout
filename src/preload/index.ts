@@ -83,8 +83,12 @@ const api: DugoutApi = {
       ipcRenderer.invoke(IpcChannel.tasksComment, { projectId, number, body }),
     openInBrowser: (projectId, number) =>
       ipcRenderer.invoke(IpcChannel.tasksOpen, { projectId, number }),
-    startSession: (projectId, number) =>
-      ipcRenderer.invoke(IpcChannel.tasksStartSession, { projectId, number }),
+    startSession: (projectId, number, agents) =>
+      ipcRenderer.invoke(IpcChannel.tasksStartSession, { projectId, number, agents }),
+  },
+  compare: {
+    changes: (projectId, worktreePaths) =>
+      ipcRenderer.invoke(IpcChannel.compareChanges, { projectId, worktreePaths }),
   },
   workspace: {
     load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),

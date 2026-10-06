@@ -3,7 +3,7 @@ import { MAX_OPEN_FILE_BYTES } from '../files'
 import { MAX_TASK_BODY_LENGTH, MAX_TASK_TITLE_LENGTH, TASK_STATUSES } from '../tasks'
 import { MAX_COMMIT_MESSAGE_LENGTH, MAX_GIT_PATHS_PER_REQUEST } from '../git'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
-import { TERMINAL_KINDS } from '../terminal'
+import { AGENT_KINDS, TERMINAL_KINDS } from '../terminal'
 
 /** Schemas for IPC payloads. Main validates every incoming payload; never trust the renderer. */
 
@@ -229,9 +229,17 @@ export const taskRpcSchemas = {
 
 export const taskListRequestSchema = z.object({ projectId })
 export const taskNumberRequestSchema = z.object({ projectId, number: taskNumber })
+export const taskStartSessionRequestSchema = taskNumberRequestSchema.extend({
+  agents: z.array(z.enum(AGENT_KINDS)).min(1).max(AGENT_KINDS.length),
+})
 export const taskCreateRequestSchema = taskRpcSchemas.create.extend({ projectId })
 export const taskUpdateRequestSchema = taskRpcSchemas.update.extend({ projectId })
 export const taskCommentRequestSchema = taskRpcSchemas.comment.extend({ projectId })
 
 export type TaskCreateRequest = z.input<typeof taskCreateRequestSchema>
 export type TaskUpdateRequest = z.input<typeof taskUpdateRequestSchema>
+
+export const compareChangesRequestSchema = z.object({
+  projectId,
+  worktreePaths: z.array(absolutePath).min(2).max(4),
+})

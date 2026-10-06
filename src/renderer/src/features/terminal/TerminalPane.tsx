@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import '@xterm/xterm/css/xterm.css'
-import type { TerminalKind } from '@shared/terminal'
+import { isAgentKind, type TerminalKind } from '@shared/terminal'
 import {
   ACTIVITY_LABEL,
   toPaneActivity,
@@ -36,7 +36,11 @@ interface TerminalPaneProps {
   onRestart(options: { isFresh: boolean }): void
 }
 
-const KIND_LABEL: Record<TerminalKind, string> = { claude: 'Claude Code', shell: 'Shell' }
+const KIND_LABEL: Record<TerminalKind, string> = {
+  claude: 'Claude Code',
+  codex: 'Codex',
+  shell: 'Shell',
+}
 
 function describe(activity: PaneActivity, status: TerminalStatus): string {
   if (status.state === 'exited') return `Exited (${status.exit.exitCode})`
@@ -61,7 +65,8 @@ export function TerminalPane(props: TerminalPaneProps) {
   )
   const canRestart = status.state === 'exited' || status.state === 'error'
   // If Claude never got ready, resuming failed (e.g. the session no longer exists).
-  const neverReady = kind === 'claude' && (agentStatus === null || agentStatus === 'starting')
+  const isAgent = isAgentKind(kind)
+  const neverReady = isAgent && (agentStatus === null || agentStatus === 'starting')
   const isDoneSeen = useDoneSeen(agentStatus, shouldFocus)
   const activity = toPaneActivity(status, agentStatus, isDoneSeen)
 
@@ -106,12 +111,12 @@ export function TerminalPane(props: TerminalPaneProps) {
             onClick={() => onRestart({ isFresh: neverReady })}
             onMouseDown={(event) => event.stopPropagation()}
             title={
-              kind === 'claude' && !neverReady
+              isAgent && !neverReady
                 ? 'Restart, resuming the conversation'
                 : 'Restart with a new session'
             }
           >
-            {neverReady && kind === 'claude' ? 'Start new session' : 'Restart'}
+            {neverReady ? 'Start new session' : 'Restart'}
           </button>
         )}
         <button

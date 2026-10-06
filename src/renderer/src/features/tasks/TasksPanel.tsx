@@ -10,6 +10,8 @@ import {
   type PaneActivity,
 } from '@renderer/features/workspace/paneActivity'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
+import { useEditorStore } from '@renderer/features/editor/editorStore'
+import { AGENT_LABEL, isAgentKind } from '@shared/terminal'
 import { TaskDetailView } from './TaskDetailView'
 import { useProjectTasks, useTaskStore } from './taskStore'
 import styles from './Tasks.module.css'
@@ -118,6 +120,16 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
   const { refresh, select } = useTaskStore()
   const setPanelOpen = useGitStore((state) => state.setPanelOpen)
   const agents = useAgentActivityByTask(project.id)
+  const panes = useWorkspaceStore((state) => state.layouts[project.id]?.panes)
+  const openCompare = useEditorStore((state) => state.openCompare)
+  /** Agent worktrees working on a task, labelled by agent (e.g. Claude, Codex). */
+  const compareSides = (number: number) =>
+    (panes ?? [])
+      .filter((pane) => pane.task?.number === number && pane.worktree && isAgentKind(pane.kind))
+      .map((pane) => ({
+        label: isAgentKind(pane.kind) ? AGENT_LABEL[pane.kind] : pane.kind,
+        worktreePath: pane.worktree?.path ?? '',
+      }))
   const [query, setQuery] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -210,6 +222,16 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
           task={detail}
           isBusy={isBusy}
           hasAgent={agents.has(detail.number)}
+          canCompare={compareSides(detail.number).length >= 2}
+          onCompare={() => {
+            const sides = compareSides(detail.number)
+            const [first, second] = sides
+            if (!first || !second) return
+            openCompare(project.id, `task-${detail.number}`, {
+              title: `Compare #${detail.number}`,
+              sides: [first, second],
+            })
+          }}
           onError={setActionError}
         />
       ) : (

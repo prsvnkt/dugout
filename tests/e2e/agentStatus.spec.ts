@@ -4,6 +4,7 @@ import {
   openAddProjectFromTabs,
   launchApp,
   makeFakeClaude,
+  makeFakeCodex,
   makeGitRepo,
   makeTempDir,
   stubFolderPicker,
@@ -13,7 +14,10 @@ let app: ElectronApplication
 let page: Page
 
 test.beforeEach(async () => {
-  app = await launchApp(makeTempDir(), { DUGOUT_CLAUDE_COMMAND: makeFakeClaude() })
+  app = await launchApp(makeTempDir(), {
+    DUGOUT_CLAUDE_COMMAND: makeFakeClaude(),
+    DUGOUT_CODEX_COMMAND: makeFakeCodex(),
+  })
   page = await app.firstWindow()
 })
 
@@ -66,6 +70,22 @@ test('Claude hooks drive the pane, sidebar, status bar and dock badge', async ()
   // Idle reminders are not a request for input
   await send('notify-idle')
   await expect(paneHeader()).toContainText('Working')
+})
+
+test('Codex hooks drive a Codex pane the same way', async () => {
+  await addProject('alpha')
+  await clickMenuItem(app, 'File', 'New Codex Pane')
+  await expect(paneHeader()).toContainText('Codex')
+  await expect(paneHeader()).toContainText('Ready')
+
+  await send('prompt')
+  await expect(paneHeader()).toContainText('Working')
+  await send('ask')
+  await expect(paneHeader()).toContainText('Needs you')
+  await expect(page.getByRole('contentinfo')).toContainText('1 needs you')
+  // A finished turn in the pane you are looking at is already seen
+  await send('stop')
+  await expect(paneHeader()).toContainText('Ready')
 })
 
 test('a turn that finishes in a background project shows as Done until viewed', async () => {

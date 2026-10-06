@@ -55,5 +55,6 @@ export const IpcChannel = {
   tasksComment: 'tasks:comment',
   tasksOpen: 'tasks:open',
   tasksStartSession: 'tasks:start-session',
+  compareChanges: 'compare:changes',
   appCommand: 'app:command',
 } as const

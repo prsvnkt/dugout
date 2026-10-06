@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { CompareTarget } from '@shared/compare'
 import type { RevisionContent } from '@shared/files'
 import type { ProjectId } from '@shared/project'
 import type { GitCheckout } from '@shared/worktree'
@@ -54,6 +55,8 @@ interface EditorState {
     isPreview: boolean,
   ): void
   openDiff(projectId: ProjectId, worktreePath: string | null, path: string, staged: boolean): void
+  /** Opens (or focuses) a Compare tab for two worktrees, e.g. two agents on one task. */
+  openCompare(projectId: ProjectId, key: string, target: CompareTarget): void
   activate(projectId: ProjectId, tabId: string): void
   pin(projectId: ProjectId, tabId: string): void
   /** Closes a tab, or asks first when its file has unsaved changes. */
@@ -199,6 +202,18 @@ export const useEditorStore = create<EditorState>()((set, get) => {
       releaseUnused()
       if (!staged) void ensureFile(checkout, path)
       void loadDiff(id, checkout, path, staged)
+    },
+
+    openCompare(projectId, key, target) {
+      const tab = {
+        id: `compare:${key}`,
+        kind: 'compare' as const,
+        path: target.title,
+        staged: false,
+        worktreePath: null,
+        compare: target,
+      }
+      setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
     },
 
     activate: (projectId, tabId) => setTabs(projectId, (tabs) => activateTab(tabs, tabId)),

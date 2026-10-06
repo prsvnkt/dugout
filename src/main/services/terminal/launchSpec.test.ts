@@ -48,6 +48,32 @@ describe('buildLaunchSpec', () => {
     )
   })
 
+  test('starts Codex with its config overrides and first prompt', () => {
+    const line = buildLaunchSpec('codex', '/bin/zsh', {
+      hasAgentHooks: true,
+      hasInitialPrompt: true,
+      codexOverrideCount: 2,
+    }).args.at(-1)
+    expect(line).toBe(
+      '"$DUGOUT_CODEX_COMMAND" "$DUGOUT_INITIAL_PROMPT" -c "$DUGOUT_CODEX_C0" -c "$DUGOUT_CODEX_C1"',
+    )
+  })
+
+  test('resumes Codex with its resume subcommand', () => {
+    const line = buildLaunchSpec('codex', '/bin/zsh', {
+      hasAgentHooks: true,
+      isResuming: true,
+      codexOverrideCount: 1,
+    }).args.at(-1)
+    expect(line).toBe(
+      '"$DUGOUT_CODEX_COMMAND" resume "$DUGOUT_RESUME_SESSION" -c "$DUGOUT_CODEX_C0"',
+    )
+  })
+
+  test('runs plain codex without hooks', () => {
+    expect(buildLaunchSpec('codex', '/bin/zsh').args).toEqual(['-l', '-i', '-c', 'codex'])
+  })
+
   test('uses only plain "$VAR" expansions, which bash, zsh and fish all treat the same', () => {
     const line = buildLaunchSpec('claude', '/bin/zsh', {
       hasAgentHooks: true,

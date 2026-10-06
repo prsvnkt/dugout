@@ -6,6 +6,7 @@ import { gitHubTestEnv, startGitHubStub } from './githubStub'
 import {
   launchApp,
   makeFakeClaude,
+  makeFakeCodex,
   makeTempDir,
   recordTerminalOutput,
   stubFolderPicker,
@@ -55,6 +56,7 @@ test.beforeEach(async () => {
     ...IDENTITY,
     ...gitHubTestEnv(stub.baseUrl),
     DUGOUT_CLAUDE_COMMAND: makeFakeClaude(),
+    DUGOUT_CODEX_COMMAND: makeFakeCodex(),
   })
   page = await app.firstWindow()
   await page.getByRole('banner').getByRole('button', { name: 'Sign in to GitHub' }).click()
@@ -92,6 +94,7 @@ test('starts an agent on a task, which the agent then updates through its tools'
   // Start agent from the task
   await tasks().getByRole('button', { name: '#1 Fix login' }).click()
   await tasks().getByRole('button', { name: 'Start agent' }).click()
+  await tasks().getByRole('menuitem', { name: 'Claude', exact: true }).click()
 
   // A Claude pane for #1 in its own worktree, with the issue as its first prompt
   const pane = page.locator('[data-active="true"]').getByRole('region', { name: /terminal$/ })
@@ -120,4 +123,34 @@ test('a comment and a status change from the panel reach GitHub', async () => {
 
   await tasks().getByLabel('Status').selectOption('done')
   await expect.poll(() => stub.issues[0]?.state).toBe('closed')
+})
+
+test('runs Claude and Codex on one task and compares what each changed', async () => {
+  const output = await recordTerminalOutput(page)
+  await tasks().getByRole('button', { name: '#1 Fix login' }).click()
+  await tasks().getByRole('button', { name: 'Start agent' }).click()
+  await tasks().getByRole('menuitem', { name: 'Claude + Codex (compare)' }).click()
+
+  // Two panes, each in its own worktree, both given the issue
+  const panes = page.locator('[data-active="true"]').getByRole('region', { name: /terminal$/ })
+  await expect(panes).toHaveCount(2)
+  await expect(panes.nth(0)).toContainText('⎇ dugout/1-fix-login-claude')
+  await expect(panes.nth(1)).toContainText('⎇ dugout/1-fix-login-codex')
+  await expect.poll(output).toContain('fake-codex ready')
+
+  // Codex reaches the task tools through its -c MCP override
+  await panes.nth(1).getByTestId('terminal').click()
+  await page.keyboard.type('agent-comment\nedit\n')
+  await expect.poll(output, { timeout: 20_000 }).toContain('tool-result=')
+  await panes.nth(0).getByTestId('terminal').click()
+  await page.keyboard.type('edit\n')
+  await expect.poll(() => output().then((text) => text.split('edited').length - 1)).toBe(2)
+
+  // Compare lists each agent's files and diffs the shared one
+  await tasks().getByRole('button', { name: 'Compare', exact: true }).click()
+  const compare = page.getByRole('region', { name: 'Compare Claude and Codex' })
+  await expect(compare.getByRole('button', { name: 'fake-claude.txt, Claude only' })).toBeVisible()
+  await expect(compare.getByRole('button', { name: 'fake-codex.txt, Codex only' })).toBeVisible()
+  await compare.getByRole('button', { name: 'shared.txt, both' }).click()
+  await expect(compare.locator('.monaco-diff-editor')).toContainText('shared by fake-codex')
 })

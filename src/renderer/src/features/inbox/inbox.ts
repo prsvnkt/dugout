@@ -1,4 +1,5 @@
 import type { Project, ProjectId } from '@shared/project'
+import { AGENT_LABEL, isAgentKind } from '@shared/terminal'
 import type { PaneActivity } from '@renderer/features/workspace/paneActivity'
 import type { PaneId, ProjectLayout } from '@renderer/features/workspace/layout'
 import type { PaneDetail } from '@renderer/features/workspace/workspaceStore'
@@ -21,8 +22,6 @@ export interface InboxSource {
   readonly details: Readonly<Record<PaneId, PaneDetail>>
 }
 
-const AGENT_LABEL: Readonly<Record<string, string>> = { claude: 'Claude', codex: 'Codex' }
-
 function isInboxActivity(activity: PaneActivity | undefined): activity is InboxEntry['activity'] {
   return activity === 'needs-input' || activity === 'done'
 }
@@ -40,7 +39,7 @@ export function inboxEntries(source: InboxSource): InboxEntry[] {
           projectName: project.name,
           paneId: pane.id,
           activity,
-          agentLabel: AGENT_LABEL[pane.kind] ?? pane.kind,
+          agentLabel: isAgentKind(pane.kind) ? AGENT_LABEL[pane.kind] : pane.kind,
           taskNumber: pane.task?.number ?? null,
           detail: detail?.detail ?? null,
           since: detail?.since ?? 0,

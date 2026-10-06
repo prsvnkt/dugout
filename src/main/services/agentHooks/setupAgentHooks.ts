@@ -6,6 +6,7 @@ import type { HookSignal } from '@shared/agentStatus'
 import type { HookDetails, HookServerDeps } from './HookServer'
 import { writeFileAtomic } from '../projects/atomicWrite'
 import { HookServer } from './HookServer'
+import { codexConfigOverrides } from './codexConfig'
 import { buildHookSettings } from './hookSettings'
 
 export interface AgentHooksConfig {
@@ -16,6 +17,9 @@ export interface AgentHooksConfig {
   /** Writes the terminal's MCP config (Dugout task tools) and returns its path. */
   readonly writeMcpConfig?: (terminalId: string) => string
   readonly removeMcpConfig?: (terminalId: string) => void
+  /** Codex `-c` overrides for a terminal: status hooks plus the dugout MCP server. */
+  readonly codexOverrides?: (terminalId: string) => string[]
+  readonly codexCommand?: string | undefined
 }
 
 export interface AgentHooks {
@@ -37,6 +41,24 @@ export interface McpServerLaunch {
   readonly script: string
 }
 
+function mcpServerEntry(
+  launch: McpServerLaunch,
+  socketPath: string,
+  token: string,
+  terminalId: string,
+) {
+  return {
+    command: launch.command,
+    args: [launch.script],
+    env: {
+      ELECTRON_RUN_AS_NODE: '1',
+      DUGOUT_HOOK_SOCKET: socketPath,
+      DUGOUT_HOOK_TOKEN: token,
+      DUGOUT_TERMINAL_ID: terminalId,
+    },
+  }
+}
+
 /** One config per terminal: the server needs to know which terminal (and project) it serves. */
 function mcpConfigWriter(
   dataDir: string,
@@ -51,17 +73,7 @@ function mcpConfigWriter(
       const path = join(dir, `${terminalId}.json`)
       const config = {
         mcpServers: {
-          dugout: {
-            type: 'stdio',
-            command: launch.command,
-            args: [launch.script],
-            env: {
-              ELECTRON_RUN_AS_NODE: '1',
-              DUGOUT_HOOK_SOCKET: socketPath,
-              DUGOUT_HOOK_TOKEN: token,
-              DUGOUT_TERMINAL_ID: terminalId,
-            },
-          },
+          dugout: { type: 'stdio', ...mcpServerEntry(launch, socketPath, token, terminalId) },
         },
       }
       writeFileSync(path, JSON.stringify(config, null, 2), { mode: OWNER_ONLY })
@@ -87,6 +99,7 @@ export async function setupAgentHooks(options: {
   readonly onSignal: (terminalId: string, signal: HookSignal, details: HookDetails) => void
   readonly onRpc: HookServerDeps['onRpc']
   readonly mcpServer?: McpServerLaunch | undefined
+  readonly codexCommand?: string | undefined
 }): Promise<AgentHooks> {
   const settingsPath = join(options.dataDir, SETTINGS_FILE)
   const socketPath = chooseSocketPath(options.dataDir)
@@ -111,6 +124,13 @@ export async function setupAgentHooks(options: {
       token,
       claudeCommand: options.claudeCommand,
       ...(mcp && { writeMcpConfig: mcp.write, removeMcpConfig: mcp.remove }),
+      codexCommand: options.codexCommand,
+      ...(options.mcpServer && {
+        codexOverrides: (terminalId: string) =>
+          codexConfigOverrides(
+            mcpServerEntry(options.mcpServer as McpServerLaunch, socketPath, token, terminalId),
+          ),
+      }),
     },
     close: () => server.close(),
   }

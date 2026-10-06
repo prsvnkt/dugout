@@ -1,4 +1,6 @@
-export type EditorTabKind = 'file' | 'diff'
+import type { CompareTarget } from '@shared/compare'
+
+export type EditorTabKind = 'file' | 'diff' | 'compare'
 
 export interface EditorTab {
   readonly id: string
@@ -11,6 +13,8 @@ export interface EditorTab {
   readonly worktreePath: string | null
   /** A preview tab is replaced by the next file opened as a preview (VS Code behaviour). */
   readonly isPreview: boolean
+  /** Compare tabs: the worktrees being compared. */
+  readonly compare?: CompareTarget
 }
 
 export interface TabsState {

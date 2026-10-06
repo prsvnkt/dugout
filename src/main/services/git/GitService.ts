@@ -2,7 +2,7 @@ import { readdir, rm } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { CloneProgress } from '@shared/clone'
 import { MAX_OPEN_FILE_BYTES, type GitRevision, type RevisionContent } from '@shared/files'
-import type { GitStatus } from '@shared/git'
+import type { GitChangeKind, GitStatus } from '@shared/git'
 import type { GitCredentialConfig } from '../github/gitCredentials'
 import { cloneProgressHandler } from './cloneProgressHandler'
 import { parseStatus } from './parseStatus'
@@ -26,6 +26,12 @@ const MISSING_AT_REVISION =
 /** `git symbolic-ref --quiet` exits 1 when the ref does not exist. */
 const OPTIONAL_REF_OK = [0, 1]
 const FALLBACK_BASE_BRANCH = 'main'
+const CHANGE_KINDS: Readonly<Record<string, GitChangeKind>> = {
+  A: 'added',
+  M: 'modified',
+  D: 'deleted',
+  T: 'type-changed',
+}
 
 /**
  * Git operations for the review panel. Never prompts (no credential or editor prompts), never
@@ -179,6 +185,39 @@ export class GitService {
       env: { ...this.env, GIT_LITERAL_PATHSPECS: '0' },
     })
     return new Set(stdout.split('\0').filter(Boolean))
+  }
+
+  /**
+   * Everything that differs from where the branch left `base`: committed, uncommitted and new
+   * files. Used to compare what two agents changed in their worktrees.
+   */
+  async changesSince(root: string, base: string): Promise<{ path: string; kind: GitChangeKind }[]> {
+    const mergeBase = await this.mergeBase(root, base)
+    const [{ stdout: diff }, { stdout: untracked }] = await Promise.all([
+      this.run(root, ['diff', '--name-status', '--no-renames', '-z', mergeBase]),
+      this.run(root, ['ls-files', '--others', '--exclude-standard', '-z']),
+    ])
+    const fields = diff.split('\0').filter(Boolean)
+    const changes = new Map<string, GitChangeKind>()
+    for (let index = 0; index + 1 < fields.length; index += 2) {
+      const kind = CHANGE_KINDS[fields[index]?.[0] ?? ''] ?? 'modified'
+      changes.set(fields[index + 1] ?? '', kind)
+    }
+    for (const path of untracked.split('\0').filter(Boolean)) changes.set(path, 'added')
+    return [...changes]
+      .map(([path, kind]) => ({ path, kind }))
+      .sort((a, b) => a.path.localeCompare(b.path))
+  }
+
+  /** Where the branch left `base` (or origin/`base`); HEAD when neither exists. */
+  private async mergeBase(root: string, base: string): Promise<string> {
+    for (const candidate of [base, `origin/${base}`]) {
+      const { stdout } = await this.run(root, ['merge-base', 'HEAD', candidate], {
+        okExitCodes: [0, 1, 128],
+      })
+      if (stdout.trim()) return stdout.trim()
+    }
+    return 'HEAD'
   }
 
   async branchExists(root: string, branch: string): Promise<boolean> {

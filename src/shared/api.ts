@@ -1,5 +1,6 @@
 import type { AgentStatus } from './agentStatus'
 import type { CloneDefaults, CloneProgress } from './clone'
+import type { WorktreeChanges } from './compare'
 import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
 import type { GitStatus } from './git'
@@ -16,7 +17,7 @@ import type {
 } from './ipc/contract'
 import type { Project, ProjectId } from './project'
 import type { Result } from './result'
-import type { TerminalExit, TerminalId } from './terminal'
+import type { AgentKind, TerminalExit, TerminalId } from './terminal'
 import type { Task, TaskDetail } from './tasks'
 import type { TaskSession } from './taskSession'
 import type { GitCheckout, Worktree } from './worktree'
@@ -119,7 +120,18 @@ export interface DugoutApi {
     comment(projectId: ProjectId, number: number, body: string): Promise<Result<void>>
     openInBrowser(projectId: ProjectId, number: number): Promise<Result<void>>
     /** Creates the task's worktree, marks it in progress and returns what the pane needs. */
-    startSession(projectId: ProjectId, number: number): Promise<Result<TaskSession>>
+    startSession(
+      projectId: ProjectId,
+      number: number,
+      agents: readonly AgentKind[],
+    ): Promise<Result<TaskSession>>
+  }
+  readonly compare: {
+    /** What each worktree changed since its branch left the base branch. */
+    changes(
+      projectId: ProjectId,
+      worktreePaths: readonly string[],
+    ): Promise<Result<readonly WorktreeChanges[]>>
   }
   /** Saved panes per project, restored on launch. */
   readonly workspace: {

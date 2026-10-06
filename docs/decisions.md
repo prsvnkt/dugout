@@ -184,6 +184,23 @@ with expandable checks and swaps Create PR for Open PR. It refreshes every 60s w
 focus, and when the branch's push state changes. Links open only on the GitHub host
 (`git:open-url`). The GitHub REST helpers (`githubRequest`/`githubJson`) are shared with Issues.
 
+## 021 — Codex panes, and Claude + Codex on one task (2026-10-06)
+
+`codex` is a terminal kind next to `claude`; `isAgentKind` covers both for status, resume, the
+inbox, notifications and task tools. Codex gets the same status hooks (its events match Claude
+Code's; it has no Notification event) and the "dugout" MCP server as `-c key=value` overrides,
+each passed in its own `$DUGOUT_CODEX_C<n>` variable so the shell line stays plain `"$VAR"`s.
+Codex collects hooks per config layer (user, project, plugin, session flags…), so the overrides
+add to the user's hooks rather than replace them; nothing is merged or rewritten. Codex asks to
+review new hooks once; the commands read the terminal from the environment, so they never change
+and one "Trust" covers every pane. Dugout never passes `--dangerously-bypass-hook-trust`.
+
+On a task, "Start agent ▾" offers Claude, Codex, or both; both get their own worktree
+(`dugout/<n>-<slug>-claude` / `-codex`). The Compare tab lists what each worktree changed since it
+left the base branch (`GitService.changesSince`: merge-base diff plus untracked files), marks
+files as one agent's or both, and diffs the two versions read-only. You pick a winner with the
+usual Create PR; nothing is merged automatically.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -193,5 +210,6 @@ focus, and when the branch's push state changes. Links open only on the GitHub h
    - Git panel (branch, changes, diff, stage / commit / push). ✅
 3. **Next:** worktree sessions ✅, resume on relaunch ✅, native notifications ✅, create PR ✅.
 4. **Done since:** explorer + center editor ✅, GitHub sign-in ✅, clone ✅.
-5. **Later:** "needs you" inbox across projects, Codex adapter, PR/CI status in the git panel,
-   per-project MCP config editor.
+5. **Done since:** tasks from GitHub Issues ✅, "needs you" inbox ✅, PR/CI status ✅,
+   Codex adapter with Compare ✅.
+6. **Later:** per-project MCP config editor with AGENTS.md as the shared instructions.

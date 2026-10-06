@@ -1,6 +1,11 @@
 import type { AgentStatus, HookSignal } from '@shared/agentStatus'
 import type { TerminalCreateRequest } from '@shared/ipc/contract'
-import type { TerminalExit, TerminalId, TerminalKind } from '@shared/terminal'
+import {
+  isAgentKind,
+  type TerminalExit,
+  type TerminalId,
+  type TerminalKind,
+} from '@shared/terminal'
 import type { HookDetails } from '../agentHooks/HookServer'
 import type { AgentHooksConfig } from '../agentHooks/setupAgentHooks'
 import type { AgentStatusChange } from '../notifications/AgentNotifier'
@@ -41,6 +46,7 @@ interface ManagedTerminal {
 }
 
 const DEFAULT_CLAUDE_COMMAND = 'claude'
+const DEFAULT_CODEX_COMMAND = 'codex'
 const CONVERSATION_STATUSES: ReadonlySet<AgentStatus> = new Set(['working', 'needs-input', 'done'])
 
 const SIGNAL_STATUS: Readonly<Record<HookSignal, AgentStatus>> = {
@@ -62,22 +68,28 @@ export class TerminalManager {
 
   create(request: TerminalCreateRequest, events: TerminalEvents): TerminalId {
     const id = this.deps.createId()
-    const hooks = request.kind === 'claude' ? this.deps.agentHooks : undefined
+    const hooks = isAgentKind(request.kind) ? this.deps.agentHooks : undefined
+    const isCodex = request.kind === 'codex'
     const isResuming = hooks !== undefined && request.resumeSessionId !== undefined
     const initialPrompt = hooks && !isResuming ? request.initialPrompt : undefined
-    const mcpConfigPath = hooks?.writeMcpConfig?.(id)
+    const mcpConfigPath = isCodex ? undefined : hooks?.writeMcpConfig?.(id)
+    const codexOverrides = isCodex ? (hooks?.codexOverrides?.(id) ?? []) : []
     const launch = buildLaunchSpec(request.kind, resolveShell(this.deps.env), {
       hasAgentHooks: hooks !== undefined,
       isResuming,
       hasInitialPrompt: initialPrompt !== undefined,
       hasMcpConfig: mcpConfigPath !== undefined,
+      codexOverrideCount: codexOverrides.length,
     })
     const process = this.deps.backend.spawn({
       ...launch,
       cwd: request.cwd,
       env: {
         ...buildTerminalEnv(this.deps.env),
-        ...(hooks && hookEnv(id, hooks)),
+        ...(hooks && hookEnv(id, hooks, isCodex)),
+        ...Object.fromEntries(
+          codexOverrides.map((value, index) => [`DUGOUT_CODEX_C${index}`, value]),
+        ),
         ...(isResuming &&
           request.resumeSessionId && { DUGOUT_RESUME_SESSION: request.resumeSessionId }),
         ...(initialPrompt && { DUGOUT_INITIAL_PROMPT: initialPrompt }),
@@ -204,12 +216,21 @@ function nextAgentState(
   }
 }
 
-function hookEnv(id: TerminalId, hooks: AgentHooksConfig): Record<string, string> {
-  return {
+function hookEnv(
+  id: TerminalId,
+  hooks: AgentHooksConfig,
+  isCodex: boolean,
+): Record<string, string> {
+  const shared = {
     DUGOUT_TERMINAL_ID: id,
     DUGOUT_HOOK_SOCKET: hooks.socketPath,
     DUGOUT_HOOK_TOKEN: hooks.token,
-    DUGOUT_CLAUDE_SETTINGS: hooks.settingsPath,
-    DUGOUT_CLAUDE_COMMAND: hooks.claudeCommand ?? DEFAULT_CLAUDE_COMMAND,
   }
+  return isCodex
+    ? { ...shared, DUGOUT_CODEX_COMMAND: hooks.codexCommand ?? DEFAULT_CODEX_COMMAND }
+    : {
+        ...shared,
+        DUGOUT_CLAUDE_SETTINGS: hooks.settingsPath,
+        DUGOUT_CLAUDE_COMMAND: hooks.claudeCommand ?? DEFAULT_CLAUDE_COMMAND,
+      }
 }

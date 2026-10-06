@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { ProjectId } from '@shared/project'
 import { TASK_STATUS_LABEL, TASK_STATUSES, type TaskDetail, type TaskStatus } from '@shared/tasks'
+import type { AgentKind } from '@shared/terminal'
 import { dugout } from '@renderer/lib/dugout'
 import { useTaskStore } from './taskStore'
 import styles from './Tasks.module.css'
@@ -10,7 +11,55 @@ interface TaskDetailViewProps {
   readonly task: TaskDetail
   readonly isBusy: boolean
   readonly hasAgent: boolean
+  /** Two or more agents work on this task in their own worktrees. */
+  readonly canCompare: boolean
+  onCompare(): void
   onError(message: string): void
+}
+
+const START_OPTIONS: readonly { label: string; agents: readonly AgentKind[] }[] = [
+  { label: 'Claude', agents: ['claude'] },
+  { label: 'Codex', agents: ['codex'] },
+  { label: 'Claude + Codex (compare)', agents: ['claude', 'codex'] },
+]
+
+/** "Start agent ▾": which agent(s) to start on the task, each in its own worktree. */
+function StartAgentMenu(props: {
+  label: string
+  disabled: boolean
+  onStart(agents: readonly AgentKind[]): void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  return (
+    <span className={styles.startMenu}>
+      <button
+        className={styles.primary}
+        disabled={props.disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        title="Start an agent in a new worktree with this task as its first prompt"
+      >
+        {props.label} ▾
+      </button>
+      {isOpen && (
+        <span className={styles.menu} role="menu">
+          {START_OPTIONS.map((option) => (
+            <button
+              key={option.label}
+              role="menuitem"
+              onClick={() => {
+                setIsOpen(false)
+                props.onStart(option.agents)
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </span>
+      )}
+    </span>
+  )
 }
 
 function formatDate(iso: string): string {
@@ -18,13 +67,8 @@ function formatDate(iso: string): string {
 }
 
 /** One task: description, status, comments, and what you can do with it. */
-export function TaskDetailView({
-  projectId,
-  task,
-  isBusy,
-  hasAgent,
-  onError,
-}: TaskDetailViewProps) {
+export function TaskDetailView(props: TaskDetailViewProps) {
+  const { projectId, task, isBusy, hasAgent, canCompare, onCompare, onError } = props
   const { update, comment, startAgent, select } = useTaskStore()
   const [note, setNote] = useState('')
   const run = (action: Promise<unknown>) =>
@@ -76,14 +120,16 @@ export function TaskDetailView({
             ))}
           </select>
         </label>
-        <button
-          className={styles.primary}
+        <StartAgentMenu
+          label={hasAgent ? 'Start another agent' : 'Start agent'}
           disabled={isBusy || task.status === 'done'}
-          onClick={() => void run(startAgent(projectId, task.number))}
-          title="Start Claude in a new worktree with this task as its first prompt"
-        >
-          {hasAgent ? 'Start another agent' : 'Start agent'}
-        </button>
+          onStart={(agents) => void run(startAgent(projectId, task.number, agents))}
+        />
+        {canCompare && (
+          <button onClick={onCompare} title="Compare what the agents on this task changed">
+            Compare
+          </button>
+        )}
         <button onClick={() => void run(dugout.tasks.openInBrowser(projectId, task.number))}>
           Open on GitHub
         </button>

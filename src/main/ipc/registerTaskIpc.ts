@@ -4,6 +4,7 @@ import {
   taskCreateRequestSchema,
   taskListRequestSchema,
   taskNumberRequestSchema,
+  taskStartSessionRequestSchema,
   taskUpdateRequestSchema,
 } from '@shared/ipc/contract'
 import type { TaskSession } from '@shared/taskSession'
@@ -58,16 +59,22 @@ export function registerTaskIpc({
   /** Start agent: a worktree named after the task, marked in progress, with its first prompt. */
   handleRequest(
     IpcChannel.tasksStartSession,
-    taskNumberRequestSchema,
-    async ({ projectId, number }): Promise<TaskSession> => {
+    taskStartSessionRequestSchema,
+    async ({ projectId, number, agents }): Promise<TaskSession> => {
       const task = await tasks.get(projectId, number)
-      const worktree = await worktrees.create(findProject(projects, projectId), {
-        name: taskBranchName(task.number, task.title),
-      })
-      if (task.status !== 'in-progress')
+      const project = findProject(projects, projectId)
+      const branch = taskBranchName(task.number, task.title)
+      // One worktree per agent; with several, each name says which agent it belongs to.
+      const sessions = []
+      for (const agent of agents) {
+        const name = agents.length > 1 ? `${branch}-${agent}` : branch
+        sessions.push({ agent, worktree: await worktrees.create(project, { name }) })
+      }
+      if (task.status !== 'in-progress') {
         await tasks.update(projectId, number, { status: 'in-progress' })
+      }
       return {
-        worktree,
+        sessions,
         prompt: taskPrompt(task),
         task: { number: task.number, title: task.title },
       }

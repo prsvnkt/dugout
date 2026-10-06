@@ -5,6 +5,7 @@ import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
 import { taskRpcSchemas } from '@shared/ipc/contract'
 import { registerCloneIpc } from './ipc/registerCloneIpc'
+import { registerCompareIpc } from './ipc/registerCompareIpc'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
 import { registerFileIpc } from './ipc/registerFileIpc'
 import { registerGitHubIpc } from './ipc/registerGitHubIpc'
@@ -162,6 +163,7 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
     return await setupAgentHooks({
       dataDir,
       claudeCommand: process.env.DUGOUT_CLAUDE_COMMAND,
+      codexCommand: process.env.DUGOUT_CODEX_COMMAND,
       onSignal: (terminalId, signal, details) =>
         terminalManager?.applyHookSignal(terminalId, signal, details),
       onRpc: handleTaskRpc,
@@ -277,6 +279,7 @@ async function start(): Promise<void> {
     openExternal: (url) => shell.openExternal(url),
   })
   registerWorktreeIpc(projectStore, worktrees)
+  registerCompareIpc(projectStore, worktrees, git)
   registerGitHubIpc({
     auth: githubAuth,
     api: githubApi,

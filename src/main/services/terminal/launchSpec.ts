@@ -21,7 +21,16 @@ const STRIPPED_ENV_PREFIXES = [
   'CODEX_COMPANION_',
   'DUGOUT_',
 ]
-const STRIPPED_ENV_KEYS = new Set(['CLAUDECODE', 'CLAUDE_PID', 'CLAUDE_EFFORT', 'AI_AGENT'])
+const STRIPPED_ENV_KEYS = new Set([
+  'CLAUDECODE',
+  'CLAUDE_PID',
+  'CLAUDE_EFFORT',
+  'AI_AGENT',
+  // Codex session internals (never CODEX_HOME or credentials).
+  'CODEX_NON_INTERACTIVE',
+  'CODEX_INTERNAL_ORIGINATOR_OVERRIDE',
+  'CODEX_MCP_PROTOCOL_VERSION',
+])
 
 function isInheritable(key: string): boolean {
   return !STRIPPED_ENV_KEYS.has(key) && !STRIPPED_ENV_PREFIXES.some((p) => key.startsWith(p))
@@ -44,6 +53,8 @@ export interface LaunchOptions {
   readonly hasInitialPrompt?: boolean
   /** Load Dugout's MCP server from `$DUGOUT_MCP_CONFIG`. */
   readonly hasMcpConfig?: boolean
+  /** Codex: number of `-c` overrides in `$DUGOUT_CODEX_C0…`. */
+  readonly codexOverrideCount?: number
 }
 
 export function buildLaunchSpec(
@@ -54,6 +65,8 @@ export function buildLaunchSpec(
   switch (kind) {
     case 'claude':
       return { file: shell, args: ['-l', '-i', '-c', claudeCommandLine(options)] }
+    case 'codex':
+      return { file: shell, args: ['-l', '-i', '-c', codexCommandLine(options)] }
     case 'shell':
       return { file: shell, args: ['-l'] }
   }
@@ -74,6 +87,20 @@ function claudeCommandLine(options: LaunchOptions): string {
     ...(options.isResuming ? ['--resume "$DUGOUT_RESUME_SESSION"'] : []),
     ...(options.hasMcpConfig ? ['--mcp-config "$DUGOUT_MCP_CONFIG"'] : []),
   ].join(' ')
+}
+
+function codexCommandLine(options: LaunchOptions): string {
+  if (!options.hasAgentHooks) return 'codex'
+  const overrides = Array.from(
+    { length: options.codexOverrideCount ?? 0 },
+    (_, index) => `-c "$DUGOUT_CODEX_C${index}"`,
+  )
+  const start = options.isResuming
+    ? ['resume "$DUGOUT_RESUME_SESSION"']
+    : options.hasInitialPrompt
+      ? ['"$DUGOUT_INITIAL_PROMPT"']
+      : []
+  return ['"$DUGOUT_CODEX_COMMAND"', ...start, ...overrides].join(' ')
 }
 
 export function buildTerminalEnv(env: Env): Record<string, string> {
