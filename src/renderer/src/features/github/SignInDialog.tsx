@@ -5,16 +5,17 @@ import styles from './GitHub.module.css'
 
 const COPIED_FEEDBACK_MS = 1_500
 
+/** Only seen in builds without a client ID, e.g. a fork that cleared it. */
 function Unconfigured() {
   return (
     <>
-      <p>GitHub sign-in needs a one-time setup: a GitHub OAuth App for Dugout.</p>
+      <p>This build of Dugout has no GitHub OAuth App configured. To use your own:</p>
       <ol className={styles.steps}>
         <li>GitHub → Settings → Developer settings → OAuth Apps → New OAuth App.</li>
-        <li>Name it “Dugout”; any homepage and callback URL; tick “Enable Device Flow”.</li>
+        <li>Name it, set any homepage and callback URL, and tick “Enable Device Flow”.</li>
         <li>
-          Put its Client ID in <code>src/main/services/github/config.ts</code> (or set{' '}
-          <code>DUGOUT_GITHUB_CLIENT_ID</code>) and restart.
+          Start Dugout with <code>DUGOUT_GITHUB_CLIENT_ID</code> set to its Client ID, or put it in{' '}
+          <code>src/main/services/github/config.ts</code>.
         </li>
       </ol>
     </>

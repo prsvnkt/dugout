@@ -111,7 +111,10 @@ banner. ⌘W closes the editor tab when the editor had focus, otherwise the pane
 
 Signing in uses GitHub's OAuth device flow (show a code, approve in the browser) with scopes
 `repo read:user workflow`. It needs a Dugout OAuth App with Device Flow enabled; its public
-client ID lives in `services/github/config.ts` (or `DUGOUT_GITHUB_CLIENT_ID`). The token is
+client ID (`Ov23libOb8Uedg6F3xsu`, owned by the maintainer's account for now; transfer the app to
+an organization later to keep the same ID) lives in `services/github/config.ts`
+(`DUGOUT_GITHUB_CLIENT_ID` overrides it). Tokens do not expire: "Expire user access tokens" is off
+on the app until refresh is implemented. The token is
 encrypted with Electron `safeStorage` (Keychain) in `<userData>/github-token.bin` (0600) and
 never sent to the renderer, which only sees `{ login, name, avatarUrl }`. Network git commands
 (push, clone) get the token through a credential helper scoped to the GitHub host that reads it

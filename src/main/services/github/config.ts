@@ -1,9 +1,9 @@
 /**
- * Client ID of the "Dugout" GitHub OAuth App (with Device Flow enabled). OAuth client IDs are
- * public identifiers, not secrets. Set it here once the app is registered, or override it with
- * DUGOUT_GITHUB_CLIENT_ID.
+ * Client ID of the "Dugout" GitHub OAuth App (Device Flow enabled). OAuth client IDs are public
+ * identifiers, not secrets, and the device flow needs no client secret. Forks can use their own
+ * app via DUGOUT_GITHUB_CLIENT_ID.
  */
-const GITHUB_CLIENT_ID = ''
+const GITHUB_CLIENT_ID = 'Ov23libOb8Uedg6F3xsu'
 
 export const GITHUB_SCOPES = ['repo', 'read:user', 'workflow'] as const
 
