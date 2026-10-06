@@ -60,8 +60,8 @@ change events, keeping the poll only as a fallback.
 - **Area:** `src/main/services/agentHooks/codexConfig.ts`
 - **Found:** 2026-10-06, verified with codex-cli 0.155
 
-**What happens:** the first Codex pane shows "Hooks need review". Until you choose *Trust all and
-continue* (or review them with `/hooks`), Codex runs without them and the pane never leaves
+**What happens:** the first Codex pane shows "Hooks need review". Until you choose _Trust all and
+continue_ (or review them with `/hooks`), Codex runs without them and the pane never leaves
 "Starting". Codex stores the trust in `~/.codex/config.toml` (`[hooks.state]`), so later panes
 start straight away. If a Dugout update changes the hook commands, Codex asks again.
 
