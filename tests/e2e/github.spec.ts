@@ -126,6 +126,8 @@ test('stays signed in while GitHub is unreachable and recovers when it is back',
 
   // GitHub comes back and the Mac reports it is online: back to normal without signing in
   stub.setUnavailable(false)
-  await page.evaluate(() => globalThis.dispatchEvent(new Event('online')))
+  await page.evaluate(() =>
+    (globalThis as unknown as EventTarget).dispatchEvent(new Event('online')),
+  )
   await expect(sidebar().getByRole('button', { name: 'GitHub account octocat' })).toBeVisible()
 })
