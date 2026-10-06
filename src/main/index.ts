@@ -165,6 +165,7 @@ async function start(): Promise<void> {
   const githubApi = new GitHubApi({ fetch, apiBaseUrl: github.apiBaseUrl })
   const githubAuth = new GitHubAuth({
     isConfigured: github.clientId !== '',
+    now: () => Date.now(),
     deviceFlow: new DeviceFlowClient({
       fetch,
       webBaseUrl: github.webBaseUrl,
@@ -184,7 +185,8 @@ async function start(): Promise<void> {
 
   const git = new GitService({
     env: process.env,
-    credentials: () => gitCredentialConfig(githubAuth.token(), github.webBaseUrl),
+    credentials: async () =>
+      gitCredentialConfig(await githubAuth.freshToken().catch(() => null), github.webBaseUrl),
   })
   const worktrees = new WorktreeManager({
     git,

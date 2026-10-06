@@ -14,7 +14,7 @@ type Env = Readonly<Record<string, string | undefined>>
 export interface GitServiceDeps {
   readonly env: Env
   /** Credentials for network commands (push, clone), e.g. the signed-in GitHub token. */
-  readonly credentials?: () => GitCredentialConfig
+  readonly credentials?: () => GitCredentialConfig | Promise<GitCredentialConfig>
 }
 
 const PUSH_TIMEOUT_MS = 120_000
@@ -207,12 +207,12 @@ export class GitService {
   }
 
   /** Like `run`, with the configured credentials (e.g. GitHub token) for remote access. */
-  private runNetwork(
+  private async runNetwork(
     root: string,
     args: readonly string[],
     options: Partial<Omit<RunGitOptions, 'cwd' | 'args'>> = {},
   ) {
-    const credentials = this.deps.credentials?.() ?? { args: [], env: {} }
+    const credentials = (await this.deps.credentials?.()) ?? { args: [], env: {} }
     return this.run(root, [...credentials.args, ...args], {
       ...options,
       env: { ...this.env, ...credentials.env },

@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { DeviceFlowClient } from './DeviceFlowClient'
+import { DeviceFlowClient, RefreshRejectedError } from './DeviceFlowClient'
 import { fakeFetch } from './fakeFetch'
 
 const CODE = {
@@ -53,7 +53,12 @@ describe('DeviceFlowClient', () => {
     })
     const code = await device.start()
 
-    await expect(device.waitForToken(code)).resolves.toBe('gho_token')
+    await expect(device.waitForToken(code)).resolves.toEqual({
+      accessToken: 'gho_token',
+      refreshToken: null,
+      accessTokenExpiresAt: null,
+      refreshTokenExpiresAt: null,
+    })
     expect(sleep.mock.calls.map(([ms]) => ms)).toEqual([5_000, 5_000, 10_000])
   })
 
@@ -82,5 +87,51 @@ describe('DeviceFlowClient', () => {
     const controller = new AbortController()
     controller.abort()
     await expect(device.waitForToken(code, controller.signal)).rejects.toThrow('cancelled')
+  })
+})
+
+describe('DeviceFlowClient expiring tokens', () => {
+  const EXPIRING = {
+    access_token: 'ghu_access',
+    expires_in: 28_800,
+    refresh_token: 'ghr_refresh',
+    refresh_token_expires_in: 15_897_600,
+  }
+
+  test('returns expiry times when the app issues expiring tokens', async () => {
+    const { device } = client({
+      'POST /login/device/code': [{ json: CODE }],
+      'POST /login/oauth/access_token': [{ json: EXPIRING }],
+    })
+    expect(await device.waitForToken(await device.start())).toEqual({
+      accessToken: 'ghu_access',
+      refreshToken: 'ghr_refresh',
+      accessTokenExpiresAt: 28_800_000,
+      refreshTokenExpiresAt: 15_897_600_000,
+    })
+  })
+
+  test('refreshes with the refresh token and no client secret', async () => {
+    const { device, requests } = client({
+      'POST /login/oauth/access_token': [
+        { json: { ...EXPIRING, access_token: 'ghu_new', refresh_token: 'ghr_new' } },
+      ],
+    })
+
+    const renewed = await device.refresh('ghr_refresh')
+
+    expect(renewed).toMatchObject({ accessToken: 'ghu_new', refreshToken: 'ghr_new' })
+    const body = new URLSearchParams(requests[0]?.body)
+    expect(body.get('grant_type')).toBe('refresh_token')
+    expect(body.get('refresh_token')).toBe('ghr_refresh')
+    expect(body.get('client_id')).toBe('client-1')
+    expect(body.has('client_secret')).toBe(false)
+  })
+
+  test('reports a rejected refresh token distinctly', async () => {
+    const { device } = client({
+      'POST /login/oauth/access_token': [{ json: { error: 'bad_refresh_token' } }],
+    })
+    await expect(device.refresh('ghr_old')).rejects.toBeInstanceOf(RefreshRejectedError)
   })
 })

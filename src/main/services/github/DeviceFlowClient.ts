@@ -1,3 +1,13 @@
+import type { GitHubCredentials } from './credentials'
+
+/** GitHub refused the refresh token (revoked, expired or already used). Sign in again. */
+export class RefreshRejectedError extends Error {
+  override readonly name = 'RefreshRejectedError'
+  constructor() {
+    super('Your GitHub sign-in expired. Please sign in again.')
+  }
+}
+
 export interface DeviceCode {
   readonly deviceCode: string
   readonly userCode: string
@@ -28,6 +38,10 @@ interface DeviceCodeResponse {
 
 interface TokenResponse {
   access_token?: string
+  /** Present only when the app issues expiring tokens. Seconds. */
+  expires_in?: number
+  refresh_token?: string
+  refresh_token_expires_in?: number
   error?: string
   interval?: number
 }
@@ -52,7 +66,7 @@ export class DeviceFlowClient {
   }
 
   /** Polls until the user approves (resolves the token), denies, the code expires, or abort. */
-  async waitForToken(code: DeviceCode, signal?: AbortSignal): Promise<string> {
+  async waitForToken(code: DeviceCode, signal?: AbortSignal): Promise<GitHubCredentials> {
     let intervalSeconds = code.intervalSeconds
     for (;;) {
       if (signal?.aborted) throw new Error('Sign-in was cancelled.')
@@ -64,7 +78,7 @@ export class DeviceFlowClient {
         device_code: code.deviceCode,
         grant_type: GRANT_TYPE,
       })
-      if (data.access_token) return data.access_token
+      if (data.access_token) return this.toCredentials(data, data.access_token)
       switch (data.error) {
         case 'authorization_pending':
           continue
@@ -78,6 +92,32 @@ export class DeviceFlowClient {
         default:
           throw new Error(`GitHub sign-in failed${data.error ? ` (${data.error})` : ''}.`)
       }
+    }
+  }
+
+  /**
+   * Exchanges a refresh token for new credentials. Tokens from the device flow need no client
+   * secret here. GitHub rotates the refresh token, so the returned one replaces the old.
+   */
+  async refresh(refreshToken: string): Promise<GitHubCredentials> {
+    const data = await this.post<TokenResponse>('/login/oauth/access_token', {
+      client_id: this.deps.clientId,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    })
+    if (data.access_token) return this.toCredentials(data, data.access_token)
+    if (data.error === 'bad_refresh_token') throw new RefreshRejectedError()
+    throw new Error(`Could not renew the GitHub sign-in${data.error ? ` (${data.error})` : ''}.`)
+  }
+
+  private toCredentials(data: TokenResponse, accessToken: string): GitHubCredentials {
+    const at = (seconds: number | undefined) =>
+      seconds === undefined ? null : this.deps.now() + seconds * SECOND_MS
+    return {
+      accessToken,
+      refreshToken: data.refresh_token ?? null,
+      accessTokenExpiresAt: at(data.expires_in),
+      refreshTokenExpiresAt: at(data.refresh_token_expires_in),
     }
   }
 

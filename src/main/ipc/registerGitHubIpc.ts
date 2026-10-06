@@ -27,9 +27,7 @@ export function registerGitHubIpc({ auth, api, webBaseUrl, openExternal }: GitHu
     await openExternal(url.toString())
   })
 
-  handleRequest(IpcChannel.githubListRepos, z.undefined(), () => {
-    const token = auth.token()
-    if (!token) throw new Error('Sign in to GitHub to see your repositories.')
-    return api.listRepos(token)
-  })
+  handleRequest(IpcChannel.githubListRepos, z.undefined(), () =>
+    auth.withToken((token) => api.listRepos(token)),
+  )
 }

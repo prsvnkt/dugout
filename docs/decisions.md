@@ -113,8 +113,11 @@ Signing in uses GitHub's OAuth device flow (show a code, approve in the browser)
 `repo read:user workflow`. It needs a Dugout OAuth App with Device Flow enabled; its public
 client ID (`Ov23libOb8Uedg6F3xsu`, owned by the maintainer's account for now; transfer the app to
 an organization later to keep the same ID) lives in `services/github/config.ts`
-(`DUGOUT_GITHUB_CLIENT_ID` overrides it). Tokens do not expire: "Expire user access tokens" is off
-on the app until refresh is implemented. The token is
+(`DUGOUT_GITHUB_CLIENT_ID` overrides it). The app has "Expire user access tokens" on: access
+tokens last ~8h and are renewed with the (rotating, ~6-month) refresh token, which for device-flow
+tokens needs no client secret. `GitHubAuth.freshToken()` renews when a token expires within 5
+minutes (one shared request for concurrent callers); `withToken()` renews and retries once on a 401. A rejected or expired refresh token signs the user out with a clear message. Credentials are
+stored as JSON; plain tokens from earlier versions are still read (as non-expiring). The token is
 encrypted with Electron `safeStorage` (Keychain) in `<userData>/github-token.bin` (0600) and
 never sent to the renderer, which only sees `{ login, name, avatarUrl }`. Network git commands
 (push, clone) get the token through a credential helper scoped to the GitHub host that reads it

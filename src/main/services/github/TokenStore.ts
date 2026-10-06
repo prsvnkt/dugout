@@ -1,5 +1,6 @@
 import { readFile, rm } from 'node:fs/promises'
 import { writeFileAtomic } from '../projects/atomicWrite'
+import type { GitHubCredentials } from './credentials'
 
 /** Electron's safeStorage (macOS Keychain-backed), injected so tests can fake it. */
 export interface Encryption {
@@ -23,10 +24,10 @@ function isMissing(error: unknown): boolean {
 export class TokenStore {
   constructor(private readonly deps: TokenStoreDeps) {}
 
-  async load(): Promise<string | null> {
+  async load(): Promise<GitHubCredentials | null> {
     try {
       const data = await readFile(this.deps.filePath)
-      return this.deps.encryption.decrypt(data)
+      return parseCredentials(this.deps.encryption.decrypt(data))
     } catch (error) {
       if (isMissing(error)) return null
       console.warn('[github] could not read the stored token; signing out:', error)
@@ -35,15 +36,38 @@ export class TokenStore {
     }
   }
 
-  async save(token: string): Promise<void> {
+  async save(credentials: GitHubCredentials): Promise<void> {
     if (!this.deps.encryption.isAvailable()) {
       throw new Error('Secure storage is not available, so the GitHub token cannot be saved.')
     }
-    const encrypted = this.deps.encryption.encrypt(token)
+    const encrypted = this.deps.encryption.encrypt(JSON.stringify(credentials))
     await writeFileAtomic(this.deps.filePath, encrypted.toString('latin1'), OWNER_ONLY, 'latin1')
   }
 
   async clear(): Promise<void> {
     await rm(this.deps.filePath, { force: true })
+  }
+}
+
+/** Current format is JSON; earlier versions stored the bare (non-expiring) token. */
+function parseCredentials(text: string): GitHubCredentials {
+  try {
+    const parsed = JSON.parse(text) as Partial<GitHubCredentials>
+    if (typeof parsed.accessToken === 'string') {
+      return {
+        accessToken: parsed.accessToken,
+        refreshToken: parsed.refreshToken ?? null,
+        accessTokenExpiresAt: parsed.accessTokenExpiresAt ?? null,
+        refreshTokenExpiresAt: parsed.refreshTokenExpiresAt ?? null,
+      }
+    }
+  } catch {
+    // Not JSON: a legacy plain token.
+  }
+  return {
+    accessToken: text,
+    refreshToken: null,
+    accessTokenExpiresAt: null,
+    refreshTokenExpiresAt: null,
   }
 }

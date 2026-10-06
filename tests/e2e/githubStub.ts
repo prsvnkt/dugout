@@ -10,18 +10,39 @@ export interface StubRepo {
   readonly cloneUrl: string
 }
 
-/** A tiny stand-in for github.com + api.github.com: device flow, /user and /user/repos. */
-export async function startGitHubStub(repos: readonly StubRepo[] = []) {
+export interface StubOptions {
+  /** Issue 1-second access tokens with rotating refresh tokens ("Expire user access tokens"). */
+  readonly expiringTokens?: boolean
+}
+
+/** A tiny stand-in for github.com + api.github.com: device flow, refresh, /user, /user/repos. */
+export async function startGitHubStub(repos: readonly StubRepo[] = [], options: StubOptions = {}) {
   let polls = 0
+  let generation = 1
+  let isRefreshRevoked = false
+  let refreshes = 0
+  const accessToken = () => (options.expiringTokens ? `ghu_stub_${generation}` : STUB_TOKEN)
+  const tokenResponse = () =>
+    options.expiringTokens
+      ? {
+          access_token: accessToken(),
+          expires_in: 1,
+          refresh_token: `ghr_stub_${generation}`,
+          refresh_token_expires_in: 3_600,
+        }
+      : { access_token: STUB_TOKEN }
+
   const server: Server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://stub')
     const json = (body: unknown, status = 200) => {
       res.writeHead(status, { 'content-type': 'application/json' })
       res.end(JSON.stringify(body))
     }
-    req.resume()
+    let body = ''
+    req.on('data', (chunk: Buffer) => (body += chunk.toString()))
     req.on('end', () => {
       const origin = `http://${req.headers.host}`
+      const form = new URLSearchParams(body)
       if (url.pathname === '/login/device/code') {
         return json({
           device_code: 'stub-device',
@@ -31,11 +52,23 @@ export async function startGitHubStub(repos: readonly StubRepo[] = []) {
           interval: 1,
         })
       }
+      if (
+        url.pathname === '/login/oauth/access_token' &&
+        form.get('grant_type') === 'refresh_token'
+      ) {
+        // Refresh tokens rotate: only the latest one works, once.
+        if (isRefreshRevoked || form.get('refresh_token') !== `ghr_stub_${generation}`) {
+          return json({ error: 'bad_refresh_token' })
+        }
+        refreshes += 1
+        generation += 1
+        return json(tokenResponse())
+      }
       if (url.pathname === '/login/oauth/access_token') {
         polls += 1
-        return json(polls < 2 ? { error: 'authorization_pending' } : { access_token: STUB_TOKEN })
+        return json(polls < 2 ? { error: 'authorization_pending' } : tokenResponse())
       }
-      const authorized = req.headers.authorization === `Bearer ${STUB_TOKEN}`
+      const authorized = req.headers.authorization === `Bearer ${accessToken()}`
       if (url.pathname.startsWith('/api/') && !authorized)
         return json({ message: 'Bad credentials' }, 401)
       if (url.pathname === '/api/user') {
@@ -61,6 +94,10 @@ export async function startGitHubStub(repos: readonly StubRepo[] = []) {
   const { port } = server.address() as AddressInfo
   return {
     baseUrl: `http://127.0.0.1:${port}`,
+    refreshCount: () => refreshes,
+    revokeRefreshToken: () => {
+      isRefreshRevoked = true
+    },
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   }
 }

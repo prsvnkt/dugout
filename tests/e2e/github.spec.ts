@@ -76,3 +76,33 @@ test('explains the one-time setup when no OAuth app is configured', async () => 
     'Enable Device Flow',
   )
 })
+
+test('expiring tokens are renewed automatically, and a revoked session signs out', async () => {
+  // Arrange: a stub that issues 1-second tokens with rotating refresh tokens
+  await stub.close()
+  stub = await startGitHubStub([{ name: 'gizmo', cloneUrl: '/tmp/gizmo.git' }], {
+    expiringTokens: true,
+  })
+  await start(gitHubTestEnv(stub.baseUrl))
+  await sidebar().getByRole('button', { name: 'Sign in to GitHub' }).click()
+  await expect(sidebar().getByRole('button', { name: 'GitHub account octocat' })).toBeVisible()
+
+  // Act + Assert: listing repos needs a fresh token, so it renews first
+  await page.getByRole('button', { name: 'New project' }).click()
+  await page.getByRole('menuitem', { name: /^Clone repository…/ }).click()
+  const clone = page.getByRole('dialog', { name: 'Clone repository' })
+  await expect(clone.getByRole('button', { name: /octocat\/gizmo/ })).toBeVisible()
+  expect(stub.refreshCount()).toBeGreaterThanOrEqual(1)
+
+  // The renewed session survives a restart (renewing again on start)
+  await app.close()
+  await start(gitHubTestEnv(stub.baseUrl))
+  await expect(sidebar().getByRole('button', { name: 'GitHub account octocat' })).toBeVisible()
+
+  // Once GitHub rejects the refresh token, the next GitHub call signs out with a clear reason
+  stub.revokeRefreshToken()
+  await page.getByRole('button', { name: 'New project' }).click()
+  await page.getByRole('menuitem', { name: /^Clone repository…/ }).click()
+  await expect(sidebar().getByRole('button', { name: 'Sign in to GitHub' })).toBeVisible()
+  expect(existsSync(join(userDataDir, 'github-token.bin'))).toBe(false)
+})
