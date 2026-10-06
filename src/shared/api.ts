@@ -8,12 +8,16 @@ import type {
   ProjectAddRequest,
   ProjectUpdateRequest,
   CloneRequest,
+  TaskCreateRequest,
+  TaskUpdateRequest,
   TerminalCreateRequest,
   WorkspaceSnapshot,
 } from './ipc/contract'
 import type { Project, ProjectId } from './project'
 import type { Result } from './result'
 import type { TerminalExit, TerminalId } from './terminal'
+import type { Task, TaskDetail } from './tasks'
+import type { TaskSession } from './taskSession'
 import type { GitCheckout, Worktree } from './worktree'
 
 export type Unsubscribe = () => void
@@ -97,6 +101,17 @@ export interface DugoutApi {
     start(request: CloneRequest): Promise<Result<string>>
     cancel(): void
     onProgress(listener: (progress: CloneProgress) => void): Unsubscribe
+  }
+  /** A project's tasks: the GitHub Issues of its origin repository. */
+  readonly tasks: {
+    list(projectId: ProjectId): Promise<Result<readonly Task[]>>
+    get(projectId: ProjectId, number: number): Promise<Result<TaskDetail>>
+    create(request: TaskCreateRequest): Promise<Result<Task>>
+    update(request: TaskUpdateRequest): Promise<Result<Task>>
+    comment(projectId: ProjectId, number: number, body: string): Promise<Result<void>>
+    openInBrowser(projectId: ProjectId, number: number): Promise<Result<void>>
+    /** Creates the task's worktree, marks it in progress and returns what the pane needs. */
+    startSession(projectId: ProjectId, number: number): Promise<Result<TaskSession>>
   }
   /** Saved panes per project, restored on launch. */
   readonly workspace: {

@@ -23,6 +23,10 @@ interface TerminalPaneProps {
   readonly isFocused: boolean
   /** Resume this Claude conversation when the pane starts. */
   readonly resumeSessionId?: string | undefined
+  /** First message for a new Claude session (e.g. the task it was started for). */
+  readonly initialPrompt?: string | undefined
+  /** Shown in the header for agents started on a task. */
+  readonly task?: { number: number; title: string } | undefined
   onFocus(): void
   onClose(): void
   onActivity(activity: PaneActivity): void
@@ -42,14 +46,15 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 
 export function TerminalPane(props: TerminalPaneProps) {
   const { kind, projectId, cwd, branch, accentColor, shouldFocus, isFocused } = props
-  const { resumeSessionId, onFocus, onClose, onActivity, onTerminalId, onSessionId, onRestart } =
-    props
+  const { resumeSessionId, initialPrompt, task } = props
+  const { onFocus, onClose, onActivity, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const { status, agentStatus, terminalId, sessionId, focus } = useTerminal(containerRef, {
     kind,
     projectId,
     cwd,
     resumeSessionId,
+    initialPrompt,
   })
   const canRestart = status.state === 'exited' || status.state === 'error'
   // If Claude never got ready, resuming failed (e.g. the session no longer exists).
@@ -77,6 +82,11 @@ export function TerminalPane(props: TerminalPaneProps) {
     >
       <header className={styles.header}>
         <span className={styles.kind}>{KIND_LABEL[kind]}</span>
+        {task && (
+          <span className={styles.task} title={task.title}>
+            #{task.number}
+          </span>
+        )}
         {branch && (
           <span className={styles.branch} title={cwd}>
             ⎇ {branch}

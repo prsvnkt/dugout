@@ -67,7 +67,14 @@ export class GitService {
       throw new GitError(`You are on ${base}. Switch to a feature branch to create a pull request.`)
     }
     const { stdout } = await this.run(root, ['remote', 'get-url', 'origin'])
-    return buildPullRequestUrl(stdout, base, status.branch)
+    // Branches started from a task (dugout/<number>-…) close it when the PR merges.
+    const taskNumber = /^dugout\/(\d+)-/.exec(status.branch)?.[1]
+    return buildPullRequestUrl(
+      stdout,
+      base,
+      status.branch,
+      taskNumber ? `Closes #${taskNumber}` : undefined,
+    )
   }
 
   async stage(root: string, paths: readonly string[]): Promise<void> {
@@ -172,6 +179,19 @@ export class GitService {
       env: { ...this.env, GIT_LITERAL_PATHSPECS: '0' },
     })
     return new Set(stdout.split('\0').filter(Boolean))
+  }
+
+  async branchExists(root: string, branch: string): Promise<boolean> {
+    const { stdout } = await this.run(root, ['branch', '--list', '--', branch])
+    return stdout.trim() !== ''
+  }
+
+  /** URL of the origin remote, or null when there is none. */
+  async remoteUrl(root: string): Promise<string | null> {
+    const { stdout } = await this.run(root, ['remote', 'get-url', 'origin'], {
+      okExitCodes: [0, 2],
+    })
+    return stdout.trim() || null
   }
 
   async listWorktrees(root: string): Promise<{ path: string; branch: string | null }[]> {

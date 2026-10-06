@@ -1,0 +1,254 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: var(--bg-panel);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--pane-header-height);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.heading {
+  flex: 1;
+  font-weight: 500;
+}
+
+.header button,
+.back {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.header button:hover,
+.back:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.search,
+.newTask input,
+.newTask textarea,
+.commentForm textarea {
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font: inherit;
+  user-select: text;
+}
+
+.search {
+  margin: var(--space-2) var(--space-3);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.group {
+  margin: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.count {
+  color: var(--text-secondary);
+}
+
+.list {
+  margin: 0;
+  padding: 0 var(--space-2);
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+}
+
+.row:hover {
+  background: var(--bg-elevated);
+}
+
+.number {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  overflow-y: auto;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.actions,
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.actions button,
+.formActions button,
+.commentForm button,
+.empty button,
+.statusSelect select {
+  padding: 2px var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.primary {
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.body {
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comment {
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.commentMeta {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.commentForm,
+.newTask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.newTask {
+  margin: var(--space-2) var(--space-3);
+}
+
+.commentForm button {
+  align-self: flex-end;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-3);
+  color: var(--text-secondary);
+}
+
+.empty p,
+.muted {
+  margin: 0;
+}
+
+.muted {
+  padding: var(--space-3);
+  color: var(--text-muted);
+}
+
+.error {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--status-error);
+  user-select: text;
+}
+
+.error button {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

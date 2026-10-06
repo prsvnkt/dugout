@@ -9,6 +9,7 @@ import type { Project, ProjectId } from '@shared/project'
 import type { GitService } from '../services/git/GitService'
 import type { ProjectStore } from '../services/projects/ProjectStore'
 import type { WorktreeManager } from '../services/worktrees/WorktreeManager'
+import { taskNumberFromBranch } from '../services/tasks/taskSession'
 import { handleRequest } from './handle'
 
 const PULL_REQUEST_HOSTS = ['https://github.com/', 'https://gitlab.com/']
@@ -18,6 +19,8 @@ export interface GitIpcDeps {
   readonly git: GitService
   readonly worktrees: WorktreeManager
   readonly openExternal: (url: string) => Promise<void>
+  /** Called after a PR is opened from a task branch (dugout/<number>-…). */
+  readonly onTaskPullRequest?: (projectId: ProjectId, taskNumber: number) => void
 }
 
 export function findProject(projects: ProjectStore, projectId: ProjectId): Project {
@@ -30,7 +33,8 @@ export function findProject(projects: ProjectStore, projectId: ProjectId): Proje
  * The renderer names a project (and optionally one of its worktrees), never a folder: main
  * resolves and validates the path, so the UI cannot run git outside the user's projects.
  */
-export function registerGitIpc({ projects, git, worktrees, openExternal }: GitIpcDeps): void {
+export function registerGitIpc(deps: GitIpcDeps): void {
+  const { projects, git, worktrees, openExternal } = deps
   const rootOf = (request: { projectId: ProjectId; worktreePath?: string | undefined }) =>
     worktrees.resolveCheckout(findProject(projects, request.projectId), request.worktreePath)
 
@@ -64,6 +68,8 @@ export function registerGitIpc({ projects, git, worktrees, openExternal }: GitIp
     const status = await git.status(root)
     if (status.upstream === null || status.ahead > 0) await git.push(root)
     await openExternal(url)
+    const taskNumber = taskNumberFromBranch(status.branch)
+    if (taskNumber !== null) deps.onTaskPullRequest?.(request.projectId, taskNumber)
     return url
   })
 }

@@ -62,9 +62,13 @@ export class TerminalManager {
     const id = this.deps.createId()
     const hooks = request.kind === 'claude' ? this.deps.agentHooks : undefined
     const isResuming = hooks !== undefined && request.resumeSessionId !== undefined
+    const initialPrompt = hooks && !isResuming ? request.initialPrompt : undefined
+    const mcpConfigPath = hooks?.writeMcpConfig?.(id)
     const launch = buildLaunchSpec(request.kind, resolveShell(this.deps.env), {
       hasAgentHooks: hooks !== undefined,
       isResuming,
+      hasInitialPrompt: initialPrompt !== undefined,
+      hasMcpConfig: mcpConfigPath !== undefined,
     })
     const process = this.deps.backend.spawn({
       ...launch,
@@ -74,6 +78,8 @@ export class TerminalManager {
         ...(hooks && hookEnv(id, hooks)),
         ...(isResuming &&
           request.resumeSessionId && { DUGOUT_RESUME_SESSION: request.resumeSessionId }),
+        ...(initialPrompt && { DUGOUT_INITIAL_PROMPT: initialPrompt }),
+        ...(mcpConfigPath && { DUGOUT_MCP_CONFIG: mcpConfigPath }),
       },
       cols: request.cols,
       rows: request.rows,
@@ -83,6 +89,7 @@ export class TerminalManager {
     process.onExit((exit) => {
       const wasAgent = this.terminals.get(id)?.agentStatus != null
       this.terminals.delete(id)
+      if (mcpConfigPath) hooks?.removeMcpConfig?.(id)
       events.onExit(id, exit)
       if (wasAgent) {
         this.deps.onAgentStatusChange?.({
@@ -120,6 +127,11 @@ export class TerminalManager {
   killAll(): void {
     for (const terminal of this.terminals.values()) terminal.process.kill()
     this.terminals.clear()
+  }
+
+  /** The project a terminal belongs to, e.g. to scope an agent's task tools. */
+  projectOf(id: TerminalId): string | null {
+    return this.terminals.get(id)?.projectId ?? null
   }
 
   agentStatus(id: TerminalId): AgentStatus | null {

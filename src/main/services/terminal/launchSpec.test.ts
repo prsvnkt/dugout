@@ -36,6 +36,18 @@ describe('buildLaunchSpec', () => {
     )
   })
 
+  test('puts the first prompt before options and the MCP config last', () => {
+    const line = buildLaunchSpec('claude', '/bin/zsh', {
+      hasAgentHooks: true,
+      hasInitialPrompt: true,
+      hasMcpConfig: true,
+    }).args.at(-1)
+    expect(line).toBe(
+      '"$DUGOUT_CLAUDE_COMMAND" "$DUGOUT_INITIAL_PROMPT" --settings "$DUGOUT_CLAUDE_SETTINGS"' +
+        ' --mcp-config "$DUGOUT_MCP_CONFIG"',
+    )
+  })
+
   test('uses only plain "$VAR" expansions, which bash, zsh and fish all treat the same', () => {
     const line = buildLaunchSpec('claude', '/bin/zsh', {
       hasAgentHooks: true,

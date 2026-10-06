@@ -36,7 +36,11 @@ interface HookGroup {
 
 export interface HookSettings {
   readonly hooks: Readonly<Record<string, readonly HookGroup[]>>
+  readonly permissions: { readonly allow: readonly string[] }
 }
+
+/** Dugout's own MCP tools only touch the project's tasks, so agents may use them freely. */
+const ALLOWED_TOOLS = ['mcp__dugout']
 
 /**
  * A shell command that tells the app about `signal`. It is a no-op outside Dugout terminals,
@@ -67,5 +71,5 @@ export function buildHookSettings(): HookSettings {
     }
     hooks[event] = [...(hooks[event] ?? []), group]
   }
-  return { hooks }
+  return { hooks, permissions: { allow: ALLOWED_TOOLS } }
 }

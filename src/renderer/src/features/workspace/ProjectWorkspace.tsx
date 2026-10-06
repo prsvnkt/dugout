@@ -3,7 +3,7 @@ import { Group, Panel, Separator } from 'react-resizable-panels'
 import type { Project } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
 import { TerminalPane } from '@renderer/features/terminal/TerminalPane'
-import { GitPanel } from '@renderer/features/git/GitPanel'
+import { RightPanel } from '@renderer/features/tasks/RightPanel'
 import { useCheckoutGit, useGitStore } from '@renderer/features/git/gitStore'
 import { EditorArea } from '@renderer/features/editor/EditorArea'
 import { useProjectTabs } from '@renderer/features/editor/editorStore'
@@ -97,6 +97,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
   const setTerminalId = useWorkspaceStore((state) => state.setTerminalId)
   const setPaneSession = useWorkspaceStore((state) => state.setPaneSession)
   const restartPane = useWorkspaceStore((state) => state.restartPane)
+  const clearInitialPrompt = useWorkspaceStore((state) => state.clearInitialPrompt)
   const accent = projectColorVar(project.color)
 
   if (layout.panes.length === 0) return <EmptyWorkspace onAdd={onAdd} />
@@ -110,6 +111,8 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               key={`${pane.id}:${pane.generation}`}
               kind={pane.kind}
               resumeSessionId={pane.sessionId}
+              initialPrompt={pane.initialPrompt}
+              task={pane.task}
               projectId={project.id}
               cwd={pane.worktree?.path ?? project.rootPath}
               branch={pane.worktree?.branch ?? null}
@@ -119,7 +122,10 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               onFocus={() => focusPane(project.id, pane.id)}
               onClose={() => closePane(project.id, pane.id)}
               onActivity={(activity) => setActivity(pane.id, activity)}
-              onTerminalId={(terminalId) => setTerminalId(pane.id, terminalId)}
+              onTerminalId={(terminalId) => {
+                setTerminalId(pane.id, terminalId)
+                if (terminalId) clearInitialPrompt(project.id, pane.id)
+              }}
               onSessionId={(sessionId) => setPaneSession(project.id, pane.id, sessionId)}
               onRestart={(options) => restartPane(project.id, pane.id, options)}
             />
@@ -190,14 +196,14 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
         <SidePanel
           id="git"
           side="right"
-          label={changeCount > 0 ? `Git · ${changeCount}` : 'Git'}
+          label={changeCount > 0 ? `Git & Tasks · ${changeCount}` : 'Git & Tasks'}
           isExpanded={isGitPanelOpen}
           onExpandedChange={setGitPanelOpen}
           defaultSize={DEFAULT_GIT_PANEL_PX}
           minSize={MIN_GIT_PANEL_PX}
           maxSize={MAX_GIT_PANEL_SIZE}
         >
-          <GitPanel project={project} />
+          <RightPanel project={project} isActive={isActive} />
         </SidePanel>
       </Group>
     </div>

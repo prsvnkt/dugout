@@ -13,9 +13,12 @@ export interface HookServerDeps {
   readonly socketPath: string
   readonly token: string
   readonly onSignal: (terminalId: string, signal: HookSignal, details: HookDetails) => void
+  /** Task tool calls from the terminal's MCP server; resolves to the JSON result. */
+  readonly onRpc: (terminalId: string, method: string, params: unknown) => Promise<unknown>
 }
 
 const ROUTE = /^\/hooks\/([\w-]{1,64})\/([a-z-]{1,32})$/
+const RPC_ROUTE = /^\/rpc\/([\w-]{1,64})$/
 const SOCKET_MODE = 0o600
 /** Hook payloads are small JSON objects; anything bigger is not from our hooks. */
 const MAX_BODY_BYTES = 64 * 1024
@@ -56,6 +59,8 @@ export class HookServer {
       req.resume()
       return respond(res, 401)
     }
+    const rpcMatch = req.method === 'POST' ? RPC_ROUTE.exec(req.url ?? '') : null
+    if (rpcMatch?.[1]) return this.handleRpc(rpcMatch[1], req, res)
     const match = req.method === 'POST' ? ROUTE.exec(req.url ?? '') : null
     const [, terminalId, signal] = match ?? []
     if (!terminalId || !signal || !isHookSignal(signal)) {
@@ -78,6 +83,26 @@ export class HookServer {
     })
   }
 
+  private handleRpc(terminalId: string, req: IncomingMessage, res: ServerResponse): void {
+    readBody(req, (body) => {
+      if (body === null) return respond(res, 413)
+      let call: { method?: unknown; params?: unknown }
+      try {
+        call = JSON.parse(body) as { method?: unknown; params?: unknown }
+      } catch {
+        return respondJson(res, 400, { error: 'Malformed request.' })
+      }
+      if (typeof call.method !== 'string')
+        return respondJson(res, 400, { error: 'Missing method.' })
+      this.deps
+        .onRpc(terminalId, call.method, call.params ?? {})
+        .then((result) => respondJson(res, 200, { result: result ?? null }))
+        .catch((error: unknown) =>
+          respondJson(res, 400, { error: error instanceof Error ? error.message : 'Failed.' }),
+        )
+    })
+  }
+
   private isAuthorized(header: string | undefined): boolean {
     if (!header) return false
     const actual = Buffer.from(header)
@@ -95,6 +120,23 @@ function parseDetails(body: string): HookDetails {
   } catch {
     return {}
   }
+}
+
+/** Reads a request body up to MAX_BODY_BYTES; null when it is larger. */
+function readBody(req: IncomingMessage, done: (body: string | null) => void): void {
+  const chunks: Buffer[] = []
+  let size = 0
+  let isTooLarge = false
+  req.on('data', (chunk: Buffer) => {
+    size += chunk.length
+    if (size > MAX_BODY_BYTES) isTooLarge = true
+    else chunks.push(chunk)
+  })
+  req.on('end', () => done(isTooLarge ? null : Buffer.concat(chunks).toString('utf8')))
+}
+
+function respondJson(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(body))
 }
 
 function respond(res: ServerResponse, status: number): void {

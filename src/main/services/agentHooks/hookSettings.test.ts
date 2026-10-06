@@ -49,6 +49,10 @@ describe('buildHookSettings', () => {
     expect(done).not.toContain('--data-binary')
   })
 
+  test("pre-approves Dugout's own task tools", () => {
+    expect(settings.permissions.allow).toEqual(['mcp__dugout'])
+  })
+
   test('does nothing outside a Dugout terminal', () => {
     const command = settings.hooks.Stop?.[0]?.hooks[0]?.command ?? ''
     expect(command).toMatch(/^\[ -n "\$DUGOUT_TERMINAL_ID" \] &&/)

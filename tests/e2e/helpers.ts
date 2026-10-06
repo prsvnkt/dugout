@@ -88,6 +88,11 @@ const argValue = (flag) => {
   const index = process.argv.indexOf(flag)
   return index === -1 ? undefined : process.argv[index + 1]
 }
+// The first prompt is the first argument that is neither an option nor an option's value.
+const VALUE_FLAGS = new Set(['--settings', '--resume', '--mcp-config'])
+const firstPrompt = process.argv
+  .slice(2)
+  .find((arg, i, args) => !arg.startsWith('--') && !VALUE_FLAGS.has(args[i - 1]))
 const { hooks } = JSON.parse(readFileSync(argValue('--settings'), 'utf8'))
 const resumed = argValue('--resume')
 const sessionId = resumed ?? 'fake-session-' + process.pid
@@ -110,10 +115,27 @@ const actions = {
   stop: () => fire('Stop'),
   'stop-later': () => setTimeout(() => fire('Stop'), 2500),
   exit: () => process.exit(0),
+  'agent-comment': () =>
+    void callDugoutTool('comment_on_task', { number: 1, body: 'Progress from the agent' }),
 }
 
 fire('SessionStart', 'startup')
 process.stdout.write('fake-claude ready resume=' + (resumed ?? 'none') + ' session=' + sessionId + '\r\n')
+if (firstPrompt) process.stdout.write('prompt=' + firstPrompt.split('\n')[0] + '\r\n')
+
+/** Acts like an agent using a Dugout task tool: starts the MCP server from --mcp-config. */
+async function callDugoutTool(name, args) {
+  const sdk = (path) => require(PROJECT_ROOT + '/node_modules/@modelcontextprotocol/sdk/dist/cjs/' + path)
+  const { Client } = sdk('client/index.js')
+  const { StdioClientTransport } = sdk('client/stdio.js')
+  const { mcpServers } = JSON.parse(readFileSync(argValue('--mcp-config'), 'utf8'))
+  const server = mcpServers.dugout
+  const client = new Client({ name: 'fake-claude', version: '1' })
+  await client.connect(new StdioClientTransport({ command: server.command, args: server.args, env: { ...process.env, ...server.env } }))
+  const result = await client.callTool({ name, arguments: args })
+  process.stdout.write('tool-result=' + JSON.stringify(result.content[0].text).slice(0, 200) + '\r\n')
+  await client.close()
+}
 process.stdin.setEncoding('utf8')
 process.stdin.on('data', (chunk) => {
   for (const line of chunk.split(/\r?\n|\r/)) actions[line.trim()]?.()
@@ -122,7 +144,8 @@ process.stdin.on('data', (chunk) => {
 
 export function makeFakeClaude(): string {
   const path = join(makeTempDir('dugout-fake-claude-'), 'claude')
-  writeFileSync(path, `#!${process.execPath}\n${FAKE_CLAUDE_SOURCE}`, { mode: 0o755 })
+  const header = `#!${process.execPath}\nconst PROJECT_ROOT = ${JSON.stringify(process.cwd())}\n`
+  writeFileSync(path, header + FAKE_CLAUDE_SOURCE, { mode: 0o755 })
   return path
 }
 

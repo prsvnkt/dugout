@@ -34,3 +34,11 @@ describe('buildPullRequestUrl', () => {
     expect(() => buildPullRequestUrl('/srv/git/app.git', 'main', 'x')).toThrow('GitHub and GitLab')
   })
 })
+
+describe('buildPullRequestUrl descriptions', () => {
+  test('pre-fills the description, e.g. to close the task', () => {
+    expect(buildPullRequestUrl('git@github.com:a/b.git', 'main', 'dugout/42-x', 'Closes #42')).toBe(
+      'https://github.com/a/b/compare/main...dugout/42-x?expand=1&body=Closes+%2342',
+    )
+  })
+})

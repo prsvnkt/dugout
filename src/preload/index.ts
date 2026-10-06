@@ -72,6 +72,18 @@ const api: DugoutApi = {
     cancel: () => ipcRenderer.send(IpcChannel.cloneCancel),
     onProgress: (listener) => subscribe(IpcChannel.cloneProgress, listener),
   },
+  tasks: {
+    list: (projectId) => ipcRenderer.invoke(IpcChannel.tasksList, { projectId }),
+    get: (projectId, number) => ipcRenderer.invoke(IpcChannel.tasksGet, { projectId, number }),
+    create: (request) => ipcRenderer.invoke(IpcChannel.tasksCreate, request),
+    update: (request) => ipcRenderer.invoke(IpcChannel.tasksUpdate, request),
+    comment: (projectId, number, body) =>
+      ipcRenderer.invoke(IpcChannel.tasksComment, { projectId, number, body }),
+    openInBrowser: (projectId, number) =>
+      ipcRenderer.invoke(IpcChannel.tasksOpen, { projectId, number }),
+    startSession: (projectId, number) =>
+      ipcRenderer.invoke(IpcChannel.tasksStartSession, { projectId, number }),
+  },
   workspace: {
     load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),
     save: (snapshot) => ipcRenderer.invoke(IpcChannel.workspaceSave, snapshot),

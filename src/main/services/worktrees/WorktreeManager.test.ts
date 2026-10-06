@@ -89,3 +89,40 @@ describe('WorktreeManager', () => {
     await expect(manager.remove(project, project.rootPath)).rejects.toThrow('not a worktree')
   })
 })
+
+describe('WorktreeManager named worktrees', () => {
+  test('uses the given name for the folder and branch, adding a suffix if it is taken', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'dugout-wtm-named-'))
+    let nextId = 0
+    const manager = new WorktreeManager({
+      git: new GitService({ env: ENV }),
+      baseDir,
+      createId: () => `x${++nextId}`,
+    })
+    const project = makeProject()
+
+    const first = await manager.create(project, { name: '42-fix-login' })
+    const second = await manager.create(project, { name: '42-fix-login' })
+
+    expect(first.branch).toBe('dugout/42-fix-login')
+    expect(second.branch).toBe('dugout/42-fix-login-x1')
+  })
+})
+
+describe('WorktreeManager leftover branches', () => {
+  test('avoids a branch left behind by a removed worktree', async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), 'dugout-wtm-left-'))
+    const manager = new WorktreeManager({
+      git: new GitService({ env: ENV }),
+      baseDir,
+      createId: () => 'y1',
+    })
+    const project = makeProject()
+    const first = await manager.create(project, { name: '7-task' })
+    await manager.remove(project, first.path) // the branch dugout/7-task stays
+
+    const again = await manager.create(project, { name: '7-task' })
+
+    expect(again.branch).toBe('dugout/7-task-y1')
+  })
+})

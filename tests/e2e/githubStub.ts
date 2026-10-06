@@ -10,9 +10,20 @@ export interface StubRepo {
   readonly cloneUrl: string
 }
 
+export interface StubIssue {
+  number: number
+  title: string
+  body: string
+  state: 'open' | 'closed'
+  labels: string[]
+  comments: { author: string; body: string }[]
+}
+
 export interface StubOptions {
   /** Issue 1-second access tokens with rotating refresh tokens ("Expire user access tokens"). */
   readonly expiringTokens?: boolean
+  /** Issues of octocat/app, served under /api/repos/octocat/app. */
+  readonly issues?: StubIssue[]
 }
 
 /** A tiny stand-in for github.com + api.github.com: device flow, refresh, /user, /user/repos. */
@@ -22,6 +33,8 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
   let isRefreshRevoked = false
   let refreshes = 0
   let isUnavailable = false
+  const issues: StubIssue[] = options.issues ?? []
+  const labels = new Set<string>()
   const accessToken = () => (options.expiringTokens ? `ghu_stub_${generation}` : STUB_TOKEN)
   const tokenResponse = () =>
     options.expiringTokens
@@ -76,6 +89,8 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
       if (url.pathname === '/api/user') {
         return json({ login: 'octocat', name: 'The Octocat', avatar_url: AVATAR })
       }
+      const repoRoute = /^\/api\/repos\/octocat\/app\/(.+)$/.exec(url.pathname)
+      if (repoRoute?.[1]) return handleRepo(repoRoute[1], req.method ?? 'GET', body, origin, json)
       if (url.pathname === '/api/user/repos') {
         return json(
           repos.map((repo) => ({
@@ -92,11 +107,75 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
       json({ message: 'Not found' }, 404)
     })
   })
+  type Json = (body: unknown, status?: number) => void
+  const toIssue = (issue: StubIssue, origin: string) => ({
+    number: issue.number,
+    title: issue.title,
+    body: issue.body,
+    state: issue.state,
+    html_url: `${origin}/octocat/app/issues/${issue.number}`,
+    user: { login: 'octocat' },
+    labels: issue.labels.map((name) => ({ name })),
+    comments: issue.comments.length,
+    updated_at: '2026-10-01T00:00:00Z',
+  })
+  /** A small in-memory GitHub Issues API for octocat/app. */
+  function handleRepo(path: string, method: string, body: string, origin: string, json: Json) {
+    const input = body ? (JSON.parse(body) as Record<string, unknown>) : {}
+    if (path === 'issues' && method === 'GET')
+      return json(issues.map((issue) => toIssue(issue, origin)))
+    if (path === 'issues' && method === 'POST') {
+      const issue: StubIssue = {
+        number: issues.length + 1,
+        title: String(input.title),
+        body: String(input.body ?? ''),
+        state: 'open',
+        labels: [],
+        comments: [],
+      }
+      issues.push(issue)
+      return json(toIssue(issue, origin), 201)
+    }
+    const labelRoute = /^labels\/(.+)$/.exec(path)
+    if (labelRoute?.[1])
+      return labels.has(decodeURIComponent(labelRoute[1])) ? json({}) : json({}, 404)
+    if (path === 'labels' && method === 'POST') {
+      labels.add(String(input.name))
+      return json({}, 201)
+    }
+    const issueRoute = /^issues\/(\d+)(\/comments)?$/.exec(path)
+    const issue = issueRoute
+      ? issues.find((candidate) => candidate.number === Number(issueRoute[1]))
+      : undefined
+    if (!issue) return json({ message: 'Not Found' }, 404)
+    if (issueRoute?.[2] && method === 'GET') {
+      return json(
+        issue.comments.map((c) => ({
+          user: { login: c.author },
+          body: c.body,
+          created_at: '2026-10-02T00:00:00Z',
+        })),
+      )
+    }
+    if (issueRoute?.[2] && method === 'POST') {
+      issue.comments.push({ author: 'octocat', body: String(input.body) })
+      return json({ id: issue.comments.length }, 201)
+    }
+    if (method === 'PATCH') {
+      if (typeof input.title === 'string') issue.title = input.title
+      if (typeof input.body === 'string') issue.body = input.body
+      if (input.state === 'open' || input.state === 'closed') issue.state = input.state
+      if (Array.isArray(input.labels)) issue.labels = input.labels.map(String)
+    }
+    return json(toIssue(issue, origin))
+  }
+
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   return {
     baseUrl: `http://127.0.0.1:${port}`,
     refreshCount: () => refreshes,
+    issues,
     /** Simulates GitHub being down (every request answers 503). */
     setUnavailable: (unavailable: boolean) => {
       isUnavailable = unavailable

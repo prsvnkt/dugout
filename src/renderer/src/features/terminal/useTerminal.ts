@@ -51,17 +51,20 @@ export interface TerminalOptions {
   readonly cwd: string
   /** Claude session to resume. Read once at start; later changes do not restart the PTY. */
   readonly resumeSessionId?: string | undefined
+  /** First message for a new session. Read once at start. */
+  readonly initialPrompt?: string | undefined
 }
 
 export function useTerminal(
   containerRef: RefObject<HTMLDivElement | null>,
-  { kind, projectId, cwd, resumeSessionId }: TerminalOptions,
+  { kind, projectId, cwd, resumeSessionId, initialPrompt }: TerminalOptions,
 ): TerminalHandle {
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
   const [connectedId, setConnectedId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const resumeRef = useRef(resumeSessionId)
+  const initialPromptRef = useRef(initialPrompt)
   const terminalRef = useRef<Terminal | null>(null)
 
   useEffect(() => {
@@ -112,6 +115,7 @@ export function useTerminal(
           cols: terminal.cols,
           rows: terminal.rows,
           ...(resumeRef.current && { resumeSessionId: resumeRef.current }),
+          ...(initialPromptRef.current && { initialPrompt: initialPromptRef.current }),
         })
         .then((result) => {
           if (!result.ok) {

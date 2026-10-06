@@ -7,6 +7,12 @@ const sharedAlias = { '@shared': resolve('src/shared') }
 export default defineConfig({
   main: {
     resolve: { alias: sharedAlias },
+    build: {
+      rollupOptions: {
+        // mcp.js: the "dugout" MCP server Claude Code starts for each terminal.
+        input: { index: resolve('src/main/index.ts'), mcp: resolve('src/main/mcp/server.ts') },
+      },
+    },
   },
   preload: {
     resolve: { alias: sharedAlias },

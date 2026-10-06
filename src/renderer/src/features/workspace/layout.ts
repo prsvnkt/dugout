@@ -12,6 +12,20 @@ export interface Pane {
   readonly sessionId?: string
   /** Bumped to restart the pane's process (the pane remounts with a new key). */
   readonly generation: number
+  /** The task this agent was started for. */
+  readonly task?: PaneTask
+  /** First message for a new Claude session; cleared once the session has started. */
+  readonly initialPrompt?: string
+}
+
+export interface PaneTask {
+  readonly number: number
+  readonly title: string
+}
+
+export interface PaneExtras {
+  readonly task?: PaneTask | undefined
+  readonly initialPrompt?: string | undefined
 }
 
 /** The side-by-side terminal panes of one project. */
@@ -30,9 +44,17 @@ export function addPane(
   kind: TerminalKind,
   createId: () => PaneId,
   worktree?: Worktree,
+  extras: PaneExtras = {},
 ): ProjectLayout {
   if (layout.panes.length >= MAX_PANES_PER_PROJECT) return layout
-  const pane: Pane = { id: createId(), kind, generation: 0, ...(worktree && { worktree }) }
+  const pane: Pane = {
+    id: createId(),
+    kind,
+    generation: 0,
+    ...(worktree && { worktree }),
+    ...(extras.task && { task: extras.task }),
+    ...(extras.initialPrompt && { initialPrompt: extras.initialPrompt }),
+  }
   return { panes: [...layout.panes, pane], focusedPaneId: pane.id }
 }
 
@@ -85,4 +107,11 @@ export function restartPane(
     generation: pane.generation + 1,
     ...(!isFresh && sessionId !== undefined && { sessionId }),
   }))
+}
+
+/** The first prompt is sent once; restarts resume the session instead. */
+export function clearInitialPrompt(layout: ProjectLayout, paneId: PaneId): ProjectLayout {
+  const pane = layout.panes.find((candidate) => candidate.id === paneId)
+  if (!pane?.initialPrompt) return layout
+  return updatePane(layout, paneId, ({ initialPrompt, ...rest }) => rest)
 }

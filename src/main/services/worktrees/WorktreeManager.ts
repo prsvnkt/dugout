@@ -34,11 +34,12 @@ export class WorktreeManager {
       .map(({ path, branch }) => ({ path, branch, name: path.slice(prefix.length) }))
   }
 
-  async create(project: Project): Promise<Worktree> {
+  /** Creates a worktree; `name` (e.g. "42-fix-login") gets a suffix if already taken. */
+  async create(project: Project, options: { name?: string } = {}): Promise<Worktree> {
     const status = await this.deps.git.status(project.rootPath)
     if (status.isUnborn) throw new Error('Make a first commit before starting a worktree session.')
 
-    const name = this.deps.createId()
+    const name = await this.availableName(project, options.name)
     const path = join(this.projectDir(project), name)
     const branch = `${BRANCH_PREFIX}${name}`
     mkdirSync(this.projectDir(project), { recursive: true })
@@ -56,6 +57,16 @@ export class WorktreeManager {
     if (worktreePath === undefined) return project.rootPath
     await this.assertManaged(project, worktreePath)
     return worktreePath
+  }
+
+  private async availableName(project: Project, wanted: string | undefined): Promise<string> {
+    if (!wanted) return this.deps.createId()
+    const taken = new Set((await this.list(project)).map((worktree) => worktree.name))
+    // A removed worktree leaves its branch behind; that name is taken too.
+    const isFree =
+      !taken.has(wanted) &&
+      !(await this.deps.git.branchExists(project.rootPath, `${BRANCH_PREFIX}${wanted}`))
+    return isFree ? wanted : `${wanted}-${this.deps.createId()}`
   }
 
   private async assertManaged(project: Project, path: string): Promise<void> {

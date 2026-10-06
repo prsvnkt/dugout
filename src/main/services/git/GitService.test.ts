@@ -205,6 +205,15 @@ describe('GitService pull requests', () => {
     )
   })
 
+  test('a task branch pre-fills "Closes #N" so merging closes the task', async () => {
+    const repo = makeRepoWithCommit()
+    git(repo, 'remote', 'add', 'origin', 'git@github.com:acme/app.git')
+    git(repo, 'checkout', '-q', '-b', 'dugout/42-fix-login')
+    expect(await service.pullRequestUrl(repo)).toBe(
+      'https://github.com/acme/app/compare/main...dugout/42-fix-login?expand=1&body=Closes+%2342',
+    )
+  })
+
   test('refuses to open a pull request from the base branch itself', async () => {
     const repo = makeFeatureRepo()
     git(repo, 'checkout', '-q', 'main')

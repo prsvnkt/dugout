@@ -40,6 +40,10 @@ export interface LaunchOptions {
   readonly hasAgentHooks?: boolean
   /** Continue the session in `$DUGOUT_RESUME_SESSION`. */
   readonly isResuming?: boolean
+  /** Start with `$DUGOUT_INITIAL_PROMPT` as the first message. */
+  readonly hasInitialPrompt?: boolean
+  /** Load Dugout's MCP server from `$DUGOUT_MCP_CONFIG`. */
+  readonly hasMcpConfig?: boolean
 }
 
 export function buildLaunchSpec(
@@ -60,10 +64,16 @@ export function buildLaunchSpec(
  * paths with spaces need no quoting. Only plain "$VAR" expansions are used: conditional forms
  * like ${VAR:+...} split differently in bash and zsh, and fish does not support them at all.
  */
-function claudeCommandLine({ hasAgentHooks = false, isResuming = false }: LaunchOptions): string {
-  if (!hasAgentHooks) return 'claude'
-  const resume = isResuming ? ' --resume "$DUGOUT_RESUME_SESSION"' : ''
-  return `"$DUGOUT_CLAUDE_COMMAND" --settings "$DUGOUT_CLAUDE_SETTINGS"${resume}`
+function claudeCommandLine(options: LaunchOptions): string {
+  if (!options.hasAgentHooks) return 'claude'
+  return [
+    '"$DUGOUT_CLAUDE_COMMAND"',
+    // The prompt comes first: --mcp-config takes a list and would swallow anything after it.
+    ...(options.hasInitialPrompt ? ['"$DUGOUT_INITIAL_PROMPT"'] : []),
+    '--settings "$DUGOUT_CLAUDE_SETTINGS"',
+    ...(options.isResuming ? ['--resume "$DUGOUT_RESUME_SESSION"'] : []),
+    ...(options.hasMcpConfig ? ['--mcp-config "$DUGOUT_MCP_CONFIG"'] : []),
+  ].join(' ')
 }
 
 export function buildTerminalEnv(env: Env): Record<string, string> {

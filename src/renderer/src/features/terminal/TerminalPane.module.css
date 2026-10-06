@@ -31,6 +31,15 @@
   color: var(--accent);
 }
 
+.task {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
 .branch {
   overflow: hidden;
   color: var(--text-muted);

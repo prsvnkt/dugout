@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, shell } from 'electron'
 import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
+import { taskRpcSchemas } from '@shared/ipc/contract'
 import { registerCloneIpc } from './ipc/registerCloneIpc'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
 import { registerFileIpc } from './ipc/registerFileIpc'
@@ -11,6 +12,7 @@ import { registerGitIpc } from './ipc/registerGitIpc'
 import { registerProjectIpc } from './ipc/registerProjectIpc'
 import { registerTerminalIpc } from './ipc/registerTerminalIpc'
 import { registerWorkspaceIpc } from './ipc/registerWorkspaceIpc'
+import { registerTaskIpc } from './ipc/registerTaskIpc'
 import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
@@ -28,6 +30,8 @@ import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
 import { TerminalManager } from './services/terminal/TerminalManager'
 import { SettingsStore } from './services/settings/SettingsStore'
+import { GitHubIssues } from './services/tasks/GitHubIssues'
+import { TaskService } from './services/tasks/TaskService'
 import { LayoutStore } from './services/workspace/LayoutStore'
 import { WorktreeManager } from './services/worktrees/WorktreeManager'
 import { createMainWindow } from './window'
@@ -116,6 +120,41 @@ function updateDockBadge(manager: TerminalManager): void {
 }
 
 /** Status is a nice-to-have: if hooks cannot start, terminals still work without it. */
+let taskService: TaskService | null = null
+
+/** Task tool calls from an agent: scoped to the project of the terminal it runs in. */
+async function handleTaskRpc(
+  terminalId: string,
+  method: string,
+  params: unknown,
+): Promise<unknown> {
+  const projectId = terminalManager?.projectOf(terminalId)
+  if (!projectId || !taskService) throw new Error('This terminal is not part of a Dugout project.')
+  const tasks = taskService
+  switch (method) {
+    case 'list': {
+      const { status } = taskRpcSchemas.list.parse(params)
+      const all = await tasks.list(projectId)
+      return status ? all.filter((task) => task.status === status) : all
+    }
+    case 'get':
+      return tasks.get(projectId, taskRpcSchemas.get.parse(params).number)
+    case 'create':
+      return tasks.create(projectId, taskRpcSchemas.create.parse(params))
+    case 'update': {
+      const { number, ...patch } = taskRpcSchemas.update.parse(params)
+      return tasks.update(projectId, number, patch)
+    }
+    case 'comment': {
+      const { number, body } = taskRpcSchemas.comment.parse(params)
+      await tasks.comment(projectId, number, body)
+      return { ok: true }
+    }
+    default:
+      throw new Error(`Unknown task operation: ${method}`)
+  }
+}
+
 async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
   try {
     return await setupAgentHooks({
@@ -123,6 +162,9 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
       claudeCommand: process.env.DUGOUT_CLAUDE_COMMAND,
       onSignal: (terminalId, signal, details) =>
         terminalManager?.applyHookSignal(terminalId, signal, details),
+      onRpc: handleTaskRpc,
+      // Electron runs the bundled MCP server in Node mode, so users need no separate Node.
+      mcpServer: { command: process.execPath, script: join(import.meta.dirname, 'mcp.js') },
     })
   } catch (error) {
     console.error('[hooks] could not start; agent status disabled:', error)
@@ -197,7 +239,27 @@ async function start(): Promise<void> {
     baseDir: join(dataDir, WORKTREES_DIR),
     createId: () => randomBytes(WORKTREE_ID_BYTES).toString('hex'),
   })
+  taskService = new TaskService({
+    findProject: (id) => projectStore.list().find((project) => project.id === id),
+    remoteUrl: (root) => git.remoteUrl(root),
+    withToken: (call) => githubAuth.withToken(call),
+    issues: new GitHubIssues({ fetch, apiBaseUrl: github.apiBaseUrl }),
+    webBaseUrl: github.webBaseUrl,
+  })
+  const tasks = taskService
+  registerTaskIpc({
+    tasks,
+    projects: projectStore,
+    worktrees,
+    webBaseUrl: github.webBaseUrl,
+    openExternal: (url) => shell.openExternal(url),
+  })
   registerGitIpc({
+    onTaskPullRequest: (projectId, taskNumber) => {
+      tasks
+        .update(projectId, taskNumber, { status: 'in-review' })
+        .catch((error: unknown) => console.warn('[tasks] could not mark in review:', error))
+    },
     projects: projectStore,
     git,
     worktrees,

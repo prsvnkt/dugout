@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { MAX_OPEN_FILE_BYTES } from '../files'
+import { MAX_TASK_BODY_LENGTH, MAX_TASK_TITLE_LENGTH, TASK_STATUSES } from '../tasks'
 import { MAX_COMMIT_MESSAGE_LENGTH, MAX_GIT_PATHS_PER_REQUEST } from '../git'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
 import { TERMINAL_KINDS } from '../terminal'
@@ -25,6 +26,8 @@ export const terminalCreateRequestSchema = z.object({
   projectId: projectIdField,
   /** Continue this Claude conversation (`claude --resume`) instead of starting a new one. */
   resumeSessionId: sessionId.optional(),
+  /** First message for a new Claude session (e.g. the task it was started for). */
+  initialPrompt: z.string().min(1).max(10_000).optional(),
   cwd: absolutePath,
   cols: dimension,
   rows: dimension,
@@ -134,6 +137,7 @@ const savedPaneSchema = z.object({
   kind: z.enum(TERMINAL_KINDS),
   worktree: worktreeSchema.optional(),
   sessionId: sessionId.optional(),
+  task: z.object({ number: z.number().int().positive(), title: z.string().max(256) }).optional(),
 })
 
 const MAX_SAVED_PANES = 12
@@ -200,3 +204,34 @@ const folderName = z
 export const cloneRequestSchema = z.object({ url: cloneUrl, parentDir: absolutePath, folderName })
 
 export type CloneRequest = z.infer<typeof cloneRequestSchema>
+
+const taskNumber = z.number().int().positive()
+const taskTitle = z.string().trim().min(1).max(MAX_TASK_TITLE_LENGTH)
+const taskBody = z.string().max(MAX_TASK_BODY_LENGTH)
+const taskStatus = z.enum(TASK_STATUSES)
+
+/** Task tool arguments sent by an agent's MCP server (the project comes from its terminal). */
+export const taskRpcSchemas = {
+  list: z.object({ status: taskStatus.optional() }),
+  get: z.object({ number: taskNumber }),
+  create: z.object({ title: taskTitle, body: taskBody.default('') }),
+  update: z.object({
+    number: taskNumber,
+    title: taskTitle.optional(),
+    body: taskBody.optional(),
+    status: taskStatus.optional(),
+  }),
+  comment: z.object({
+    number: taskNumber,
+    body: z.string().trim().min(1).max(MAX_TASK_BODY_LENGTH),
+  }),
+} as const
+
+export const taskListRequestSchema = z.object({ projectId })
+export const taskNumberRequestSchema = z.object({ projectId, number: taskNumber })
+export const taskCreateRequestSchema = taskRpcSchemas.create.extend({ projectId })
+export const taskUpdateRequestSchema = taskRpcSchemas.update.extend({ projectId })
+export const taskCommentRequestSchema = taskRpcSchemas.comment.extend({ projectId })
+
+export type TaskCreateRequest = z.input<typeof taskCreateRequestSchema>
+export type TaskUpdateRequest = z.input<typeof taskUpdateRequestSchema>

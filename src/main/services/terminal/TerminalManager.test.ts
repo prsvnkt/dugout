@@ -310,3 +310,68 @@ describe('TerminalManager sessions', () => {
     expect(events.onAgentSession.mock.calls).toEqual([[id, 'resumed']])
   })
 })
+
+describe('TerminalManager task sessions', () => {
+  function setupWithMcp() {
+    const spawned: FakeProcess[] = []
+    const written: string[] = []
+    const removed: string[] = []
+    const manager = new TerminalManager({
+      backend: {
+        spawn: (options) => {
+          const process = new FakeProcess(options)
+          spawned.push(process)
+          return process
+        },
+      },
+      createId: () => 'agent-9',
+      env: {},
+      agentHooks: {
+        settingsPath: '/s.json',
+        socketPath: '/h.sock',
+        token: 'tok',
+        writeMcpConfig: (id) => {
+          written.push(id)
+          return `/mcp/${id}.json`
+        },
+        removeMcpConfig: (id) => removed.push(id),
+      },
+    })
+    return { manager, spawned, written, removed }
+  }
+
+  test('gives each claude terminal its own MCP config, removed when it exits', () => {
+    const { manager, spawned, written, removed } = setupWithMcp()
+    manager.create(request, { onData: vi.fn(), onExit: vi.fn() })
+
+    expect(written).toEqual(['agent-9'])
+    expect(spawned[0]?.options.env.DUGOUT_MCP_CONFIG).toBe('/mcp/agent-9.json')
+    expect(spawned[0]?.options.args.at(-1)).toContain('--mcp-config "$DUGOUT_MCP_CONFIG"')
+
+    spawned[0]?.emitExit({ exitCode: 0 })
+    expect(removed).toEqual(['agent-9'])
+  })
+
+  test('passes a first prompt to a new session', () => {
+    const { manager, spawned } = setupWithMcp()
+    manager.create({ ...request, initialPrompt: 'Fix #42' }, { onData: vi.fn(), onExit: vi.fn() })
+    expect(spawned[0]?.options.env.DUGOUT_INITIAL_PROMPT).toBe('Fix #42')
+    expect(spawned[0]?.options.args.at(-1)).toContain('"$DUGOUT_INITIAL_PROMPT"')
+  })
+
+  test('a resumed session never gets the first prompt again', () => {
+    const { manager, spawned } = setupWithMcp()
+    manager.create(
+      { ...request, initialPrompt: 'Fix #42', resumeSessionId: 's1' },
+      { onData: vi.fn(), onExit: vi.fn() },
+    )
+    expect(spawned[0]?.options.env).not.toHaveProperty('DUGOUT_INITIAL_PROMPT')
+  })
+
+  test('knows which project a terminal belongs to', () => {
+    const { manager } = setupWithMcp()
+    const id = manager.create(request, { onData: vi.fn(), onExit: vi.fn() })
+    expect(manager.projectOf(id)).toBe('proj-1')
+    expect(manager.projectOf('missing')).toBeNull()
+  })
+})

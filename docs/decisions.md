@@ -148,6 +148,22 @@ left sidebar is gone: the Explorer is the leftmost panel. Explorer and Git panel
 28px rails (header button, ⌘B / ⇧⌘G, or dragging them closed) and stay mounted in fixed
 slots, so collapsing never remounts terminals. New-pane buttons live in a Terminals header.
 
+## 018 — Tasks are GitHub Issues; agents work on them via an MCP server (2026-10-06)
+
+A project's tasks are the GitHub Issues of its `origin` repo (Tasks tab beside Git). Status:
+closed = Done; open + `dugout:in-review` / `dugout:in-progress` labels (created on first use) =
+In review / In progress; otherwise To do. "Start agent" creates a worktree `dugout/<n>-<slug>`,
+marks the issue In progress and starts Claude with the issue as its first prompt; panes remember
+their task (`#n` in the header, live agent status on the task). Create PR from such a branch
+pre-fills "Closes #n" and marks the task In review, so merging closes it.
+Every Claude pane gets a per-terminal `--mcp-config` (0600, deleted on exit) for the bundled
+"dugout" MCP server (`out/main/mcp.js`, run by Electron in Node mode, official MCP SDK) with
+tools list/get/create/update/comment. The server forwards calls over the private hook socket
+(`/rpc/<terminalId>`), where main validates them, scopes them to the terminal's project and calls
+GitHub with the user's token — the agent never sees it. The hook settings pre-approve
+`mcp__dugout`. The first prompt is placed before `--mcp-config`, which takes a list. Providers
+are behind `TaskService`, so Jira or local storage can be added later.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅

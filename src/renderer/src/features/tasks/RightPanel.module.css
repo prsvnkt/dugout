@@ -1,0 +1,33 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.tabs button[aria-selected='true'] {
+  border-bottom-color: var(--project-blue);
+  color: var(--text-primary);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+}

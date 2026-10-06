@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   addPane,
+  clearInitialPrompt,
   closePane,
   closeWorktreePanes,
   EMPTY_LAYOUT,
@@ -124,5 +125,22 @@ describe('unchanged updates', () => {
     const layout = setPaneSession(addPane(EMPTY_LAYOUT, 'claude', createId), 'pane-x', 's1')
     const withSession = setPaneSession(layout, idAt(layout, 0), 's1')
     expect(setPaneSession(withSession, idAt(withSession, 0), 's1')).toBe(withSession)
+  })
+})
+
+describe('task panes', () => {
+  test('a pane can be started for a task with a first prompt, which is used once', () => {
+    const task = { number: 42, title: 'Fix login' }
+    const layout = addPane(EMPTY_LAYOUT, 'claude', createId, undefined, {
+      task,
+      initialPrompt: 'Work on #42',
+    })
+    const id = idAt(layout, 0)
+    expect(layout.panes[0]).toMatchObject({ task, initialPrompt: 'Work on #42' })
+
+    const started = clearInitialPrompt(layout, id)
+    expect(started.panes[0]?.initialPrompt).toBeUndefined()
+    expect(started.panes[0]?.task).toEqual(task)
+    expect(clearInitialPrompt(started, id)).toBe(started)
   })
 })

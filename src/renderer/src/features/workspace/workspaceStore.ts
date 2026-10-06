@@ -7,12 +7,14 @@ import type { WorkspaceSnapshot } from '@shared/ipc/contract'
 import {
   addPane,
   closePane,
+  clearInitialPrompt,
   closeWorktreePanes,
   restartPane,
   setPaneSession,
   EMPTY_LAYOUT,
   focusPane,
   type Pane,
+  type PaneExtras,
   type PaneId,
   type ProjectLayout,
 } from './layout'
@@ -33,7 +35,9 @@ interface WorkspaceState {
   restartPane(projectId: ProjectId, paneId: PaneId, options?: { isFresh?: boolean }): void
   /** Replaces all layouts with saved panes (fresh ids), e.g. on launch. */
   hydrate(snapshot: WorkspaceSnapshot): void
-  addPane(projectId: ProjectId, kind: TerminalKind, worktree?: Worktree): void
+  addPane(projectId: ProjectId, kind: TerminalKind, worktree?: Worktree, extras?: PaneExtras): void
+  /** Called once the pane's session started, so its first prompt is never sent again. */
+  clearInitialPrompt(projectId: ProjectId, paneId: PaneId): void
   closePane(projectId: ProjectId, paneId: PaneId): void
   closeFocusedPane(projectId: ProjectId): void
   focusPane(projectId: ProjectId, paneId: PaneId): void
@@ -122,8 +126,10 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       )
       return projectId ? { projectId, paneId } : null
     },
-    addPane: (projectId, kind, worktree) => {
-      updateLayout(projectId, (layout) => addPane(layout, kind, createPaneId, worktree))
+    clearInitialPrompt: (projectId, paneId) =>
+      updateLayout(projectId, (layout) => clearInitialPrompt(layout, paneId)),
+    addPane: (projectId, kind, worktree, extras) => {
+      updateLayout(projectId, (layout) => addPane(layout, kind, createPaneId, worktree, extras))
       get().selectCheckout(projectId, worktree?.path ?? null)
     },
     closePane: (projectId, paneId) => {
@@ -201,10 +207,11 @@ export function toSnapshot(layouts: Readonly<Record<ProjectId, ProjectLayout>>):
       Object.entries(layouts).map(([projectId, layout]) => [
         projectId,
         {
-          panes: layout.panes.map(({ kind, worktree, sessionId }) => ({
+          panes: layout.panes.map(({ kind, worktree, sessionId, task }) => ({
             kind,
             ...(worktree && { worktree }),
             ...(sessionId && { sessionId }),
+            ...(task && { task }),
           })),
         },
       ]),

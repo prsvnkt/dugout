@@ -12,6 +12,8 @@ export default tseslint.config(
     rules: {
       'no-console': ['error', { allow: ['warn', 'error'] }],
       '@typescript-eslint/consistent-type-imports': 'error',
+      // Allows the immutable "omit a field" pattern: const { dropped, ...rest } = object
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
     },
   },
   {

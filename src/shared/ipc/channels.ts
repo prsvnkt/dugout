@@ -46,5 +46,12 @@ export const IpcChannel = {
   cloneStart: 'clone:start',
   cloneCancel: 'clone:cancel',
   cloneProgress: 'clone:progress',
+  tasksList: 'tasks:list',
+  tasksGet: 'tasks:get',
+  tasksCreate: 'tasks:create',
+  tasksUpdate: 'tasks:update',
+  tasksComment: 'tasks:comment',
+  tasksOpen: 'tasks:open',
+  tasksStartSession: 'tasks:start-session',
   appCommand: 'app:command',
 } as const

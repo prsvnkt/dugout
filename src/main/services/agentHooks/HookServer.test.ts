@@ -8,12 +8,22 @@ import { HookServer } from './HookServer'
 const TOKEN = 'secret-token'
 
 function post(socketPath: string, path: string, token = TOKEN, body = ''): Promise<number> {
+  return postFull(socketPath, path, token, body).then((response) => response.status)
+}
+
+function postFull(
+  socketPath: string,
+  path: string,
+  token = TOKEN,
+  body = '',
+): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const req = request(
       { socketPath, path, method: 'POST', headers: { Authorization: `Bearer ${token}` } },
       (res) => {
-        res.resume()
-        resolve(res.statusCode ?? 0)
+        let text = ''
+        res.on('data', (chunk: Buffer) => (text += chunk.toString()))
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body: text }))
       },
     )
     req.on('error', reject)
@@ -25,11 +35,13 @@ describe('HookServer', () => {
   let socketPath: string
   let server: HookServer
   const onSignal = vi.fn()
+  const onRpc = vi.fn()
 
   beforeEach(async () => {
     socketPath = join(mkdtempSync(join(tmpdir(), 'dugout-hooks-')), 'hooks.sock')
     onSignal.mockReset()
-    server = new HookServer({ socketPath, token: TOKEN, onSignal })
+    onRpc.mockReset()
+    server = new HookServer({ socketPath, token: TOKEN, onSignal, onRpc })
     await server.listen()
   })
 
@@ -82,8 +94,67 @@ describe('HookServer', () => {
     await server.close()
     const { writeFileSync } = await import('node:fs')
     writeFileSync(socketPath, '')
-    server = new HookServer({ socketPath, token: TOKEN, onSignal })
+    server = new HookServer({ socketPath, token: TOKEN, onSignal, onRpc })
     await server.listen()
     expect(await post(socketPath, '/hooks/t/ready')).toBe(204)
+  })
+})
+
+describe('HookServer task RPC', () => {
+  let socketPath: string
+  let server: HookServer
+  const onRpc = vi.fn()
+
+  beforeEach(async () => {
+    socketPath = join(mkdtempSync(join(tmpdir(), 'dugout-rpc-')), 'hooks.sock')
+    onRpc.mockReset()
+    server = new HookServer({ socketPath, token: TOKEN, onSignal: vi.fn(), onRpc })
+    await server.listen()
+  })
+
+  afterEach(async () => {
+    await server.close()
+  })
+
+  test('answers task calls for a terminal with JSON', async () => {
+    onRpc.mockResolvedValue([{ number: 1 }])
+    const response = await postFull(
+      socketPath,
+      '/rpc/term-1',
+      TOKEN,
+      JSON.stringify({ method: 'list', params: {} }),
+    )
+    expect(response.status).toBe(200)
+    expect(JSON.parse(response.body)).toEqual({ result: [{ number: 1 }] })
+    expect(onRpc).toHaveBeenCalledWith('term-1', 'list', {})
+  })
+
+  test('returns errors as JSON for the agent to read', async () => {
+    onRpc.mockRejectedValue(new Error('This project has no GitHub remote.'))
+    const response = await postFull(
+      socketPath,
+      '/rpc/t',
+      TOKEN,
+      JSON.stringify({ method: 'list', params: {} }),
+    )
+    expect(response.status).toBe(400)
+    expect(JSON.parse(response.body)).toEqual({ error: 'This project has no GitHub remote.' })
+  })
+
+  test('requires the token', async () => {
+    const response = await postFull(
+      socketPath,
+      '/rpc/t',
+      'wrong',
+      JSON.stringify({ method: 'list' }),
+    )
+    expect(response.status).toBe(401)
+    expect(onRpc).not.toHaveBeenCalled()
+  })
+
+  test('rejects malformed calls', async () => {
+    const response = await postFull(socketPath, '/rpc/t', TOKEN, '{ nope')
+    expect(response.status).toBe(400)
+    expect(onRpc).not.toHaveBeenCalled()
   })
 })
