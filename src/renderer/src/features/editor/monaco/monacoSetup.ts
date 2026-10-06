@@ -34,10 +34,10 @@ function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
-export const THEME = 'dugout-dark'
+export const THEME = 'dugout-light'
 
 monaco.editor.defineTheme(THEME, {
-  base: 'vs-dark',
+  base: 'vs',
   inherit: true,
   rules: [],
   colors: {
@@ -46,12 +46,12 @@ monaco.editor.defineTheme(THEME, {
     'editorLineNumber.foreground': token('--text-muted'),
     'editorGutter.background': token('--bg-app'),
     'editorWidget.background': token('--bg-panel'),
-    'editor.lineHighlightBackground': token('--bg-panel'),
+    'editor.lineHighlightBackground': token('--bg-canvas'),
   },
 })
 
 export const EDITOR_FONT = {
-  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontFamily: "'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace",
   fontSize: 13,
   lineHeight: 20,
 }

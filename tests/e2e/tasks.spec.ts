@@ -67,7 +67,7 @@ test.beforeEach(async () => {
   await page.getByRole('button', { name: 'Add project…' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
   await expect(page.getByRole('dialog')).toBeHidden()
-  await page.getByRole('tab', { name: 'Tasks' }).click()
+  await page.getByRole('button', { name: 'Show Tasks' }).click()
 })
 
 test.afterEach(async () => {

@@ -8,16 +8,16 @@
 
 .header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: var(--space-1);
   height: var(--pane-header-height);
-  padding: 0 var(--space-2) 0 var(--space-3);
-  border-bottom: 1px solid var(--border);
+  padding: 0 10px 0 14px;
 }
 
 .heading {
   flex: 1;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .header button,
@@ -42,7 +42,7 @@
 .newTask textarea,
 .commentForm textarea {
   padding: var(--space-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--bg-app);
   color: var(--text-primary);
@@ -149,7 +149,7 @@
 .empty button,
 .statusSelect select {
   padding: 2px var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   color: var(--text-primary);
@@ -268,8 +268,8 @@ button:disabled {
   padding: var(--space-1);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--bg-elevated);
-  box-shadow: 0 8px 24px var(--bg-overlay);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-menu);
 }
 
 .menu button {

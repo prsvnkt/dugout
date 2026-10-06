@@ -5,14 +5,14 @@ export interface FileIcon {
 }
 
 const BY_EXTENSION: Readonly<Record<string, FileIcon>> = {
-  ts: { glyph: 'TS', color: 'var(--project-blue)' },
-  tsx: { glyph: 'TS', color: 'var(--project-blue)' },
-  js: { glyph: 'JS', color: 'var(--project-yellow)' },
-  jsx: { glyph: 'JS', color: 'var(--project-yellow)' },
-  mjs: { glyph: 'JS', color: 'var(--project-yellow)' },
-  cjs: { glyph: 'JS', color: 'var(--project-yellow)' },
-  json: { glyph: '{}', color: 'var(--project-yellow)' },
-  md: { glyph: 'M', color: 'var(--project-blue)' },
+  ts: { glyph: 'TS', color: 'var(--glyph-blue)' },
+  tsx: { glyph: 'TS', color: 'var(--glyph-blue)' },
+  js: { glyph: 'JS', color: 'var(--glyph-yellow)' },
+  jsx: { glyph: 'JS', color: 'var(--glyph-yellow)' },
+  mjs: { glyph: 'JS', color: 'var(--glyph-yellow)' },
+  cjs: { glyph: 'JS', color: 'var(--glyph-yellow)' },
+  json: { glyph: '{}', color: 'var(--glyph-yellow)' },
+  md: { glyph: 'M', color: 'var(--glyph-blue)' },
   css: { glyph: '#', color: 'var(--project-purple)' },
   scss: { glyph: '#', color: 'var(--project-pink)' },
   html: { glyph: '<>', color: 'var(--project-orange)' },
@@ -29,8 +29,8 @@ const BY_EXTENSION: Readonly<Record<string, FileIcon>> = {
 
 const BY_NAME: Readonly<Record<string, FileIcon>> = {
   '.gitignore': { glyph: '◆', color: 'var(--project-orange)' },
-  '.env': { glyph: '⚙', color: 'var(--project-yellow)' },
-  Dockerfile: { glyph: '⛴', color: 'var(--project-blue)' },
+  '.env': { glyph: '⚙', color: 'var(--glyph-yellow)' },
+  Dockerfile: { glyph: '⛴', color: 'var(--glyph-blue)' },
 }
 
 const DEFAULT_ICON: FileIcon = { glyph: '≡', color: 'var(--text-muted)' }

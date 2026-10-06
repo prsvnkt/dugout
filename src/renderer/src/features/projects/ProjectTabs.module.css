@@ -4,8 +4,7 @@
   align-items: flex-end;
   height: var(--titlebar-height);
   padding-left: var(--titlebar-inset);
-  background: var(--bg-app);
-  border-bottom: 1px solid var(--border);
+  background: var(--room);
   -webkit-app-region: drag;
 }
 
@@ -32,23 +31,20 @@
   /* An explicit width (not just flex-basis) sets the tab's intrinsic size; it still shrinks. */
   flex: 0 1 auto;
   align-items: center;
-  width: 190px;
+  width: 186px;
   min-width: 96px;
-  height: 30px;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  height: 31px;
+  border-radius: 9px 9px 0 0;
   color: var(--text-secondary);
   -webkit-app-region: no-drag;
 }
 
 .tab:hover {
-  background: var(--bg-panel);
+  background: rgb(255 255 255 / 50%);
 }
 
 .tab[data-selected='true'] {
   background: var(--bg-panel);
-  border-color: var(--border);
   color: var(--text-primary);
 }
 
@@ -61,17 +57,6 @@
   left: 0;
   height: 1px;
   background: var(--bg-panel);
-}
-
-.tab[data-selected='true']::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  right: 12px;
-  left: 12px;
-  height: 2px;
-  border-radius: 0 0 2px 2px;
-  background: var(--accent);
 }
 
 .select {
@@ -108,6 +93,11 @@
 .attention {
   flex-shrink: 0;
   font-size: 11px;
+}
+
+.attention > span:first-child {
+  width: 6px;
+  height: 6px;
 }
 
 .edit {
@@ -153,7 +143,7 @@
 }
 
 .newTab:hover {
-  background: var(--bg-panel);
+  background: rgb(255 255 255 / 60%);
   color: var(--text-primary);
 }
 
@@ -168,8 +158,8 @@
   padding: var(--space-1);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--bg-elevated);
-  box-shadow: 0 8px 24px var(--bg-overlay);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-menu);
 }
 
 .menu button {
@@ -184,7 +174,7 @@
 
 .menu button:hover,
 .menu button:focus-visible {
-  background: var(--bg-panel);
+  background: var(--bg-elevated);
 }
 
 .menu kbd {

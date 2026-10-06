@@ -3,6 +3,7 @@ import type { GitStatus } from '@shared/git'
 import type { Result } from '@shared/result'
 import type { GitCheckout } from '@shared/worktree'
 import { dugout } from '@renderer/lib/dugout'
+import { togglePanelView, type RightPanelView } from './rightPanel'
 
 export interface ProjectGitState {
   readonly status: GitStatus | null
@@ -28,8 +29,11 @@ export function checkoutKey(checkout: GitCheckout): string {
 interface GitState {
   readonly byCheckout: Readonly<Record<string, ProjectGitState>>
   readonly isPanelOpen: boolean
+  readonly panelView: RightPanelView
   togglePanel(): void
   setPanelOpen(isOpen: boolean): void
+  /** Shows `view`, or hides the panel when it already shows it (the activity rail buttons). */
+  togglePanelView(view: RightPanelView): void
   refresh(checkout: GitCheckout): Promise<void>
   stage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
   unstage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
@@ -65,7 +69,9 @@ export const useGitStore = create<GitState>()((set, get) => {
   return {
     byCheckout: {},
     isPanelOpen: true,
+    panelView: 'review',
     togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
+    togglePanelView: (view) => set((state) => togglePanelView(state, view)),
     setPanelOpen: (isOpen) =>
       set((state) => (state.isPanelOpen === isOpen ? state : { isPanelOpen: isOpen })),
 

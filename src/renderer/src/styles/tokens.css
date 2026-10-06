@@ -1,42 +1,61 @@
 :root {
-  --bg-app: #0f1115;
-  --bg-panel: #151820;
-  --bg-elevated: #1c2029;
-  --border: #262b36;
-  --text-primary: #e6e8ee;
-  --text-secondary: #9aa1b1;
-  --text-muted: #6b7282;
+  color-scheme: light;
 
-  --project-teal: #2dd4bf;
-  --project-orange: #fb923c;
-  --project-purple: #a78bfa;
-  --project-blue: #60a5fa;
-  --project-pink: #f472b6;
-  --project-green: #4ade80;
-  --project-yellow: #facc15;
-  --project-red: #f87171;
-  --text-on-accent: #0b0f14;
-  --bg-overlay: rgb(0 0 0 / 55%);
+  /* "Day game" theme (decision 023): light, cool neutrals. */
+  --bg-app: #ffffff; /* terminals, editor */
+  --bg-panel: #ffffff; /* explorer, review, pane headers */
+  --bg-canvas: #fbfbfc; /* behind terminal panes */
+  --bg-elevated: #f1f3f5; /* hover, segmented track */
+  --border: #e3e6eb;
+  --border-strong: #d9dde3; /* inputs */
+  --text-primary: #14171c;
+  --text-secondary: #545b66;
+  --text-muted: #8a919c;
+  --text-faint: #a2a8b2; /* chevrons */
+  --text-on-accent: #ffffff;
+  --bg-overlay: rgb(20 23 28 / 35%);
+  --shadow-dialog: 0 24px 48px -16px rgb(20 23 28 / 25%);
+  --shadow-menu: 0 8px 24px -8px rgb(20 23 28 / 20%);
 
-  --status-running: #4ade80;
-  --status-idle: #6b7282;
-  --status-working: #60a5fa;
-  --status-needs-input: #fbbf24;
-  --status-done: #4ade80;
-  --diff-added-bg: rgb(74 222 128 / 12%);
-  --diff-removed-bg: rgb(248 113 113 / 12%);
-  --status-idle: #6b7282;
-  --status-working: #60a5fa;
-  --status-needs-input: #fbbf24;
-  --status-done: #4ade80;
-  --status-exited: #6b7282;
-  --status-error: #f87171;
+  /* Project colours. Deep variants: white text on each is at least 4.5:1 (WCAG AA). */
+  --project-teal: #0d8174;
+  --project-orange: #bf530b;
+  --project-purple: #6e4bd6;
+  --project-blue: #2463c7;
+  --project-pink: #c0307a;
+  --project-green: #2c843b;
+  --project-yellow: #a16207;
+  --project-red: #c53030;
 
-  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* The UI accent; App sets it to the selected project's colour. */
+  --accent: var(--project-blue);
 
-  --radius-sm: 4px;
+  --status-running: #15803d;
+  --status-idle: #8a919c;
+  --status-working: #2563eb;
+  --status-needs-input: #b45309; /* text */
+  --status-needs-input-dot: #d97706;
+  --status-done: #15803d;
+  --status-exited: #8a919c;
+  --status-error: #b91c1c;
+
+  --diff-added: #15803d;
+  --diff-removed: #b91c1c;
+  --diff-added-bar: #22a05a;
+  --diff-removed-bar: #dc4b4b;
+  --diff-added-bg: rgb(21 128 61 / 8%);
+  --diff-removed-bg: rgb(185 28 28 / 7%);
+
+  /* File-type glyphs (fileIcons.ts), fixed so they don't follow the project palette. */
+  --glyph-blue: #2563eb;
+  --glyph-yellow: #a16207;
+
+  --font-ui: 'Schibsted Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-sm: 6px;
   --radius-md: 8px;
+  --radius-lg: 10px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -44,10 +63,9 @@
   --space-6: 24px;
 
   /* Leaves room for the macOS traffic lights with titleBarStyle: hiddenInset. */
-  --titlebar-height: 38px;
+  --titlebar-height: 40px;
   --titlebar-inset: 80px;
-  --sidebar-width: 220px;
-  --git-panel-default-width: 380px;
-  --statusbar-height: 24px;
-  --pane-header-height: 32px;
+  --rail-width: 48px;
+  --pane-header-height: 38px;
+  --statusbar-height: 26px;
 }

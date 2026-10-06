@@ -3,6 +3,7 @@ import type { Project } from '@shared/project'
 import { useEditorStore, useProjectTabs } from '@renderer/features/editor/editorStore'
 import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore'
 import { CheckoutPicker } from '@renderer/features/worktrees/CheckoutPicker'
+import { useProjectWorktrees } from '@renderer/features/worktrees/worktreeStore'
 import { ChangeSection, type ChangeEntry, type GitSelection } from './ChangeSection'
 import { CommitBox } from './CommitBox'
 import { isAuthError, useAuthStore } from '@renderer/features/github/authStore'
@@ -23,6 +24,7 @@ function entries(files: readonly GitFileChange[], side: 'staged' | 'unstaged'): 
   })
 }
 
+/** The checked-out branch; shown when there are no worktrees to pick between. */
 function BranchSummary({ status }: { status: GitStatus }) {
   return (
     <span className={styles.branch} title={status.upstream ?? 'No upstream branch'}>
@@ -54,6 +56,7 @@ export function GitPanel({ project }: GitPanelProps) {
   const openDiff = useEditorStore((state) => state.openDiff)
   const signIn = useAuthStore((state) => state.signIn)
   const setPanelOpen = useGitStore((state) => state.setPanelOpen)
+  const hasWorktrees = useProjectWorktrees(project.id).length > 0
   const { tabs, activeTabId } = useProjectTabs(project.id)
   const activeTab = tabs.find((tab) => tab.id === activeTabId)
   const selection: GitSelection | null =
@@ -61,9 +64,24 @@ export function GitPanel({ project }: GitPanelProps) {
       ? { path: activeTab.path, staged: activeTab.staged }
       : null
 
+  const hideButton = (
+    <button
+      className={styles.hide}
+      onClick={() => setPanelOpen(false)}
+      title="Hide review panel (⇧⌘G)"
+      aria-label="Hide Git panel"
+    >
+      »
+    </button>
+  )
+
   if (!git.status) {
     return (
       <aside className={styles.panel} aria-label="Source control">
+        <header className={styles.header}>
+          <span className={styles.heading}>Review</span>
+          {hideButton}
+        </header>
         <CheckoutPicker project={project} />
         <p className={styles.notice}>{git.statusError ?? 'Loading git status…'}</p>
       </aside>
@@ -78,17 +96,8 @@ export function GitPanel({ project }: GitPanelProps) {
 
   return (
     <aside className={styles.panel} aria-label="Source control">
-      <CheckoutPicker project={project} />
       <header className={styles.header}>
-        <BranchSummary status={git.status} />
-        <button
-          className={styles.hide}
-          onClick={() => setPanelOpen(false)}
-          title="Hide git panel (⇧⌘G)"
-          aria-label="Hide Git panel"
-        >
-          »
-        </button>
+        <span className={styles.heading}>Review</span>
         {push && (
           <button
             className={styles.pushButton}
@@ -118,7 +127,15 @@ export function GitPanel({ project }: GitPanelProps) {
             </button>
           )
         )}
+        {hideButton}
       </header>
+      {hasWorktrees ? (
+        <CheckoutPicker project={project} />
+      ) : (
+        <div className={styles.branchRow}>
+          <BranchSummary status={git.status} />
+        </div>
+      )}
       {pullRequest && <PullRequestBlock pullRequest={pullRequest} />}
 
       {git.actionError && (
@@ -133,11 +150,6 @@ export function GitPanel({ project }: GitPanelProps) {
       )}
 
       <div className={styles.changes}>
-        <CommitBox
-          stagedCount={staged.length}
-          isBusy={git.isBusy}
-          onCommit={(message) => actions.commit(id, message)}
-        />
         {staged.length + unstaged.length === 0 && (
           <p className={styles.notice}>No changes. Working tree clean.</p>
         )}
@@ -175,6 +187,11 @@ export function GitPanel({ project }: GitPanelProps) {
           onDiscard={(path) => void actions.discard(id, [path])}
         />
       </div>
+      <CommitBox
+        stagedCount={staged.length}
+        isBusy={git.isBusy}
+        onCommit={(message) => actions.commit(id, message)}
+      />
     </aside>
   )
 }

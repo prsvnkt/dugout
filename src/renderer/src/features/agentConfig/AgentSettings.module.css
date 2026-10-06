@@ -142,8 +142,8 @@
 }
 
 .primary {
-  border-color: var(--project-blue);
-  background: var(--project-blue);
+  border-color: var(--accent);
+  background: var(--accent);
   color: var(--text-on-accent);
 }
 

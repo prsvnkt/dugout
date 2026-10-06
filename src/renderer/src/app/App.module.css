@@ -1,7 +1,13 @@
 .app {
+  /* The project "room": surfaces washed with the selected project's colour. */
+  --room: color-mix(in oklch, var(--accent) 13%, #f7f8fa);
+  --room-rail: color-mix(in oklch, var(--accent) 7%, #f7f8fa);
+  --accent-soft: color-mix(in oklch, var(--accent) 10%, #ffffff);
+
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--bg-app);
 }
 
 .body {
@@ -63,7 +69,7 @@
 
 .secondary {
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  background: var(--bg-elevated);
+  background: var(--bg-panel);
 }

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
+import { useDismiss } from '@renderer/lib/useDismiss'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
@@ -47,19 +48,7 @@ export function InboxButton() {
   const waiting = entries.filter((entry) => entry.activity === 'needs-input')
   const finished = entries.filter((entry) => entry.activity === 'done')
 
-  useEffect(() => {
-    if (!isOpen) return
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && close()
-    const onClick = (event: MouseEvent) => {
-      if (!wrapRef.current?.contains(event.target as Node)) close()
-    }
-    window.addEventListener('keydown', onKey)
-    window.addEventListener('mousedown', onClick)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('mousedown', onClick)
-    }
-  }, [isOpen, close])
+  useDismiss(wrapRef, isOpen, close)
 
   const open = (entry: InboxEntry) => {
     close()

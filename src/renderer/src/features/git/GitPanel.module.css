@@ -8,26 +8,42 @@
 
 .header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
-  gap: var(--space-2);
+  gap: 6px;
   height: var(--pane-header-height);
-  padding: 0 var(--space-3);
-  border-bottom: 1px solid var(--border);
+  padding: 0 10px 0 14px;
+}
+
+.heading {
+  flex: 1;
+  font-weight: 600;
+}
+
+.branchRow {
+  padding: 0 14px var(--space-2);
 }
 
 .branch {
-  flex: 1;
+  display: block;
   overflow: hidden;
-  font-weight: 500;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pushButton,
-.commitButton {
-  padding: 2px var(--space-3);
+.pushButton {
+  padding: 3px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pushButton:hover:not(:disabled) {
   background: var(--bg-elevated);
 }
 
@@ -45,18 +61,21 @@
   overflow-y: auto;
 }
 
+/* Pinned to the bottom of the panel. */
 .commitBox {
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border);
 }
 
 .commitInput {
   resize: vertical;
   padding: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
   background: var(--bg-app);
   color: var(--text-primary);
   font: inherit;
@@ -64,46 +83,38 @@
 }
 
 .commitInput:focus {
-  outline: 2px solid var(--project-blue);
+  outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
 
 .commitButton {
-  padding: var(--space-1) var(--space-3);
+  padding: 6px var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--text-primary);
+  color: var(--text-on-accent);
   font-weight: 600;
-}
-
-.section {
-  padding-bottom: var(--space-2);
 }
 
 .sectionHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-1) var(--space-3);
+  padding: 14px 14px 4px;
 }
 
-.sectionTitle {
+.sectionTitle,
+.linkButton {
   margin: 0;
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.count {
-  margin-left: var(--space-1);
-  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
 }
 
 .linkButton {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
 }
 
 .linkButton:hover:not(:disabled) {
@@ -112,19 +123,22 @@
 
 .fileList {
   margin: 0;
-  padding: 0 var(--space-2);
+  padding: 0;
   list-style: none;
 }
 
 .fileRow {
   display: flex;
   align-items: center;
-  border-radius: var(--radius-sm);
+  padding-right: 10px;
 }
 
-.fileRow:hover,
-.fileRow[data-selected='true'] {
+.fileRow:hover {
   background: var(--bg-elevated);
+}
+
+.fileRow[data-selected='true'] {
+  background: var(--accent-soft);
 }
 
 .fileButton {
@@ -133,7 +147,7 @@
   align-items: baseline;
   gap: var(--space-2);
   min-width: 0;
-  padding: 3px var(--space-1);
+  padding: 5px 0 5px 14px;
   border: none;
   background: transparent;
   text-align: left;
@@ -165,7 +179,7 @@
 .fileDir {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -193,7 +207,7 @@
 }
 
 .rowAction:hover:not(:disabled) {
-  background: var(--bg-app);
+  background: var(--bg-panel);
   color: var(--text-primary);
 }
 
@@ -230,7 +244,6 @@
 }
 
 .hide {
-  order: 10;
   width: 22px;
   height: 22px;
   padding: 0;

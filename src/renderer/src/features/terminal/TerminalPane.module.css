@@ -4,31 +4,48 @@
   height: 100%;
   min-height: 0;
   min-width: 0;
-  background: var(--bg-app);
-  border-top: 2px solid transparent;
-}
-
-.pane[data-focused='true'] {
-  border-top-color: var(--accent);
+  overflow: hidden;
+  background: var(--bg-canvas);
 }
 
 .header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
+  min-width: 0;
   height: var(--pane-header-height);
-  padding: 0 var(--space-2) 0 var(--space-3);
+  padding: 0 10px 0 14px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
 }
 
+/* The focused pane is underlined in the project colour. */
+.pane[data-focused='true'] .header {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.number {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pane[data-focused='true'] .number {
+  color: var(--accent);
+}
+
 .kind {
-  font-weight: 500;
+  flex-shrink: 0;
   color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .pane[data-focused='true'] .kind {
-  color: var(--accent);
+  color: var(--text-primary);
 }
 
 .task {
@@ -41,25 +58,28 @@
 }
 
 .branch {
+  min-width: 0;
   overflow: hidden;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .status {
   margin-left: auto;
+  font-size: 12px;
 }
 
 .restart {
   padding: 1px var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  background: var(--bg-panel);
   color: var(--text-primary);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .close {
@@ -81,6 +101,11 @@
 
 .terminal {
   flex: 1;
+  min-width: 0;
   min-height: 0;
-  padding: var(--space-2) 0 0 var(--space-3);
+  overflow: hidden;
+  padding: 12px 0 0 16px;
+  /* FitAddon reads this element's computed size as the space for the terminal; with
+     border-box it would include the padding and fit columns past the right edge. */
+  box-sizing: content-box;
 }

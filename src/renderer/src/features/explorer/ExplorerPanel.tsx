@@ -11,6 +11,7 @@ import { iconFor } from './fileIcons'
 import styles from './ExplorerPanel.module.css'
 
 const INDENT_PX = 12
+const ROW_INSET_PX = 6
 
 interface GitMarks {
   readonly files: ReadonlyMap<string, GitChangeKind>
@@ -64,7 +65,7 @@ function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
           className={styles.row}
           data-ignored={entry.isIgnored}
           data-change={change ?? (hasChangesInside ? 'inside' : undefined)}
-          style={{ paddingLeft: depth * INDENT_PX + 8 }}
+          style={{ paddingLeft: depth * INDENT_PX + ROW_INSET_PX }}
           title={entry.path}
           aria-label={
             entry.name + (change ? ` — ${change}` : hasChangesInside ? ' — contains changes' : '')
@@ -124,7 +125,6 @@ export function ExplorerPanel({ project }: { project: Project }) {
   const tree = useCheckoutTree(checkout)
   const collapseAll = useExplorerStore((state) => state.collapseAll)
   const refresh = useExplorerStore((state) => state.refresh)
-  const setOpen = useExplorerStore((state) => state.setOpen)
   const marks = useGitMarks(project)
   const { tabs, activeTabId } = useProjectTabs(project.id)
   const activePath = tabs.find((tab) => tab.id === activeTabId)?.path ?? null
@@ -133,7 +133,9 @@ export function ExplorerPanel({ project }: { project: Project }) {
   return (
     <aside className={styles.panel} aria-label="Explorer">
       <header className={styles.header}>
-        <span className={styles.title}>Explorer</span>
+        <span className={styles.root} title={checkout.worktreePath ?? project.rootPath}>
+          {rootName}
+        </span>
         <button
           onClick={() => void refresh(checkout)}
           title="Refresh"
@@ -148,17 +150,7 @@ export function ExplorerPanel({ project }: { project: Project }) {
         >
           ⊟
         </button>
-        <button
-          onClick={() => setOpen(false)}
-          title="Hide explorer (⌘B)"
-          aria-label="Hide Explorer"
-        >
-          «
-        </button>
       </header>
-      <div className={styles.root} title={checkout.worktreePath ?? project.rootPath}>
-        {rootName}
-      </div>
       {tree.error ? (
         <p className={styles.error}>{tree.error}</p>
       ) : (

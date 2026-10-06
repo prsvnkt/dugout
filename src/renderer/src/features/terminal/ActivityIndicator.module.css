@@ -29,7 +29,7 @@
 }
 
 [data-activity='needs-input'] .dot {
-  background: var(--status-needs-input);
+  background: var(--status-needs-input-dot);
 }
 
 [data-activity='done'] {

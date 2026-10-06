@@ -153,7 +153,7 @@ test('side panels collapse to rails and expand again without restarting terminal
   await expect.poll(output).not.toBe('')
 
   // Collapse both from their headers
-  await explorer().getByRole('button', { name: 'Hide Explorer' }).click()
+  await page.getByRole('button', { name: 'Hide Explorer' }).click()
   await page
     .getByRole('complementary', { name: 'Source control' })
     .getByRole('button', { name: 'Hide Git panel' })

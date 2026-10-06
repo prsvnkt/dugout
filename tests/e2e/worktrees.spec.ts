@@ -2,7 +2,13 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
-import { launchApp, makeFakeClaude, makeTempDir, stubFolderPicker } from './helpers'
+import {
+  chooseNewPaneAction,
+  launchApp,
+  makeFakeClaude,
+  makeTempDir,
+  stubFolderPicker,
+} from './helpers'
 
 const IDENTITY = {
   GIT_AUTHOR_NAME: 'Dugout Test',
@@ -56,7 +62,7 @@ test('a worktree session isolates an agent and can be reviewed and removed', asy
   await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
 
   // Act: start a worktree session
-  await workspace().getByRole('button', { name: '+ Worktree' }).click()
+  await chooseNewPaneAction(workspace(), 'New worktree session')
 
   // Assert: the pane runs on its own dugout/* branch in a separate checkout
   await expect(workspace().getByRole('region', { name: /terminal$/ })).toContainText('⎇ dugout/')
@@ -73,12 +79,14 @@ test('a worktree session isolates an agent and can be reviewed and removed', asy
   await expect(page.getByRole('contentinfo')).toContainText('⎇ dugout/')
 
   // The main checkout is untouched
-  await panel().getByRole('combobox', { name: 'Checkout to review' }).selectOption('')
+  await panel().getByRole('radio', { name: 'Main checkout' }).click()
   await expect(panel()).toContainText('Working tree clean')
   expect(git(repo, 'status', '--porcelain')).toBe('')
 
   // Removing a worktree with uncommitted work is refused and keeps the pane
-  await panel().getByRole('combobox', { name: 'Checkout to review' }).selectOption(worktreePath)
+  await panel()
+    .getByRole('radio', { name: /^Worktree · dugout\// })
+    .click()
   await panel().getByRole('button', { name: 'Remove worktree' }).click()
   await panel().getByRole('button', { name: 'Click again to remove' }).click()
   await expect(workspace().getByRole('alert')).toContainText(/modified or untracked/)

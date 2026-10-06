@@ -10,7 +10,7 @@
   display: flex;
   flex-shrink: 0;
   overflow-x: auto;
-  background: var(--bg-panel);
+  background: var(--bg-canvas);
   border-bottom: 1px solid var(--border);
 }
 
@@ -23,7 +23,7 @@
 }
 
 .tab[data-active='true'] {
-  border-top-color: var(--project-blue);
+  border-top-color: var(--accent);
   background: var(--bg-app);
   color: var(--text-primary);
 }

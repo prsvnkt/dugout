@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import type { Project } from '@shared/project'
 import { ProjectDialog, type ProjectDialogTarget } from '@renderer/features/projects/ProjectDialog'
+import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { ProjectTabs } from '@renderer/features/projects/ProjectTabs'
 import { CloneDialog } from '@renderer/features/clone/CloneDialog'
 import { useAuthStore } from '@renderer/features/github/authStore'
@@ -71,8 +72,14 @@ export function App() {
 
   if (!isLoaded) return <div className={styles.app} />
 
+  // The selected project's colour tints the whole window (title bar, rail, status bar, focus).
+  const selected = projects.find((project) => project.id === selectedId)
+  const accent = selected
+    ? ({ '--accent': projectColorVar(selected.color) } as CSSProperties)
+    : undefined
+
   return (
-    <div className={styles.app}>
+    <div className={styles.app} style={accent}>
       <ProjectTabs
         onAddProject={addProject}
         onCloneProject={openClone}

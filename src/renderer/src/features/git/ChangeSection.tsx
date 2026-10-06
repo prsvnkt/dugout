@@ -35,7 +35,7 @@ export function ChangeSection(props: ChangeSectionProps) {
     <section className={styles.section} aria-label={title}>
       <header className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>
-          {title} <span className={styles.count}>{entries.length}</span>
+          {title} · {entries.length}
         </h3>
         <button className={styles.linkButton} onClick={onBulk} disabled={isBusy}>
           {bulkLabel}

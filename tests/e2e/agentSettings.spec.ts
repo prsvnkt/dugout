@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
+  chooseNewPaneAction,
   clickMenuItem,
   launchApp,
   makeFakeCodex,
@@ -73,7 +74,7 @@ test('edits .mcp.json servers that Codex panes then receive', async () => {
 })
 
 test('makes AGENTS.md the shared instructions', async () => {
-  await page.getByRole('button', { name: 'Agent settings' }).click()
+  await chooseNewPaneAction(page, 'Agent settings')
   await settings().getByRole('button', { name: 'Make AGENTS.md the source' }).click()
 
   await expect(settings()).toContainText('CLAUDE.md imports AGENTS.md')

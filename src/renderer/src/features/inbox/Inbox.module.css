@@ -44,8 +44,8 @@
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--bg-elevated);
-  box-shadow: 0 8px 24px var(--bg-overlay);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-menu);
 }
 
 .heading {

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useRef, useState, type CSSProperties } from 'react'
+import { useDismiss } from '@renderer/lib/useDismiss'
 import type { Project } from '@shared/project'
 import { AccountButton } from '@renderer/features/github/AccountButton'
 import { InboxButton } from '@renderer/features/inbox/InboxButton'
@@ -35,20 +36,11 @@ function NewProjectMenu({ onAddProject, onCloneProject }: Omit<ProjectTabsProps,
   const [isOpen, setIsOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!isOpen) return
-    const close = (event: MouseEvent | KeyboardEvent) => {
-      if (event instanceof KeyboardEvent && event.key !== 'Escape') return
-      if (event instanceof MouseEvent && wrapRef.current?.contains(event.target as Node)) return
-      setIsOpen(false)
-    }
-    window.addEventListener('mousedown', close)
-    window.addEventListener('keydown', close)
-    return () => {
-      window.removeEventListener('mousedown', close)
-      window.removeEventListener('keydown', close)
-    }
-  }, [isOpen])
+  useDismiss(
+    wrapRef,
+    isOpen,
+    useCallback(() => setIsOpen(false), []),
+  )
 
   const choose = (action: () => void) => {
     setIsOpen(false)

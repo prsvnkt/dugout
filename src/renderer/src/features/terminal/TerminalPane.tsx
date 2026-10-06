@@ -12,6 +12,8 @@ import { useTerminal, type TerminalStatus } from './useTerminal'
 import styles from './TerminalPane.module.css'
 
 interface TerminalPaneProps {
+  /** Position in the project's pane row, shown as "01", "02"… in the header. */
+  readonly index: number
   readonly kind: TerminalKind
   readonly projectId: string
   readonly cwd: string
@@ -42,6 +44,10 @@ const KIND_LABEL: Record<TerminalKind, string> = {
   shell: 'Shell',
 }
 
+function paneNumber(index: number): string {
+  return String(index + 1).padStart(2, '0')
+}
+
 function describe(activity: PaneActivity, status: TerminalStatus): string {
   if (status.state === 'exited') return `Exited (${status.exit.exitCode})`
   if (status.state === 'error') return status.message
@@ -49,7 +55,7 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 }
 
 export function TerminalPane(props: TerminalPaneProps) {
-  const { kind, projectId, cwd, branch, accentColor, shouldFocus, isFocused } = props
+  const { index, kind, projectId, cwd, branch, accentColor, shouldFocus, isFocused } = props
   const { resumeSessionId, initialPrompt, task } = props
   const { onFocus, onClose, onActivity, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
@@ -89,6 +95,9 @@ export function TerminalPane(props: TerminalPaneProps) {
       aria-label={`${KIND_LABEL[kind]} terminal`}
     >
       <header className={styles.header}>
+        <span className={styles.number} aria-hidden>
+          {paneNumber(index)}
+        </span>
         <span className={styles.kind}>{KIND_LABEL[kind]}</span>
         {task && (
           <span className={styles.task} title={task.title}>

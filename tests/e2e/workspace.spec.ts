@@ -1,5 +1,6 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
+  chooseNewPaneAction,
   clickMenuItem,
   openAddProjectFromTabs,
   launchApp,
@@ -45,7 +46,7 @@ test('adds projects, runs split terminals, and keeps them alive across switches'
   await activeWorkspace()
     .getByRole('button', { name: /New shell/ })
     .click()
-  await activeWorkspace().getByRole('button', { name: '+ Shell' }).click()
+  await chooseNewPaneAction(activeWorkspace(), 'New shell')
   await expect(activeWorkspace().getByText('Running')).toHaveCount(2)
   await expect(page.getByText('2 terminals')).toBeVisible()
 

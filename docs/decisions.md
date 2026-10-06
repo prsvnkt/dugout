@@ -220,6 +220,27 @@ list. There is no per-project "share with Codex" switch; sharing what Codex can 
 leaves CLAUDE.md as an `@AGENTS.md` import (`@../AGENTS.md` from `.claude/CLAUDE.md`) plus a
 Claude-only section, so both agents follow one set of instructions.
 
+## 023 — "Day game": a light theme with project rooms and an activity rail (2026-10-06)
+
+Dugout switches from its dark theme to one light theme (no dark option; it could return as a
+token override). Cool neutrals, Schibsted Grotesk for UI and JetBrains Mono for code, both
+bundled as variable fonts (CSP allows only `font-src 'self'`). The selected project's colour is
+the UI `--accent`, set on the app root: it washes the title bar and the rail (the project's
+"room"), underlines the focused pane, fills the status bar and drives focus rings. Project colours
+are deep variants with white text at least 4.5:1 on each.
+
+A 48px activity rail replaces the collapsed side-panel rails. It toggles Files (⌘B), Review
+(⇧⌘G, with the change count) and Tasks, and its "+" menu holds the new-pane actions and Agent
+settings that used to sit in the "Terminals" header (now gone). The right panel shows Review or
+Tasks, picked in the rail, instead of tabs. Pane headers carry a pane number (01, 02…). The git
+panel is "Review": a segmented checkout picker (a select beyond three checkouts) and the commit
+box pinned to the bottom. xterm and Monaco use matching light themes; set Claude Code itself to a
+light theme with `/theme` so its TUI colours read on the light background.
+
+Next: per-file `+N −M` diff stats in Review (needs `git diff --numstat` in `GitService`). A prompt
+dock that types into the focused pane was designed too but waits for a separate decision, since it
+edges towards a custom chat input (principle: wrap Claude Code, never reinvent it).
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -232,3 +253,4 @@ Claude-only section, so both agents follow one set of instructions.
 5. **Done since:** tasks from GitHub Issues ✅, "needs you" inbox ✅, PR/CI status ✅,
    Codex adapter with Compare ✅.
 6. **Done since:** agent settings (`.mcp.json` editor, AGENTS.md as shared instructions) ✅.
+7. **Done since:** "Day game" light theme with activity rail ✅. Next: Review diff stats.

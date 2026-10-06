@@ -1,30 +1,19 @@
-import { useState } from 'react'
 import type { Project } from '@shared/project'
 import { GitPanel } from '@renderer/features/git/GitPanel'
+import { useGitStore } from '@renderer/features/git/gitStore'
 import { TasksPanel } from './TasksPanel'
 import styles from './RightPanel.module.css'
 
-type RightTab = 'git' | 'tasks'
-
-/** The right side panel: source control or the project's tasks. */
+/** The right side panel: the git review or the project's tasks, chosen in the activity rail. */
 export function RightPanel({ project, isActive }: { project: Project; isActive: boolean }) {
-  const [tab, setTab] = useState<RightTab>('git')
+  const view = useGitStore((state) => state.panelView)
   return (
     <div className={styles.panel}>
-      <div className={styles.tabs} role="tablist" aria-label="Side panel">
-        {(['git', 'tasks'] as const).map((id) => (
-          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
-            {id === 'git' ? 'Git' : 'Tasks'}
-          </button>
-        ))}
-      </div>
-      <div className={styles.content}>
-        {tab === 'git' ? (
-          <GitPanel project={project} />
-        ) : (
-          <TasksPanel project={project} isActive={isActive} />
-        )}
-      </div>
+      {view === 'review' ? (
+        <GitPanel project={project} />
+      ) : (
+        <TasksPanel project={project} isActive={isActive} />
+      )}
     </div>
   )
 }

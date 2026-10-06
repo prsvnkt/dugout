@@ -2,7 +2,12 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  _electron as electron,
+  type ElectronApplication,
+  type Locator,
+  type Page,
+} from '@playwright/test'
 import type { DugoutApi } from '../../src/shared/api'
 
 interface TestWindow {
@@ -206,4 +211,10 @@ export function makeFakeCodex(): string {
 export async function openAddProjectFromTabs(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'New project' }).click()
   await page.getByRole('menuitem', { name: /^Add project…/ }).click()
+}
+
+/** Picks an action (e.g. "New shell") from the activity rail's "+" menu. */
+export async function chooseNewPaneAction(scope: Page | Locator, action: string): Promise<void> {
+  await scope.getByRole('button', { name: 'New pane' }).click()
+  await scope.getByRole('menuitem', { name: action }).click()
 }
