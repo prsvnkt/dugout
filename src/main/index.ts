@@ -12,6 +12,7 @@ import { registerGitIpc } from './ipc/registerGitIpc'
 import { registerProjectIpc } from './ipc/registerProjectIpc'
 import { registerTerminalIpc } from './ipc/registerTerminalIpc'
 import { registerWorkspaceIpc } from './ipc/registerWorkspaceIpc'
+import { registerPullRequestIpc } from './ipc/registerPullRequestIpc'
 import { registerTaskIpc } from './ipc/registerTaskIpc'
 import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { installMenu } from './menu'
@@ -21,6 +22,7 @@ import { gitHubConfig, GITHUB_SCOPES } from './services/github/config'
 import { DeviceFlowClient } from './services/github/DeviceFlowClient'
 import { GitHubApi } from './services/github/GitHubApi'
 import { GitHubAuth } from './services/github/GitHubAuth'
+import { GitHubPulls } from './services/github/GitHubPulls'
 import { gitCredentialConfig } from './services/github/gitCredentials'
 import { TokenStore, type Encryption } from './services/github/TokenStore'
 import { AgentNotifier, type AgentNotification } from './services/notifications/AgentNotifier'
@@ -247,6 +249,15 @@ async function start(): Promise<void> {
     webBaseUrl: github.webBaseUrl,
   })
   const tasks = taskService
+  registerPullRequestIpc({
+    projects: projectStore,
+    worktrees,
+    git,
+    auth: githubAuth,
+    pulls: new GitHubPulls({ fetch, apiBaseUrl: github.apiBaseUrl }),
+    webBaseUrl: github.webBaseUrl,
+    openExternal: (url) => shell.openExternal(url),
+  })
   registerTaskIpc({
     tasks,
     projects: projectStore,

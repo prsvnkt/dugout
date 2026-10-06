@@ -24,6 +24,15 @@ export interface StubOptions {
   readonly expiringTokens?: boolean
   /** Issues of octocat/app, served under /api/repos/octocat/app. */
   readonly issues?: StubIssue[]
+  /** A pull request for one branch of octocat/app, with its check runs. */
+  readonly pullRequest?: StubPullRequest
+}
+
+export interface StubPullRequest {
+  readonly branch: string
+  readonly number: number
+  readonly title: string
+  readonly checks: { name: string; conclusion: 'success' | 'failure' | null }[]
 }
 
 /** A tiny stand-in for github.com + api.github.com: device flow, refresh, /user, /user/repos. */
@@ -90,7 +99,9 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
         return json({ login: 'octocat', name: 'The Octocat', avatar_url: AVATAR })
       }
       const repoRoute = /^\/api\/repos\/octocat\/app\/(.+)$/.exec(url.pathname)
-      if (repoRoute?.[1]) return handleRepo(repoRoute[1], req.method ?? 'GET', body, origin, json)
+      if (repoRoute?.[1]) {
+        return handleRepo(repoRoute[1], req.method ?? 'GET', body, origin, json, url.searchParams)
+      }
       if (url.pathname === '/api/user/repos') {
         return json(
           repos.map((repo) => ({
@@ -120,8 +131,47 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
     updated_at: '2026-10-01T00:00:00Z',
   })
   /** A small in-memory GitHub Issues API for octocat/app. */
-  function handleRepo(path: string, method: string, body: string, origin: string, json: Json) {
+  function handleRepo(
+    path: string,
+    method: string,
+    body: string,
+    origin: string,
+    json: Json,
+    query: URLSearchParams,
+  ) {
     const input = body ? (JSON.parse(body) as Record<string, unknown>) : {}
+    const pr = options.pullRequest
+    if (path === 'pulls') {
+      const matches = pr && query.get('head') === `octocat:${pr.branch}`
+      return json(
+        matches
+          ? [
+              {
+                number: pr.number,
+                title: pr.title,
+                html_url: `${origin}/octocat/app/pull/${pr.number}`,
+                state: 'open',
+                draft: false,
+                merged_at: null,
+                head: { sha: 'stubsha' },
+              },
+            ]
+          : [],
+      )
+    }
+    if (pr && path === `pulls/${pr.number}/reviews`)
+      return json([{ user: { login: 'ann' }, state: 'APPROVED' }])
+    if (pr && path === 'commits/stubsha/check-runs') {
+      return json({
+        check_runs: pr.checks.map((check) => ({
+          name: check.name,
+          status: check.conclusion ? 'completed' : 'in_progress',
+          conclusion: check.conclusion,
+          html_url: `${origin}/octocat/app/runs/${check.name}`,
+        })),
+      })
+    }
+    if (pr && path === 'commits/stubsha/status') return json({ statuses: [] })
     if (path === 'issues' && method === 'GET')
       return json(issues.map((issue) => toIssue(issue, origin)))
     if (path === 'issues' && method === 'POST') {

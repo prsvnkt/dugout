@@ -7,6 +7,9 @@ import { ChangeSection, type ChangeEntry, type GitSelection } from './ChangeSect
 import { CommitBox } from './CommitBox'
 import { isAuthError, useAuthStore } from '@renderer/features/github/authStore'
 import { useCheckoutGit, useGitStore } from './gitStore'
+import { PullRequestBlock } from './PullRequestBlock'
+import { usePullRequestStatus } from './usePullRequestStatus'
+import { dugout } from '@renderer/lib/dugout'
 import styles from './GitPanel.module.css'
 
 interface GitPanelProps {
@@ -45,6 +48,7 @@ function pushLabel(status: GitStatus): string | null {
 export function GitPanel({ project }: GitPanelProps) {
   const checkout = useSelectedCheckout(project.id)
   const git = useCheckoutGit(checkout)
+  const pullRequest = usePullRequestStatus(checkout, git.status)
   const actions = useGitStore()
   const id = checkout
   const openDiff = useEditorStore((state) => state.openDiff)
@@ -94,17 +98,28 @@ export function GitPanel({ project }: GitPanelProps) {
             {push}
           </button>
         )}
-        {canOpenPullRequest(git.status) && (
+        {pullRequest && (pullRequest.state === 'open' || pullRequest.state === 'draft') ? (
           <button
             className={styles.pushButton}
-            onClick={() => void actions.openPullRequest(id)}
-            disabled={git.isBusy}
-            title="Push if needed, then open a new pull request in your browser"
+            onClick={() => void dugout.git.openUrl(pullRequest.url)}
+            title="Open the pull request on GitHub"
           >
-            Create PR
+            Open PR
           </button>
+        ) : (
+          canOpenPullRequest(git.status) && (
+            <button
+              className={styles.pushButton}
+              onClick={() => void actions.openPullRequest(id)}
+              disabled={git.isBusy}
+              title="Push if needed, then open a new pull request in your browser"
+            >
+              Create PR
+            </button>
+          )
         )}
       </header>
+      {pullRequest && <PullRequestBlock pullRequest={pullRequest} />}
 
       {git.actionError && (
         <div className={styles.error} role="alert">

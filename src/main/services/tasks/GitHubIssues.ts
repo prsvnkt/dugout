@@ -1,5 +1,5 @@
 import type { Task, TaskDetail, TaskStatus } from '@shared/tasks'
-import { fetchGitHub, GitHubUnauthorizedError } from '../github/GitHubApi'
+import { githubJson, githubRequest } from '../github/GitHubApi'
 import type { GitHubRepoRef } from './githubRepo'
 import { labelsForStatus, STATUS_LABEL_COLORS, STATUS_LABELS, statusOf } from './taskStatus'
 
@@ -171,31 +171,11 @@ export class GitHubIssues {
     return `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}`
   }
 
-  private async request<T>(
-    token: string,
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
-    const response = await this.send(token, method, path, body)
-    if (response.status === 401) throw new GitHubUnauthorizedError()
-    if (!response.ok) {
-      const detail = (await response.json().catch(() => null)) as { message?: string } | null
-      throw new Error(`GitHub: ${detail?.message ?? `request failed (HTTP ${response.status})`}`)
-    }
-    return (await response.json()) as T
+  private request<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
+    return githubJson<T>(this.deps, token, method, path, body)
   }
 
   private send(token: string, method: string, path: string, body?: unknown): Promise<Response> {
-    return fetchGitHub(this.deps.fetch, `${this.deps.apiBaseUrl}${path}`, {
-      method,
-      headers: {
-        accept: 'application/vnd.github+json',
-        authorization: `Bearer ${token}`,
-        'x-github-api-version': '2022-11-28',
-        ...(body !== undefined && { 'content-type': 'application/json' }),
-      },
-      ...(body !== undefined && { body: JSON.stringify(body) }),
-    })
+    return githubRequest(this.deps, token, method, path, body)
   }
 }

@@ -174,6 +174,16 @@ The title-bar Inbox (⇧⌘I) lists every agent pane in any project that needs y
 an unseen Done, newest first; clicking one selects the project and focuses the pane. The list is
 derived (pure `inboxEntries`), not stored.
 
+## 020 — Pull request and CI status in the git panel (2026-10-06)
+
+For a checkout on a GitHub remote, `GitHubPulls.forBranch` finds the branch's PR
+(`/pulls?head=owner:branch&state=all`), its review decision (each reviewer's latest APPROVED or
+CHANGES_REQUESTED; any change request wins) and CI (check runs + commit statuses on the PR head:
+failing > pending > passing; skipped runs not counted). The git panel shows a "Pull request" block
+with expandable checks and swaps Create PR for Open PR. It refreshes every 60s while shown, on
+focus, and when the branch's push state changes. Links open only on the GitHub host
+(`git:open-url`). The GitHub REST helpers (`githubRequest`/`githubJson`) are shared with Issues.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅

@@ -35,6 +35,48 @@ export async function fetchGitHub(
   return response
 }
 
+export interface GitHubRestDeps {
+  readonly fetch: typeof globalThis.fetch
+  readonly apiBaseUrl: string
+}
+
+/** An authenticated GitHub REST request (raw response, for callers that inspect the status). */
+export function githubRequest(
+  deps: GitHubRestDeps,
+  token: string,
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<Response> {
+  return fetchGitHub(deps.fetch, `${deps.apiBaseUrl}${path}`, {
+    method,
+    headers: {
+      accept: 'application/vnd.github+json',
+      authorization: `Bearer ${token}`,
+      'x-github-api-version': '2022-11-28',
+      ...(body !== undefined && { 'content-type': 'application/json' }),
+    },
+    ...(body !== undefined && { body: JSON.stringify(body) }),
+  })
+}
+
+/** An authenticated GitHub REST request returning JSON; 401 → GitHubUnauthorizedError. */
+export async function githubJson<T>(
+  deps: GitHubRestDeps,
+  token: string,
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const response = await githubRequest(deps, token, method, path, body)
+  if (response.status === 401) throw new GitHubUnauthorizedError()
+  if (!response.ok) {
+    const detail = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(`GitHub: ${detail?.message ?? `request failed (HTTP ${response.status})`}`)
+  }
+  return (await response.json()) as T
+}
+
 const PAGE_SIZE = 100
 const MAX_PAGES = 5
 

@@ -31,6 +31,8 @@ export const IpcChannel = {
   gitCommit: 'git:commit',
   gitPush: 'git:push',
   gitOpenPullRequest: 'git:open-pull-request',
+  gitPullRequestStatus: 'git:pr-status',
+  gitOpenUrl: 'git:open-url',
   worktreeList: 'worktree:list',
   worktreeCreate: 'worktree:create',
   worktreeRemove: 'worktree:remove',

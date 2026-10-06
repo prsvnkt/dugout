@@ -3,6 +3,7 @@ import type { CloneDefaults, CloneProgress } from './clone'
 import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
 import type { GitStatus } from './git'
+import type { PullRequestStatus } from './pullRequest'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
   ProjectAddRequest,
@@ -61,6 +62,10 @@ export interface DugoutApi {
     push(checkout: GitCheckout): Promise<Result<void>>
     /** Pushes if needed, then opens the new pull request page. Resolves to its URL. */
     openPullRequest(checkout: GitCheckout): Promise<Result<string>>
+    /** The branch's pull request with review and CI checks; null when there is none. */
+    pullRequestStatus(checkout: GitCheckout): Promise<Result<PullRequestStatus | null>>
+    /** Opens a GitHub page (pull request or check) in the browser. */
+    openUrl(url: string): Promise<Result<void>>
   }
   /** Isolated checkouts for agent sessions, on their own dugout/* branches. */
   readonly worktrees: {
