@@ -19,6 +19,12 @@ describe('SettingsStore', () => {
     expect(await setup(dir).store.load()).toEqual({ version: 1, cloneParentDir: '/Users/me/code' })
   })
 
+  test('remembers the default agent', async () => {
+    const { store, dir } = setup()
+    await store.update({ defaultAgent: 'codex' })
+    expect((await setup(dir).store.load()).defaultAgent).toBe('codex')
+  })
+
   test('falls back to defaults for an invalid file', async () => {
     const { store, dir } = setup()
     writeFileSync(join(dir, 'settings.json'), '{"version": 99}')

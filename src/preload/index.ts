@@ -79,6 +79,10 @@ const api: DugoutApi = {
     cancel: () => ipcRenderer.send(IpcChannel.cloneCancel),
     onProgress: (listener) => subscribe(IpcChannel.cloneProgress, listener),
   },
+  settings: {
+    get: () => ipcRenderer.invoke(IpcChannel.settingsGet),
+    update: (change) => ipcRenderer.invoke(IpcChannel.settingsUpdate, change),
+  },
   tasks: {
     list: (projectId) => ipcRenderer.invoke(IpcChannel.tasksList, { projectId }),
     get: (projectId, number) => ipcRenderer.invoke(IpcChannel.tasksGet, { projectId, number }),

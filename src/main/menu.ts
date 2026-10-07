@@ -25,22 +25,22 @@ export function buildMenuTemplate(
       label: 'File',
       submenu: [
         {
-          label: 'New Claude Pane',
+          label: 'New Claude Agent',
           accelerator: 'CmdOrCtrl+T',
           click: () => send({ type: 'pane.new', kind: 'claude' }),
         },
         {
-          label: 'New Codex Pane',
+          label: 'New Codex Agent',
           accelerator: 'Alt+Shift+CmdOrCtrl+T',
           click: () => send({ type: 'pane.new', kind: 'codex' }),
         },
         {
-          label: 'New Claude Pane in Worktree',
+          label: 'New Claude Agent in Worktree',
           accelerator: 'Alt+CmdOrCtrl+T',
           click: () => send({ type: 'pane.newWorktree' }),
         },
         {
-          label: 'New Shell Pane',
+          label: 'New Shell',
           accelerator: 'CmdOrCtrl+Shift+T',
           click: () => send({ type: 'pane.new', kind: 'shell' }),
         },
@@ -52,7 +52,7 @@ export function buildMenuTemplate(
           click: () => send({ type: 'editor.saveAll' }),
         },
         {
-          label: 'Close Tab or Pane',
+          label: 'Close Tab, Agent or Shell',
           accelerator: 'CmdOrCtrl+W',
           click: () => send({ type: 'pane.close' }),
         },

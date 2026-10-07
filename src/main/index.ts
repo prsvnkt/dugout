@@ -35,6 +35,7 @@ import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
 import { TerminalManager } from './services/terminal/TerminalManager'
 import { SettingsStore } from './services/settings/SettingsStore'
+import { registerSettingsIpc } from './ipc/registerSettingsIpc'
 import { GitHubIssues } from './services/tasks/GitHubIssues'
 import { TaskService } from './services/tasks/TaskService'
 import { LayoutStore } from './services/workspace/LayoutStore'
@@ -292,7 +293,9 @@ async function start(): Promise<void> {
     openExternal: (url) => shell.openExternal(url),
   })
   registerFileIpc(projectStore, worktrees, new FileService({ git }))
-  registerCloneIpc(git, new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) }))
+  const settings = new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) })
+  registerCloneIpc(git, settings)
+  registerSettingsIpc(settings)
   registerWorkspaceIpc(new LayoutStore({ filePath: join(dataDir, WORKSPACE_FILE) }), projectStore)
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)

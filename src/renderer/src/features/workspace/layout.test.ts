@@ -144,3 +144,13 @@ describe('task panes', () => {
     expect(clearInitialPrompt(started, id)).toBe(started)
   })
 })
+
+describe('resumed and titled panes', () => {
+  test('a pane can reopen an earlier session and keep a title', () => {
+    const layout = addPane(EMPTY_LAYOUT, 'codex', createId, undefined, {
+      sessionId: 's9',
+      title: 'Fix the login bug',
+    })
+    expect(layout.panes[0]).toMatchObject({ sessionId: 's9', title: 'Fix the login bug' })
+  })
+})

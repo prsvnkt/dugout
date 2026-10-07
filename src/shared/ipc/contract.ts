@@ -14,6 +14,9 @@ import { AGENT_KINDS, TERMINAL_KINDS } from '../terminal'
 const MAX_TERMINAL_DIMENSION = 1000
 const MAX_WRITE_BYTES = 1024 * 1024
 
+/** First message for a new agent session, e.g. from the start screen's prompt box. */
+export const MAX_INITIAL_PROMPT_LENGTH = 10_000
+
 const dimension = z.number().int().min(1).max(MAX_TERMINAL_DIMENSION)
 const terminalId = z.string().min(1).max(64)
 const absolutePath = z
@@ -31,7 +34,7 @@ export const terminalCreateRequestSchema = z.object({
   /** Continue this Claude conversation (`claude --resume`) instead of starting a new one. */
   resumeSessionId: sessionId.optional(),
   /** First message for a new Claude session (e.g. the task it was started for). */
-  initialPrompt: z.string().min(1).max(10_000).optional(),
+  initialPrompt: z.string().min(1).max(MAX_INITIAL_PROMPT_LENGTH).optional(),
   cwd: absolutePath,
   cols: dimension,
   rows: dimension,
@@ -171,22 +174,49 @@ const worktreeSchema = z.object({
   name: z.string().min(1).max(64),
 })
 
+const MAX_PANE_TITLE_LENGTH = 256
+const paneTitle = z.string().min(1).max(MAX_PANE_TITLE_LENGTH)
+const paneTaskSchema = z.object({
+  number: z.number().int().positive(),
+  title: z.string().max(MAX_PANE_TITLE_LENGTH),
+})
+
 const savedPaneSchema = z.object({
   kind: z.enum(TERMINAL_KINDS),
   worktree: worktreeSchema.optional(),
   sessionId: sessionId.optional(),
-  task: z.object({ number: z.number().int().positive(), title: z.string().max(256) }).optional(),
+  task: paneTaskSchema.optional(),
+  title: paneTitle.optional(),
+})
+
+/** An agent session closed from a project, offered on its start screen to resume. */
+const recentSessionSchema = z.object({
+  kind: z.enum(AGENT_KINDS),
+  sessionId,
+  closedAt: z.number().int().nonnegative(),
+  title: paneTitle.optional(),
+  task: paneTaskSchema.optional(),
+  worktree: worktreeSchema.optional(),
 })
 
 const MAX_SAVED_PANES = 12
+/** How many closed sessions each project remembers. */
+export const MAX_RECENT_SESSIONS = 5
 
 /** On-disk format of workspace.json: each project's panes, restored on launch. */
 export const workspaceSnapshotSchema = z.object({
   version: z.literal(1),
-  projects: z.record(projectId, z.object({ panes: z.array(savedPaneSchema).max(MAX_SAVED_PANES) })),
+  projects: z.record(
+    projectId,
+    z.object({
+      panes: z.array(savedPaneSchema).max(MAX_SAVED_PANES),
+      recent: z.array(recentSessionSchema).max(MAX_RECENT_SESSIONS).optional(),
+    }),
+  ),
 })
 
 export type SavedPane = z.infer<typeof savedPaneSchema>
+export type SavedRecentSession = z.infer<typeof recentSessionSchema>
 export type WorkspaceSnapshot = z.infer<typeof workspaceSnapshotSchema>
 export { sessionId as sessionIdSchema }
 
@@ -317,3 +347,6 @@ export const agentConfigSaveMcpRequestSchema = z.object({
       'Server names must be unique.',
     ),
 })
+
+export const settingsUpdateRequestSchema = z.object({ defaultAgent: z.enum(AGENT_KINDS) })
+export type SettingsUpdateRequest = z.infer<typeof settingsUpdateRequestSchema>

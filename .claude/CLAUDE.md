@@ -1,12 +1,14 @@
 # Dugout
 
-A macOS desktop app for running and supervising many Claude Code sessions across projects,
-in one window. Electron + React + TypeScript, with real terminals (node-pty + xterm.js).
+A macOS desktop app for running and supervising many coding agents (Claude Code, Codex) across
+projects, in one window. Electron + React + TypeScript, with real terminals (node-pty + xterm.js).
 
 ## Product principles
 
-- **Wrap Claude Code, never reinvent it.** Sessions run the real `claude` CLI in a real PTY,
-  with the user's own config, auth and slash commands. No Agent SDK, no custom chat UI.
+- **Wrap the agent CLIs, never reinvent them.** Sessions run the real `claude` or `codex` CLI in
+  a real PTY, with the user's own config, auth and slash commands. No Agent SDK, no custom chat
+  UI. More agents may follow, so UI text never assumes Claude (e.g. the start screen's prompt box
+  goes to the user's default agent).
 - **Organisation and supervision are the product:** projects, colours, split terminals,
   status, and a git panel for reviewing what agents changed.
 - **Git integration is for review, not a git client.** Branch, changed files, diff,
@@ -26,7 +28,8 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 | `npm run test:e2e` | Build, then drive the real app with Playwright |
 | `npm run build`    | Typecheck and production build into `out/`     |
 
-**Definition of done:** `npm run check` and `npm run test:e2e` both pass.
+**Definition of done:** `npm run check` and `npm run test:e2e` both pass, and the docs are
+updated as `.claude/rules/docs.md` describes.
 
 ## Layout
 
@@ -38,7 +41,8 @@ src/
                 git/ (review panel, PR URLs), agentHooks/ (Claude + Codex status, session ids),
                 worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API),
-                settings/ (small app preferences), tasks/ (GitHub Issues as tasks),
+                settings/ (app preferences: default agent, clone folder),
+                tasks/ (GitHub Issues as tasks),
                 agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions).
     mcp/        The "dugout" MCP server agents use for tasks (separate build entry: mcp.js).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
@@ -46,7 +50,8 @@ src/
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
   renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.
               Layout: project tabs (title bar) / Explorer | editor over terminals | Git panel;
-              side panels collapse to rails via workspace/SidePanel.tsx.
+              side panels collapse to rails via workspace/SidePanel.tsx. A project with no
+              agents open shows start/StartScreen.tsx (prompt box, sessions to resume, open tasks).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.
@@ -57,6 +62,11 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 
 ## Gotchas
 
+- **Words on screen:** Claude/Codex terminals are **agents**, plain terminals are **shells**, and
+  repos are **projects**. "Pane" is only a code name (`Pane`, `addPane`); never show it in the UI.
+- **Dev app name:** `postinstall` renames `node_modules/electron/dist/Electron.app` to "Dugout"
+  (and re-signs it ad hoc) so the menu bar and Dock say Dugout in `npm run dev`. If they say
+  "Electron" again after an Electron upgrade, run `npm install`.
 - **The preload is sandboxed:** it cannot `require` npm packages. Import only dependency-free
   modules into it (e.g. `@shared/ipc/channels`, never `@shared/ipc/contract`, which pulls zod).
 - **node-pty `spawn-helper`** can install without its executable bit; `postinstall` fixes it.

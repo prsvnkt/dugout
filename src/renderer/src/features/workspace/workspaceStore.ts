@@ -19,6 +19,13 @@ import {
   type ProjectLayout,
 } from './layout'
 import { projectAttention, type PaneActivity } from './paneActivity'
+import {
+  forgetSession,
+  forgetWorktreeSessions,
+  rememberSession,
+  toRecentSession,
+  type RecentSession,
+} from './recentSessions'
 
 interface WorkspaceState {
   readonly layouts: Readonly<Record<ProjectId, ProjectLayout>>
@@ -38,7 +45,12 @@ interface WorkspaceState {
   addPane(projectId: ProjectId, kind: TerminalKind, worktree?: Worktree, extras?: PaneExtras): void
   /** Called once the pane's session started, so its first prompt is never sent again. */
   clearInitialPrompt(projectId: ProjectId, paneId: PaneId): void
+  /** Closes a pane; an agent's session is remembered so the start screen can resume it. */
   closePane(projectId: ProjectId, paneId: PaneId): void
+  /** Closed agent sessions per project, newest first. */
+  readonly recentSessions: Readonly<Record<ProjectId, readonly RecentSession[]>>
+  /** Reopens a closed agent session in a new pane. */
+  resumeSession(projectId: ProjectId, sessionId: string): void
   closeFocusedPane(projectId: ProjectId): void
   focusPane(projectId: ProjectId, paneId: PaneId): void
   /** What each agent pane is asking or finished, and since when (for the inbox). */
@@ -59,6 +71,7 @@ export interface PaneDetail {
 }
 
 const createPaneId = () => crypto.randomUUID()
+const NO_RECENT: readonly RecentSession[] = []
 
 function withoutKeys<V>(record: Readonly<Record<string, V>>, keys: readonly string[]) {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !keys.includes(key)))
@@ -71,6 +84,18 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       const current = state.layouts[projectId] ?? EMPTY_LAYOUT
       const next = change(current)
       return next === current ? state : { layouts: { ...state.layouts, [projectId]: next } }
+    })
+
+  const updateRecent = (
+    projectId: ProjectId,
+    change: (list: readonly RecentSession[]) => readonly RecentSession[],
+  ) =>
+    set((state) => {
+      const current = state.recentSessions[projectId] ?? NO_RECENT
+      const next = change(current)
+      return next === current
+        ? state
+        : { recentSessions: { ...state.recentSessions, [projectId]: next } }
     })
 
   return {
@@ -92,15 +117,22 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       set({
         layouts: Object.fromEntries(
           Object.entries(snapshot.projects).map(([projectId, saved]) => {
-            const panes = saved.panes.map(({ kind, worktree, sessionId }): Pane => ({
+            const panes = saved.panes.map(({ kind, worktree, sessionId, title }): Pane => ({
               id: createPaneId(),
               kind,
               generation: 0,
               ...(worktree && { worktree }),
               ...(sessionId && { sessionId }),
+              ...(title && { title }),
             }))
             return [projectId, { panes, focusedPaneId: panes.at(-1)?.id ?? null }]
           }),
+        ),
+        recentSessions: Object.fromEntries(
+          Object.entries(snapshot.projects).map(([projectId, saved]) => [
+            projectId,
+            saved.recent ?? NO_RECENT,
+          ]),
         ),
       }),
     selectCheckout: (projectId, worktreePath) =>
@@ -109,6 +141,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       const before = get().layouts[projectId]?.panes ?? []
       const closed = before.filter((pane) => pane.worktree?.path === worktreePath)
       updateLayout(projectId, (layout) => closeWorktreePanes(layout, worktreePath))
+      updateRecent(projectId, (list) => forgetWorktreeSessions(list, worktreePath))
       const ids = closed.map((pane) => pane.id)
       set((state) => ({
         activities: withoutKeys(state.activities, ids),
@@ -141,11 +174,29 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       get().selectCheckout(projectId, worktree?.path ?? null)
     },
     closePane: (projectId, paneId) => {
+      const pane = get().layouts[projectId]?.panes.find((candidate) => candidate.id === paneId)
+      const recent = pane ? toRecentSession(pane, Date.now()) : null
+      if (recent) updateRecent(projectId, (list) => rememberSession(list, recent))
       updateLayout(projectId, (layout) => closePane(layout, paneId))
       set((state) => ({
         activities: withoutKeys(state.activities, [paneId]),
         terminalIds: withoutKeys(state.terminalIds, [paneId]),
       }))
+    },
+    recentSessions: {},
+    resumeSession: (projectId, sessionId) => {
+      const recent = get().recentSessions[projectId]?.find((entry) => entry.sessionId === sessionId)
+      if (!recent) return
+      const before = get().layouts[projectId]
+      get().addPane(projectId, recent.kind, recent.worktree, {
+        sessionId,
+        title: recent.title,
+        task: recent.task,
+      })
+      // A full workspace adds nothing; keep the session on offer then.
+      if (get().layouts[projectId] !== before) {
+        updateRecent(projectId, (list) => forgetSession(list, sessionId))
+      }
     },
     closeFocusedPane: (projectId) => {
       const focused = get().layouts[projectId]?.focusedPaneId
@@ -177,6 +228,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
         const paneIds = state.layouts[projectId]?.panes.map((pane) => pane.id) ?? []
         return {
           layouts: withoutKeys(state.layouts, [projectId]),
+          recentSessions: withoutKeys(state.recentSessions, [projectId]),
           activities: withoutKeys(state.activities, paneIds),
           terminalIds: withoutKeys(state.terminalIds, paneIds),
         }
@@ -215,22 +267,40 @@ export function useSelectedCheckout(projectId: ProjectId): GitCheckout {
   )
 }
 
-/** The persistable part of the workspace: each project's panes, without runtime ids. */
-export function toSnapshot(layouts: Readonly<Record<ProjectId, ProjectLayout>>): WorkspaceSnapshot {
+/** A project's closed agent sessions, newest first. */
+export function useRecentSessions(projectId: ProjectId): readonly RecentSession[] {
+  return useWorkspaceStore((state) => state.recentSessions[projectId] ?? NO_RECENT)
+}
+
+/**
+ * The persistable part of the workspace: each project's panes, without runtime ids, and the
+ * agent sessions closed from it.
+ */
+export function toSnapshot(
+  layouts: Readonly<Record<ProjectId, ProjectLayout>>,
+  recentSessions: Readonly<Record<ProjectId, readonly RecentSession[]>> = {},
+): WorkspaceSnapshot {
+  const projectIds = [...new Set([...Object.keys(layouts), ...Object.keys(recentSessions)])]
   return {
     version: 1,
     projects: Object.fromEntries(
-      Object.entries(layouts).map(([projectId, layout]) => [
-        projectId,
-        {
-          panes: layout.panes.map(({ kind, worktree, sessionId, task }) => ({
-            kind,
-            ...(worktree && { worktree }),
-            ...(sessionId && { sessionId }),
-            ...(task && { task }),
-          })),
-        },
-      ]),
+      projectIds.map((projectId) => {
+        const panes = layouts[projectId]?.panes ?? []
+        const recent = recentSessions[projectId] ?? NO_RECENT
+        return [
+          projectId,
+          {
+            panes: panes.map(({ kind, worktree, sessionId, task, title }) => ({
+              kind,
+              ...(worktree && { worktree }),
+              ...(sessionId && { sessionId }),
+              ...(task && { task }),
+              ...(title && { title }),
+            })),
+            ...(recent.length > 0 && { recent: [...recent] }),
+          },
+        ]
+      }),
     ),
   }
 }

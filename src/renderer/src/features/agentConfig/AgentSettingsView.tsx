@@ -196,7 +196,7 @@ export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
       <section className={styles.section} aria-labelledby="agent-settings-mcp">
         <h2 id="agent-settings-mcp">MCP servers</h2>
         <p className={styles.muted}>
-          From .mcp.json at the project root. Claude Code loads them itself; Codex panes get the
+          From .mcp.json at the project root. Claude Code loads them itself; Codex agents get the
           ones Codex can run.
         </p>
         <McpSection projectId={projectId} agent={agent} />

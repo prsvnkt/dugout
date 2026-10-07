@@ -50,7 +50,7 @@ async function send(line: string): Promise<void> {
 test('Claude hooks drive the pane, sidebar, status bar and dock badge', async () => {
   // Arrange
   await addProject('alpha')
-  await clickMenuItem(app, 'File', 'New Claude Pane')
+  await clickMenuItem(app, 'File', 'New Claude Agent')
   await expect(paneHeader()).toContainText('Ready')
 
   // Act + Assert: a turn that needs approval
@@ -74,7 +74,7 @@ test('Claude hooks drive the pane, sidebar, status bar and dock badge', async ()
 
 test('Codex hooks drive a Codex pane the same way', async () => {
   await addProject('alpha')
-  await clickMenuItem(app, 'File', 'New Codex Pane')
+  await clickMenuItem(app, 'File', 'New Codex Agent')
   await expect(paneHeader()).toContainText('Codex')
   await expect(paneHeader()).toContainText('Ready')
 
@@ -90,7 +90,7 @@ test('Codex hooks drive a Codex pane the same way', async () => {
 
 test('a turn that finishes in a background project shows as Done until viewed', async () => {
   await addProject('alpha')
-  await clickMenuItem(app, 'File', 'New Claude Pane')
+  await clickMenuItem(app, 'File', 'New Claude Agent')
   await expect(paneHeader()).toContainText('Ready')
   await send('prompt')
   await send('stop-later')
@@ -109,7 +109,7 @@ test('a turn that finishes in a background project shows as Done until viewed', 
 test('the inbox lists agents that need you across projects and jumps to them', async () => {
   // Arrange: an agent in alpha asks for approval, then we switch to beta
   await addProject('alpha')
-  await clickMenuItem(app, 'File', 'New Claude Pane')
+  await clickMenuItem(app, 'File', 'New Claude Agent')
   await expect(paneHeader()).toContainText('Ready')
   await send('ask')
   await expect(paneHeader()).toContainText('Needs you')

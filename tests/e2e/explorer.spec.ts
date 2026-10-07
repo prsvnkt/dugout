@@ -59,7 +59,7 @@ async function typeInEditor(text: string): Promise<void> {
 test('a file opens in the center while terminals keep running', async () => {
   // Arrange: a running shell
   const output = await recordTerminalOutput(page)
-  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell')
   await expect.poll(output).not.toBe('')
 
   // Act
@@ -126,16 +126,16 @@ test('closing a tab with unsaved edits asks first', async () => {
 })
 
 test('⌘W closes the editor tab when the editor has focus, otherwise the pane', async () => {
-  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell')
   await openFromExplorer('readme.md')
   await editor().locator('.monaco-editor .view-lines').click()
 
-  await clickMenuItem(app, 'File', 'Close Tab or Pane')
+  await clickMenuItem(app, 'File', 'Close Tab, Agent or Shell')
   await expect(editor()).toBeHidden()
   await expect(page.getByRole('region', { name: 'Shell terminal' })).toHaveCount(1)
 
   await page.locator('[data-testid="terminal"]').click()
-  await clickMenuItem(app, 'File', 'Close Tab or Pane')
+  await clickMenuItem(app, 'File', 'Close Tab, Agent or Shell')
   await expect(page.getByRole('region', { name: 'Shell terminal' })).toHaveCount(0)
 })
 
@@ -149,7 +149,7 @@ test('the explorer can be toggled', async () => {
 
 test('side panels collapse to rails and expand again without restarting terminals', async () => {
   const output = await recordTerminalOutput(page)
-  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell')
   await expect.poll(output).not.toBe('')
 
   // Collapse both from their headers

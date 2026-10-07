@@ -272,6 +272,28 @@ and `icon-small.svg` simplifies it to two dots for 32 px and below. `npm run ico
 `applyAppIcon` sets the Dock and About panel icon, since unpackaged Electron shows its own.
 `icon.icns` is ready for packaging but unused until we package the app.
 
+## 026 — A start screen, and "agents" instead of "panes" (2026-10-07)
+
+**Context.** A project with nothing open showed "No terminals yet" and two buttons. Dugout also
+runs more than one agent CLI now (Claude, Codex, more later), and users saw the layout word
+"pane" for what they think of as an agent.
+
+**Decision.** A project with no agents open shows a start screen:
+
+- A prompt box, "What do you want to work on in <project>?". Enter starts a session with the
+  user's **default agent** (Claude or Codex, saved in `settings.json` through the settings IPC),
+  with the prompt as its first message. The box never names a specific agent.
+- **Pick up where you left off:** agent sessions closed from the project (only ones with a
+  conversation), newest first, at most 5, saved with the layout in `workspace.json`. Clicking one
+  resumes the session. Sessions in a removed worktree are forgotten.
+- **Open tasks:** the first three To do issues, started with the default agent.
+
+On screen, Claude/Codex terminals are "agents" and plain terminals are "shells"; "pane" remains
+only a code name. Repos stay "projects": a dugout full of agents working on many projects.
+
+**Not done (yet).** ⌘T still opens Claude rather than the default agent, and the prompt box has no
+worktree toggle.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -286,3 +308,4 @@ and `icon-small.svg` simplifies it to two dots for 32 px and below. `npm run ico
 6. **Done since:** agent settings (`.mcp.json` editor, AGENTS.md as shared instructions) ✅.
 7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅, Seti
    file icons ✅, VS Code-style Source Control ✅, branch picker ✅, app icon and logo ✅.
+8. **Done since:** start screen with a default agent and resumable sessions ✅.

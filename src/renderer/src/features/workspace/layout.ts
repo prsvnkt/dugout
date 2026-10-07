@@ -16,6 +16,8 @@ export interface Pane {
   readonly task?: PaneTask
   /** First message for a new Claude session; cleared once the session has started. */
   readonly initialPrompt?: string
+  /** What the agent was started for, shown when offering to resume it. */
+  readonly title?: string
 }
 
 export interface PaneTask {
@@ -26,6 +28,9 @@ export interface PaneTask {
 export interface PaneExtras {
   readonly task?: PaneTask | undefined
   readonly initialPrompt?: string | undefined
+  /** An earlier session to resume instead of starting a new one. */
+  readonly sessionId?: string | undefined
+  readonly title?: string | undefined
 }
 
 /** The side-by-side terminal panes of one project. */
@@ -54,6 +59,8 @@ export function addPane(
     ...(worktree && { worktree }),
     ...(extras.task && { task: extras.task }),
     ...(extras.initialPrompt && { initialPrompt: extras.initialPrompt }),
+    ...(extras.sessionId && { sessionId: extras.sessionId }),
+    ...(extras.title && { title: extras.title }),
   }
   return { panes: [...layout.panes, pane], focusedPaneId: pane.id }
 }

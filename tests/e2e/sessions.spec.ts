@@ -48,8 +48,8 @@ test('panes are restored on relaunch and Claude resumes its conversation', async
   // Arrange: one Claude pane and one shell
   const firstRun = await recordTerminalOutput(page)
   await addProject('alpha')
-  await clickMenuItem(app, 'File', 'New Claude Pane')
-  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Claude Agent')
+  await clickMenuItem(app, 'File', 'New Shell')
   await expect.poll(firstRun).toContain('resume=none')
   const sessionId = sessionFrom(await firstRun())
   expect(sessionId).not.toBe('')
@@ -75,7 +75,7 @@ test('panes are restored on relaunch and Claude resumes its conversation', async
 test('a Claude pane that was never prompted restarts fresh after relaunch', async () => {
   const firstRun = await recordTerminalOutput(page)
   await addProject('gamma')
-  await clickMenuItem(app, 'File', 'New Claude Pane')
+  await clickMenuItem(app, 'File', 'New Claude Agent')
   await expect.poll(firstRun).toContain('resume=none')
   await expect(paneRegions()).toContainText('Ready')
   await page.waitForTimeout(1_000)
@@ -91,7 +91,7 @@ test('a Claude pane that was never prompted restarts fresh after relaunch', asyn
 test('an exited Claude pane can be restarted, resuming its conversation', async () => {
   const output = await recordTerminalOutput(page)
   await addProject('beta')
-  await clickMenuItem(app, 'File', 'New Claude Pane')
+  await clickMenuItem(app, 'File', 'New Claude Agent')
   await expect.poll(output).toContain('resume=none')
   const sessionId = sessionFrom(await output())
   await expect(paneRegions()).toContainText('Ready')

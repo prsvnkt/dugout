@@ -75,27 +75,27 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
     <div className={styles.menuWrap} ref={wrapRef}>
       <RailButton
         glyph="+"
-        label="New pane"
-        title="New pane"
+        label="New agent"
+        title="New agent"
         isActive={isOpen}
         onClick={() => setIsOpen(!isOpen)}
       />
       {isOpen && (
-        <div className={styles.menu} role="menu" aria-label="New pane">
+        <div className={styles.menu} role="menu" aria-label="New agent">
           <MenuItem
-            label="New Claude pane"
+            label="New Claude agent"
             shortcut="⌘T"
             disabled={!canAddPane}
             onSelect={choose(() => onAdd('claude'))}
           />
           <MenuItem
-            label="New Codex pane"
+            label="New Codex agent"
             shortcut="⌥⇧⌘T"
             disabled={!canAddPane}
             onSelect={choose(() => onAdd('codex'))}
           />
           <MenuItem
-            label="New worktree session"
+            label="New Claude agent in worktree"
             shortcut="⌥⌘T"
             disabled={!canAddPane}
             onSelect={choose(() => void startWorktreeSession(project.id))}

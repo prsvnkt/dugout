@@ -1,6 +1,6 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
-  chooseNewPaneAction,
+  chooseNewAgentAction,
   clickMenuItem,
   openAddProjectFromTabs,
   launchApp,
@@ -46,7 +46,7 @@ test('adds projects, runs split terminals, and keeps them alive across switches'
   await activeWorkspace()
     .getByRole('button', { name: /New shell/ })
     .click()
-  await chooseNewPaneAction(activeWorkspace(), 'New shell')
+  await chooseNewAgentAction(activeWorkspace(), 'New shell')
   await expect(activeWorkspace().getByText('Running')).toHaveCount(2)
   await expect(page.getByText('2 terminals')).toBeVisible()
 
@@ -89,11 +89,11 @@ test('menu commands open and close panes in the selected project', async () => {
     page.getByRole('button', { name: 'Add project…' }).click(),
   )
 
-  await clickMenuItem(app, 'File', 'New Shell Pane')
-  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell')
+  await clickMenuItem(app, 'File', 'New Shell')
   await expect(page.getByText('2 terminals')).toBeVisible()
 
-  await clickMenuItem(app, 'File', 'Close Tab or Pane')
+  await clickMenuItem(app, 'File', 'Close Tab, Agent or Shell')
   await expect(page.getByText('1 terminal', { exact: true })).toBeVisible()
 })
 
@@ -105,9 +105,9 @@ test('a newly split pane starts its process at the full pane width', async () =>
     page.getByRole('button', { name: 'Add project…' }).click(),
   )
 
-  await clickMenuItem(app, 'File', 'New Shell Pane')
-  await clickMenuItem(app, 'File', 'New Shell Pane')
-  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell')
+  await clickMenuItem(app, 'File', 'New Shell')
+  await clickMenuItem(app, 'File', 'New Shell')
   await expect(activeWorkspace().getByText('Running')).toHaveCount(3)
   await activeWorkspace().getByTestId('terminal').last().click()
   await page.keyboard.type('echo "pty-size:$(stty size)"\n')
@@ -125,7 +125,7 @@ test('revealing a terminal (as a notification click does) switches to its projec
   await addProject(makeGitRepo('alpha'), () =>
     page.getByRole('button', { name: 'Add project…' }).click(),
   )
-  await clickMenuItem(app, 'File', 'New Shell Pane')
+  await clickMenuItem(app, 'File', 'New Shell')
   await expect.poll(output).not.toBe('')
   const [terminalId] = await terminalIdsSeen(page)
   await addProject(makeGitRepo('beta'), () => openAddProjectFromTabs(page))
