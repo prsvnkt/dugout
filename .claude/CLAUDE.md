@@ -29,7 +29,8 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 | `npm run build`    | Typecheck and production build into `out/`     |
 
 **Definition of done:** `npm run check` and `npm run test:e2e` both pass, and the docs are
-updated as `.claude/rules/docs.md` describes.
+updated as `.claude/rules/docs.md` describes. CI (`.github/workflows/ci.yml`) runs both checks on
+macOS for every push to `main` and every pull request.
 
 ## Layout
 
