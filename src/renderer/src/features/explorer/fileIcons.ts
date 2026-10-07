@@ -1,43 +1,74 @@
-/** A compact text glyph and colour token per file type, VS Code-style. */
+import setiDefinitions from './seti/definitions.json'
+import setiIcons from './seti/icons.json'
+
+/** Seti UI's colour names (see seti/LICENSE.md). */
+type SetiColor =
+  | 'blue'
+  | 'grey'
+  | 'grey-light'
+  | 'green'
+  | 'orange'
+  | 'pink'
+  | 'purple'
+  | 'red'
+  | 'white'
+  | 'yellow'
+  | 'ignore'
+
+type SetiEntry = readonly [icon: string, color: string]
+
+interface SetiDefinitions {
+  readonly files: Readonly<Record<string, SetiEntry>>
+  readonly extensions: Readonly<Record<string, SetiEntry>>
+  readonly partials: readonly (readonly [part: string, entry: SetiEntry])[]
+  readonly default: SetiEntry
+}
+
+const DEFINITIONS = setiDefinitions as unknown as SetiDefinitions
+const ICONS: Readonly<Record<string, string>> = setiIcons
+
+/** Seti's colours are tuned for dark themes; these keep icons readable on white. */
+const COLORS: Readonly<Record<SetiColor, string>> = {
+  blue: 'var(--glyph-blue)',
+  yellow: 'var(--glyph-yellow)',
+  green: 'var(--project-green)',
+  orange: 'var(--project-orange)',
+  pink: 'var(--project-pink)',
+  purple: 'var(--project-purple)',
+  red: 'var(--project-red)',
+  grey: 'var(--text-muted)',
+  'grey-light': 'var(--text-muted)',
+  white: 'var(--text-faint)',
+  ignore: 'var(--text-faint)',
+}
+
+/** A file type icon: Seti's SVG markup and a colour token for `currentColor`. */
 export interface FileIcon {
-  readonly glyph: string
+  readonly id: string
+  readonly svg: string
   readonly color: string
 }
 
-const BY_EXTENSION: Readonly<Record<string, FileIcon>> = {
-  ts: { glyph: 'TS', color: 'var(--glyph-blue)' },
-  tsx: { glyph: 'TS', color: 'var(--glyph-blue)' },
-  js: { glyph: 'JS', color: 'var(--glyph-yellow)' },
-  jsx: { glyph: 'JS', color: 'var(--glyph-yellow)' },
-  mjs: { glyph: 'JS', color: 'var(--glyph-yellow)' },
-  cjs: { glyph: 'JS', color: 'var(--glyph-yellow)' },
-  json: { glyph: '{}', color: 'var(--glyph-yellow)' },
-  md: { glyph: 'M', color: 'var(--glyph-blue)' },
-  css: { glyph: '#', color: 'var(--project-purple)' },
-  scss: { glyph: '#', color: 'var(--project-pink)' },
-  html: { glyph: '<>', color: 'var(--project-orange)' },
-  py: { glyph: 'Py', color: 'var(--project-green)' },
-  go: { glyph: 'Go', color: 'var(--project-teal)' },
-  rs: { glyph: 'Rs', color: 'var(--project-orange)' },
-  sh: { glyph: '$', color: 'var(--project-green)' },
-  yml: { glyph: 'Y', color: 'var(--project-purple)' },
-  yaml: { glyph: 'Y', color: 'var(--project-purple)' },
-  svg: { glyph: '◇', color: 'var(--project-orange)' },
-  png: { glyph: '▣', color: 'var(--project-purple)' },
-  jpg: { glyph: '▣', color: 'var(--project-purple)' },
-}
+const hasOwn = (record: object, key: string) => Object.prototype.hasOwnProperty.call(record, key)
 
-const BY_NAME: Readonly<Record<string, FileIcon>> = {
-  '.gitignore': { glyph: '◆', color: 'var(--project-orange)' },
-  '.env': { glyph: '⚙', color: 'var(--glyph-yellow)' },
-  Dockerfile: { glyph: '⛴', color: 'var(--glyph-blue)' },
+/** Exact name, then the longest extension (`.d.ts` before `.ts`), then partial names. */
+function setiEntry(name: string): SetiEntry {
+  if (hasOwn(DEFINITIONS.files, name)) return DEFINITIONS.files[name] as SetiEntry
+  for (let dot = name.indexOf('.'); dot !== -1; dot = name.indexOf('.', dot + 1)) {
+    const extension = name.slice(dot)
+    if (hasOwn(DEFINITIONS.extensions, extension)) {
+      return DEFINITIONS.extensions[extension] as SetiEntry
+    }
+  }
+  const partial = DEFINITIONS.partials.find(([part]) => name.includes(part))
+  return partial ? partial[1] : DEFINITIONS.default
 }
-
-const DEFAULT_ICON: FileIcon = { glyph: '≡', color: 'var(--text-muted)' }
 
 export function iconFor(name: string): FileIcon {
-  const byName = BY_NAME[name]
-  if (byName) return byName
-  const extension = name.includes('.') ? (name.split('.').pop() ?? '').toLowerCase() : ''
-  return BY_EXTENSION[extension] ?? DEFAULT_ICON
+  const [id, color] = setiEntry(name)
+  return {
+    id,
+    svg: ICONS[id] ?? ICONS[DEFINITIONS.default[0]] ?? '',
+    color: COLORS[color as SetiColor] ?? COLORS.white,
+  }
 }

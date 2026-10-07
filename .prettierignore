@@ -2,3 +2,6 @@ out
 dist
 coverage
 package-lock.json
+
+# Vendored unchanged (see its LICENSE.md)
+src/renderer/src/features/explorer/seti/*.json

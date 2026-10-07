@@ -125,12 +125,17 @@
 }
 
 .icon {
+  display: grid;
   flex-shrink: 0;
-  min-width: 16px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  text-align: center;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .name {

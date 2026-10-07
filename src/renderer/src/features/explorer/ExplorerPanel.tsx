@@ -99,9 +99,13 @@ function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
             {entry.kind === 'dir' && <Chevron />}
           </span>
           {entry.kind === 'file' && (
-            <span className={styles.icon} style={{ color: icon.color }} aria-hidden>
-              {icon.glyph}
-            </span>
+            <span
+              className={styles.icon}
+              style={{ color: icon.color }}
+              // Static SVG from the vendored Seti icon set (seti/icons.json), never user data.
+              dangerouslySetInnerHTML={{ __html: icon.svg }}
+              aria-hidden
+            />
           )}
           <span className={styles.name}>{entry.name}</span>
           {change && (
