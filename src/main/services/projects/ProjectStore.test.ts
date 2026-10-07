@@ -6,13 +6,17 @@ import { ProjectStore } from './ProjectStore'
 
 const REPO = '/Users/me/bene'
 
+const OTHER = '/Users/me/rayna'
+
 function setup(dir = mkdtempSync(join(tmpdir(), 'dugout-store-'))) {
   let nextId = 0
   const store = new ProjectStore({
     filePath: join(dir, 'projects.json'),
     createId: () => `p${++nextId}`,
     now: () => new Date('2026-10-05T12:00:00Z'),
-    resolveRepoRoot: async (path) => (path.startsWith(REPO) ? REPO : null),
+    // Always the first candidate, so colours are predictable in tests.
+    random: () => 0,
+    resolveRepoRoot: async (path) => [REPO, OTHER].find((root) => path.startsWith(root)) ?? null,
   })
   return { store, dir }
 }
@@ -29,34 +33,39 @@ describe('ProjectStore', () => {
     expect(ctx.store.list()).toEqual([])
   })
 
-  test('adds a project at the repository root', async () => {
-    const project = await ctx.store.add({ name: 'Bene', rootPath: `${REPO}/src`, color: 'teal' })
+  test('adds a project at the repository root, named after its folder', async () => {
+    const project = await ctx.store.add({ rootPath: `${REPO}/src` })
 
     expect(project).toEqual({
       id: 'p1',
-      name: 'Bene',
+      name: 'bene',
       rootPath: REPO,
-      color: 'teal',
+      color: 'blue',
       createdAt: '2026-10-05T12:00:00.000Z',
     })
     expect(ctx.store.list()).toEqual([project])
   })
 
-  test('rejects a folder that is not a git repository', async () => {
-    await expect(
-      ctx.store.add({ name: 'X', rootPath: '/Users/me/notes', color: 'teal' }),
-    ).rejects.toThrow('not inside a git repository')
+  test('gives each new project a colour no other project uses', async () => {
+    const first = await ctx.store.add({ rootPath: REPO })
+    const second = await ctx.store.add({ rootPath: OTHER })
+
+    expect(second.color).not.toBe(first.color)
   })
 
-  test('rejects adding the same repository twice', async () => {
-    await ctx.store.add({ name: 'Bene', rootPath: REPO, color: 'teal' })
-    await expect(ctx.store.add({ name: 'Again', rootPath: REPO, color: 'blue' })).rejects.toThrow(
-      'already added',
+  test('rejects a folder that is not a git repository', async () => {
+    await expect(ctx.store.add({ rootPath: '/Users/me/notes' })).rejects.toThrow(
+      'not inside a git repository',
     )
   })
 
+  test('rejects adding the same repository twice', async () => {
+    await ctx.store.add({ rootPath: REPO })
+    await expect(ctx.store.add({ rootPath: `${REPO}/src` })).rejects.toThrow('already added')
+  })
+
   test('persists projects so a new store can load them', async () => {
-    const project = await ctx.store.add({ name: 'Bene', rootPath: REPO, color: 'teal' })
+    const project = await ctx.store.add({ rootPath: REPO })
 
     const reloaded = setup(ctx.dir).store
     await reloaded.load()
@@ -64,28 +73,31 @@ describe('ProjectStore', () => {
     expect(reloaded.list()).toEqual([project])
   })
 
-  test('updates name and colour without mutating earlier snapshots', async () => {
-    const project = await ctx.store.add({ name: 'Bene', rootPath: REPO, color: 'teal' })
-    const before = ctx.store.list()
+  test('names projects saved with a custom name after their folder again', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dugout-store-'))
+    const saved = {
+      id: 'p1',
+      name: 'My API',
+      rootPath: REPO,
+      color: 'red',
+      createdAt: '2026-10-05T12:00:00.000Z',
+    }
+    writeFileSync(join(dir, 'projects.json'), JSON.stringify({ version: 1, projects: [saved] }))
 
-    const updated = await ctx.store.update(project.id, { name: 'Bene API', color: 'purple' })
+    const { store } = setup(dir)
+    await store.load()
 
-    expect(updated).toMatchObject({ name: 'Bene API', color: 'purple', rootPath: REPO })
-    expect(before[0]?.name).toBe('Bene')
-  })
-
-  test('update rejects an unknown id', async () => {
-    await expect(ctx.store.update('missing', { name: 'X' })).rejects.toThrow('not found')
+    expect(store.list()).toEqual([{ ...saved, name: 'bene' }])
   })
 
   test('removes a project', async () => {
-    const project = await ctx.store.add({ name: 'Bene', rootPath: REPO, color: 'teal' })
+    const project = await ctx.store.add({ rootPath: REPO })
     await ctx.store.remove(project.id)
     expect(ctx.store.list()).toEqual([])
   })
 
   test('writes the file atomically, leaving no temp files behind', async () => {
-    await ctx.store.add({ name: 'Bene', rootPath: REPO, color: 'teal' })
+    await ctx.store.add({ rootPath: REPO })
     expect(readdirSync(ctx.dir)).toEqual(['projects.json'])
     expect(JSON.parse(readFileSync(join(ctx.dir, 'projects.json'), 'utf8'))).toMatchObject({
       version: 1,

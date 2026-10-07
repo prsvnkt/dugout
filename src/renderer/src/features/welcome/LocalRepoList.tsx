@@ -6,7 +6,7 @@ import { parentFolderName } from './repoLists'
 import { useAddFolder, useLocalRepos } from './useWelcomeData'
 import styles from './Welcome.module.css'
 
-const SHOWN_REPOS = 5
+const SHOWN_REPOS = 8
 
 function describe(repo: LocalRepo): string {
   const age = formatAge(new Date(repo.modifiedAt).toISOString())
@@ -24,7 +24,7 @@ export function LocalRepoList() {
   const add = (repo: LocalRepo) => {
     setAddingPath(repo.path)
     setAddError(null)
-    addFolder(repo.name, repo.path).catch((cause: unknown) => {
+    addFolder(repo.path).catch((cause: unknown) => {
       setAddError(cause instanceof Error ? cause.message : 'Could not add the project.')
       setAddingPath(null)
     })

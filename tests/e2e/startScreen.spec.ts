@@ -37,9 +37,6 @@ const agentPicker = () => workspace().getByRole('combobox', { name: 'Agent' })
 async function addProject(name: string): Promise<void> {
   await stubFolderPicker(app, makeGitRepo(name))
   await page.getByRole('button', { name: 'Add project…' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByRole('button', { name: 'Add project' }).click()
-  await expect(dialog).toBeHidden()
 }
 
 test('the prompt box starts the default agent with the prompt', async () => {

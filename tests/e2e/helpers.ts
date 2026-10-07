@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import {
   _electron as electron,
+  expect,
   type ElectronApplication,
   type Locator,
   type Page,
@@ -213,6 +214,33 @@ export function makeFakeClaude(): string {
 
 export function makeFakeCodex(): string {
   return writeFakeAgent('codex', CODEX_ARGS_SOURCE)
+}
+
+/**
+ * Starts adding a project (stub the folder picker first): from the welcome screen when there are
+ * no projects, otherwise from the "+" next to the tabs. The folder is added straight away.
+ */
+export async function openAddProject(page: Page): Promise<void> {
+  const welcomeButton = page.getByRole('button', { name: 'Add project…' })
+  const newProject = page.getByRole('button', { name: 'New project' })
+  // Projects load after launch: wait until one of the two entry points shows.
+  await expect(welcomeButton.or(newProject)).toBeVisible()
+  if (await welcomeButton.isVisible()) await welcomeButton.click()
+  else await openAddProjectFromTabs(page)
+}
+
+/** Adds `repo` as a project through the folder picker and waits for its tab. */
+export async function addProjectFolder(
+  app: ElectronApplication,
+  page: Page,
+  repo: string,
+): Promise<void> {
+  await stubFolderPicker(app, repo)
+  await openAddProject(page)
+  const name = basename(repo)
+  await expect(
+    page.getByRole('navigation').getByRole('button', { name, exact: true }),
+  ).toBeVisible()
 }
 
 /** Opens the folder-picker flow from the "+" next to the project tabs. */

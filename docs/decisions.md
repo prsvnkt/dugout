@@ -138,12 +138,13 @@ anything starting with "-", and passed after `--`). It clones with `git clone --
 `<parent>/<folder>`, streaming progress and supporting cancel; the destination must not exist or
 be empty, and a folder the clone created is removed on failure or cancel. The parent folder is
 remembered in `<userData>/settings.json` (default `~/Developer`, else home). On success the
-repo is added as a project with the next free colour.
+repo is added as a project (named after its folder, in a random free colour).
 
 ## 017 — Projects as title-bar tabs; collapsible side panels (2026-10-05)
 
 Projects are Chrome-style tabs in the title bar (colour dot, name, most urgent agent status,
-⋯ to edit, + for Add project / Clone repository), with the GitHub account at the right. The
+× to close, + for Add project / Clone repository; see decision 029), with the GitHub account at
+the right. The
 left sidebar is gone: the Explorer is the leftmost panel. Explorer and Git panel collapse to
 28px rails (header button, ⌘B / ⇧⌘G, or dragging them closed) and stay mounted in fixed
 slots, so collapsing never remounts terminals. New-pane buttons live in a Terminals header.
@@ -224,10 +225,11 @@ Claude-only section, so both agents follow one set of instructions.
 
 Dugout switches from its dark theme to one light theme (no dark option; it could return as a
 token override). Cool neutrals, Schibsted Grotesk for UI and JetBrains Mono for code, both
-bundled as variable fonts (CSP allows only `font-src 'self'`). The accent washes the title bar
-and the rail, fills the status bar and drives focus rings; since decision 028 it is field green,
-and the selected project's colour only marks what is the project's. Project colours are deep
-variants with white text at least 4.5:1 on each.
+bundled as variable fonts (CSP allows only `font-src 'self'`). The selected project's colour is
+the UI `--accent`, set on the app root: it washes the title bar and the rail (the project's
+"room"), underlines the focused pane, fills the status bar and drives focus rings. With no
+project open the accent is field green (decision 028). Project colours are deep variants with
+white text at least 4.5:1 on each.
 
 A 48px activity rail replaces the collapsed side-panel rails. It toggles Files (⌘B), Review
 (⇧⌘G, with the change count) and Tasks, and its "+" menu holds the new-pane actions and Agent
@@ -300,10 +302,11 @@ worktree toggle.
 New users had to know where their repos were, and found out only later whether the agent CLIs
 were installed or what GitHub sign-in unlocks.
 
-**Decision.** With no projects, `features/welcome/WelcomeScreen.tsx` shows, in the start screen's
-style:
+**Decision.** With no projects, `features/welcome/WelcomeScreen.tsx` shows a full-width hero and
+three steps on how Dugout works, then two columns (one below 900px): repos on this Mac on the
+left, GitHub and the agent check on the right.
 
-- **Add project… / Clone repository…** as before, plus three steps on how Dugout works.
+- **Add project… / Clone repository…** in the hero, as before.
 - **On this Mac:** git repos in the usual code folders (`~/Developer`, `~/code`, `~/Projects`,
   … and the remembered clone folder), at most two levels down, most recently changed first.
   One click adds a repo as a project. Documents and Desktop are searched only when the user
@@ -318,21 +321,34 @@ style:
 
 The search and the check live in `services/welcome/` behind the read-only `welcome` IPC domain.
 
-## 028 — Field green is the accent; project colours mark identity only (2026-10-07)
+## 028 — Field green on the welcome screen; inside a project, its own colour (2026-10-07)
 
-**Context.** The selected project's colour tinted the whole window, so Dugout had no colour of
-its own, and the first-run screen (no project) fell back to a generic blue.
+**Context.** The first-run screen fell back to a generic blue and looked plain, and Dugout had
+no colour of its own.
 
 **Decision.** The logo's palette becomes brand tokens (`--field-deep`, `--field`,
-`--field-bright`, `--chalk`, `--clay`, and the four agent dots). `--accent` is `--field`
-(#1d6b48, white text 6.5:1) everywhere: title bar and rail wash, status bar, buttons, links and
-focus rings. The selected project's colour is `--project-accent`, used only for the tab dot,
-a line along the top of the selected tab, and the focused pane's underline and number. New
-projects get blue first; teal and green come last because they sit close to the accent.
+`--field-bright`, `--chalk`, `--clay`, and the four agent dots). They are used only where no
+project is open: `--accent` defaults to `--field` (#1d6b48, white text 6.5:1), and the welcome
+screen opens with a field-green hero carrying the logo (`lib/Logo.tsx`, coloured from the
+tokens), with step numbers in the logo's colours. Once a project is selected, everything (title
+bar, rail, status bar, buttons, focus, panes) is that project's colour, as in decision 023, so
+projects stay clearly apart.
 
-The welcome screen opens with a field-green hero carrying the logo (`lib/Logo.tsx`, coloured from
-the tokens). The traffic lights (`trafficLightPosition`), tabs, "+" and the title bar's end items
-share the tab row's centre line (`--tab-height`).
+The traffic lights (`trafficLightPosition`), tabs, "+" and the title bar's end items share the
+tab row's centre line (`--tab-height`).
+
+## 029 — Projects are named after their folder; colours are random; tabs close with × (2026-10-07)
+
+**Context.** Adding a project asked for a name and a colour, and the tab's ⋯ reopened that
+dialog to change them. Neither choice was worth a step: users know repos by their folder name.
+
+**Decision.** `ProjectStore.add` takes only a folder. The name is always the repo folder's name
+(projects saved with a custom name are renamed on load), and the colour is picked at random
+among the colours no project uses (any colour once all are taken). The add/edit dialog and the
+`project:update` IPC are gone: picking a folder adds it straight away, and errors (not a git
+repo, already added) show in the window. The tab's ⋯ is now ×, which closes the project (the
+folder stays on disk); if it has agents or shells open, a confirmation says they will stop. The
+title bar's "+" shows only once there is a project, since the welcome screen offers the same.
 
 ## Roadmap
 
@@ -349,4 +365,4 @@ share the tab row's centre line (`--tab-height`).
 7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅, Seti
    file icons ✅, VS Code-style Source Control ✅, branch picker ✅, app icon and logo ✅.
 8. **Done since:** start screen with a default agent and resumable sessions ✅, welcome screen
-   with local and GitHub repos and an agent CLI check ✅.
+   with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅.

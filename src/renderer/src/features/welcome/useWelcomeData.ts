@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { CloneProgress } from '@shared/clone'
 import type { GitHubRepo } from '@shared/github'
-import { nextProjectColor } from '@shared/project'
 import type { AgentCliCheck, LocalRepo } from '@shared/welcome'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { dugout } from '@renderer/lib/dugout'
@@ -13,13 +12,12 @@ function messageOf(cause: unknown, fallback: string): string {
   return cause instanceof Error ? cause.message : fallback
 }
 
-/** Adds a folder as a project, named after it, in the next free colour. */
-export function useAddFolder(): (name: string, rootPath: string) => Promise<void> {
+/** Adds a folder as a project (named after it, in a random colour). */
+export function useAddFolder(): (rootPath: string) => Promise<void> {
   const add = useProjectsStore((state) => state.add)
   return useCallback(
-    async (name, rootPath) => {
-      const { projects } = useProjectsStore.getState()
-      await add({ name, rootPath, color: nextProjectColor(projects) })
+    async (rootPath) => {
+      await add({ rootPath })
     },
     [add],
   )
@@ -148,7 +146,7 @@ export function useQuickClone(): QuickClone {
           const result = await dugout.clone.start(request)
           if (!result.ok) throw new Error(result.error)
           // Adding the project replaces this screen, so there is no state to reset.
-          await addFolder(repo.name, result.data)
+          await addFolder(result.data)
         } catch (cause) {
           setError(messageOf(cause, 'Could not clone the repository.'))
           setCloningUrl(null)

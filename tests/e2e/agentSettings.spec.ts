@@ -3,15 +3,14 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
+  addProjectFolder,
   chooseNewAgentAction,
   clickMenuItem,
   launchApp,
   makeFakeCodex,
   makeGitRepo,
   makeTempDir,
-  openAddProjectFromTabs,
   recordTerminalOutput,
-  stubFolderPicker,
 } from './helpers'
 
 let app: ElectronApplication
@@ -24,10 +23,7 @@ test.beforeEach(async () => {
   execFileSync('git', ['add', '.'], { cwd: repo })
   app = await launchApp(makeTempDir(), { DUGOUT_CODEX_COMMAND: makeFakeCodex() })
   page = await app.firstWindow()
-  await stubFolderPicker(app, repo)
-  await openAddProjectFromTabs(page)
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
-  await expect(page.getByRole('dialog')).toBeHidden()
+  await addProjectFolder(app, page, repo)
 })
 
 test.afterEach(async () => {

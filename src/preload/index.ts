@@ -25,7 +25,6 @@ const api: DugoutApi = {
   projects: {
     list: () => ipcRenderer.invoke(IpcChannel.projectList),
     add: (request) => ipcRenderer.invoke(IpcChannel.projectAdd, request),
-    update: (request) => ipcRenderer.invoke(IpcChannel.projectUpdate, request),
     remove: (id) => ipcRenderer.invoke(IpcChannel.projectRemove, { id }),
   },
   git: {

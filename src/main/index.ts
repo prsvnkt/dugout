@@ -198,6 +198,7 @@ async function start(): Promise<void> {
     filePath: join(dataDir, PROJECTS_FILE),
     createId: randomUUID,
     now: () => new Date(),
+    random: Math.random,
     resolveRepoRoot,
   })
   await projectStore.load()

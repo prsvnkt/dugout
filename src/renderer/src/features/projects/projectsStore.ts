@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ProjectAddRequest, ProjectUpdateRequest } from '@shared/ipc/contract'
+import type { ProjectAddRequest } from '@shared/ipc/contract'
 import type { Project, ProjectId } from '@shared/project'
 import { unwrap } from '@shared/result'
 import { dugout } from '@renderer/lib/dugout'
@@ -12,7 +12,6 @@ interface ProjectsState {
   load(): Promise<void>
   /** Throws with a user-facing message on failure, for the calling form to display. */
   add(request: ProjectAddRequest): Promise<Project>
-  update(request: ProjectUpdateRequest): Promise<Project>
   remove(id: ProjectId): Promise<void>
   select(id: ProjectId): void
   selectIndex(index: number): void
@@ -37,14 +36,6 @@ export const useProjectsStore = create<ProjectsState>()((set, get) => ({
     const project = unwrap(await dugout.projects.add(request))
     set((state) => ({ projects: [...state.projects, project], selectedId: project.id }))
     return project
-  },
-
-  async update(request) {
-    const updated = unwrap(await dugout.projects.update(request))
-    set((state) => ({
-      projects: state.projects.map((project) => (project.id === updated.id ? updated : project)),
-    }))
-    return updated
   },
 
   async remove(id) {

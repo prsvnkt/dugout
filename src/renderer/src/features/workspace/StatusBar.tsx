@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { useSelectedProject } from '@renderer/features/projects/projectsStore'
 import { useCheckoutGit } from '@renderer/features/git/gitStore'
 import { useActivityCount, useProjectLayout, useSelectedCheckout } from './workspaceStore'
@@ -35,7 +37,11 @@ export function StatusBar() {
   if (!project) return <footer className={styles.bar} />
 
   return (
-    <footer className={styles.bar} data-has-project>
+    <footer
+      className={styles.bar}
+      data-has-project
+      style={{ '--accent': projectColorVar(project.color) } as CSSProperties}
+    >
       <span className={styles.name}>{project.name}</span>
       <span className={styles.path} title={project.rootPath}>
         {project.rootPath}

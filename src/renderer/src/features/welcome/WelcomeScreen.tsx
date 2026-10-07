@@ -50,9 +50,15 @@ export function WelcomeScreen({ onAddProject, onClone }: WelcomeScreenProps) {
             </li>
           ))}
         </ol>
-        <LocalRepoList />
-        <GitHubSection onBrowseAll={onClone} />
-        <AgentCheckList />
+        <div className={styles.columns}>
+          <div className={styles.side}>
+            <LocalRepoList />
+          </div>
+          <div className={styles.side}>
+            <GitHubSection onBrowseAll={onClone} />
+            <AgentCheckList />
+          </div>
+        </div>
       </div>
     </div>
   )

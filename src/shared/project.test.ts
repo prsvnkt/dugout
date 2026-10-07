@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { PROJECT_COLORS, nextProjectColor, suggestProjectName } from './project'
+import { PROJECT_COLORS, pickProjectColor, suggestProjectName } from './project'
 
 describe('suggestProjectName', () => {
   test('uses the folder name', () => {
@@ -12,21 +12,17 @@ describe('suggestProjectName', () => {
   })
 })
 
-describe('nextProjectColor', () => {
-  test('starts with blue', () => {
-    expect(nextProjectColor([])).toBe('blue')
+describe('pickProjectColor', () => {
+  test('picks at random among the colours no project uses', () => {
+    const used = [{ color: 'blue' as const }, { color: 'orange' as const }]
+
+    expect(pickProjectColor(used, () => 0)).toBe('purple')
+    expect(pickProjectColor(used, () => 0.999)).toBe(PROJECT_COLORS.at(-1))
   })
 
-  test('picks the first unused colour', () => {
-    expect(nextProjectColor([{ color: 'blue' }, { color: 'purple' }])).toBe('orange')
-  })
-
-  test('offers the greens last, so new projects stand out from the field-green accent', () => {
-    expect(PROJECT_COLORS.slice(-2)).toEqual(['teal', 'green'])
-  })
-
-  test('cycles once every colour is used', () => {
+  test('picks any colour once every colour is used', () => {
     const all = PROJECT_COLORS.map((color) => ({ color }))
-    expect(PROJECT_COLORS).toContain(nextProjectColor(all))
+
+    expect(pickProjectColor(all, () => 0)).toBe(PROJECT_COLORS[0])
   })
 })

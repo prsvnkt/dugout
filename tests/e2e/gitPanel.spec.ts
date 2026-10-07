@@ -48,7 +48,6 @@ test('reviews, stages, commits, publishes and discards changes', async () => {
   const { repo, remote } = makeRepoWithRemote()
   await stubFolderPicker(app, repo)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
   await expect(panel()).toContainText('Working tree clean')
   await expect(page.getByRole('contentinfo')).toContainText('⎇ main')
 
@@ -91,7 +90,6 @@ test('with nothing staged, Commit & Push commits every change and pushes it', as
   git(repo, 'push', '-q', '-u', 'origin', 'main')
   await stubFolderPicker(app, repo)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
   writeFileSync(join(repo, 'readme.md'), 'hello\nedited\n')
   writeFileSync(join(repo, 'new.ts'), 'export {}\n')
   await expect(panel().getByRole('button', { name: 'Commit all 2 changes' })).toBeVisible({
@@ -123,7 +121,6 @@ test('shows git errors in the panel', async () => {
   git(repo, 'commit', '-qm', 'init')
   await stubFolderPicker(app, repo)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
 
   await panel().getByRole('button', { name: 'Publish' }).click()
 
@@ -134,7 +131,6 @@ test('the git panel can be toggled from the menu', async () => {
   const { repo } = makeRepoWithRemote()
   await stubFolderPicker(app, repo)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
   await expect(panel()).toBeVisible()
 
   await clickMenuItem(app, 'View', 'Toggle Git Panel')
@@ -161,7 +157,6 @@ test('Create PR pushes the branch and opens the compare page', async () => {
   })
   await stubFolderPicker(app, repo)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
 
   // Act
   await panel().getByRole('button', { name: 'Create PR' }).click()
@@ -179,7 +174,6 @@ test('Create PR is not offered on the base branch', async () => {
   const { repo } = makeRepoWithRemote()
   await stubFolderPicker(app, repo)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
   await expect(panel()).toContainText('main')
   await expect(panel().getByRole('button', { name: 'Create PR' })).toBeHidden()
 })

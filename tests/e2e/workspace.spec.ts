@@ -1,3 +1,4 @@
+import { basename } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
   chooseNewAgentAction,
@@ -28,9 +29,11 @@ test.afterEach(async () => {
 async function addProject(repo: string, opener: () => Promise<void>): Promise<void> {
   await stubFolderPicker(app, repo)
   await opener()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByRole('button', { name: 'Add project' }).click()
-  await expect(dialog).toBeHidden()
+  // Added straight away, named after its folder.
+  const name = basename(repo)
+  await expect(
+    page.getByRole('navigation').getByRole('button', { name, exact: true }),
+  ).toBeVisible()
 }
 
 const activeWorkspace = () => page.locator('[data-active="true"]')
@@ -65,9 +68,29 @@ test('adds projects, runs split terminals, and keeps them alive across switches'
 test('rejects a folder that is not a git repository', async () => {
   await stubFolderPicker(app, makeTempDir())
   await page.getByRole('button', { name: 'Add project…' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByRole('button', { name: 'Add project' }).click()
-  await expect(dialog.getByRole('alert')).toContainText('not inside a git repository')
+  await expect(page.getByRole('alert')).toContainText('not inside a git repository')
+})
+
+test('a project is named after its folder and closes from its tab', async () => {
+  // Arrange: no "+" in the title bar until there is a project
+  await expect(page.getByRole('button', { name: 'New project' })).toBeHidden()
+  await addProject(makeGitRepo('omega'), () =>
+    page.getByRole('button', { name: 'Add project…' }).click(),
+  )
+  const tabs = page.getByRole('navigation')
+  await expect(tabs.getByRole('button', { name: 'omega', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'New project' })).toBeVisible()
+  await clickMenuItem(app, 'File', 'New Shell')
+
+  // Act: closing a project with a shell open asks first
+  await tabs.getByRole('button', { name: 'Close omega' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Close omega?' })
+  await expect(confirm).toContainText('will stop')
+  await confirm.getByRole('button', { name: 'Close project' }).click()
+
+  // Assert: back to the welcome screen
+  await expect(tabs.getByRole('button', { name: 'omega', exact: true })).toBeHidden()
+  await expect(page.getByRole('heading', { name: 'Welcome to Dugout' })).toBeVisible()
 })
 
 test('remembers projects across restarts', async () => {

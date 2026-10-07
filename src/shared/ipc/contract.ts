@@ -62,21 +62,8 @@ const projectId = z.string().min(1).max(64)
 const projectName = z.string().trim().min(1).max(MAX_PROJECT_NAME_LENGTH)
 const projectColor = z.enum(PROJECT_COLORS)
 
-export const projectAddRequestSchema = z.object({
-  name: projectName,
-  rootPath: absolutePath,
-  color: projectColor,
-})
-
-export const projectUpdateRequestSchema = z
-  .object({
-    id: projectId,
-    name: projectName.optional(),
-    color: projectColor.optional(),
-  })
-  .refine((request) => request.name !== undefined || request.color !== undefined, {
-    message: 'Nothing to update',
-  })
+/** Name and colour are not chosen: the name is the repo folder's, the colour is random. */
+export const projectAddRequestSchema = z.object({ rootPath: absolutePath })
 
 export const projectRemoveRequestSchema = z.object({ id: projectId })
 
@@ -95,7 +82,6 @@ export const projectsFileSchema = z.object({
 })
 
 export type ProjectAddRequest = z.infer<typeof projectAddRequestSchema>
-export type ProjectUpdateRequest = z.infer<typeof projectUpdateRequestSchema>
 export type ProjectRemoveRequest = z.infer<typeof projectRemoveRequestSchema>
 export type ProjectsFile = z.infer<typeof projectsFileSchema>
 

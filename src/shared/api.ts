@@ -9,7 +9,6 @@ import type { PullRequestStatus } from './pullRequest'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
   ProjectAddRequest,
-  ProjectUpdateRequest,
   CloneRequest,
   SettingsUpdateRequest,
   TaskCreateRequest,
@@ -48,7 +47,6 @@ export interface DugoutApi {
   readonly projects: {
     list(): Promise<Result<readonly Project[]>>
     add(request: ProjectAddRequest): Promise<Result<Project>>
-    update(request: ProjectUpdateRequest): Promise<Result<Project>>
     remove(id: ProjectId): Promise<Result<void>>
   }
   /** Git operations on a project's main checkout or one of its worktrees. */

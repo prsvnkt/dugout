@@ -16,7 +16,6 @@ export const IpcChannel = {
   dialogPickFolder: 'dialog:pick-folder',
   projectList: 'project:list',
   projectAdd: 'project:add',
-  projectUpdate: 'project:update',
   projectRemove: 'project:remove',
   gitStatus: 'git:status',
   gitShow: 'git:show',

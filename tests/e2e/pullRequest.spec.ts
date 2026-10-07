@@ -54,7 +54,6 @@ test.beforeEach(async () => {
   ).toBeVisible()
   await stubFolderPicker(app, root)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
   await expect(page.getByRole('dialog')).toBeHidden()
 })
 

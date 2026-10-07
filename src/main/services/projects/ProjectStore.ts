@@ -1,18 +1,15 @@
 import { readFile, rename } from 'node:fs/promises'
 import { projectsFileSchema, type ProjectAddRequest } from '@shared/ipc/contract'
-import type { Project, ProjectColor, ProjectId } from '@shared/project'
+import { pickProjectColor, suggestProjectName, type Project, type ProjectId } from '@shared/project'
 import { writeFileAtomic } from './atomicWrite'
 
 export interface ProjectStoreDeps {
   readonly filePath: string
   readonly createId: () => ProjectId
   readonly now: () => Date
+  /** Picks new projects' colours; Math.random in the app. */
+  readonly random: () => number
   readonly resolveRepoRoot: (path: string) => Promise<string | null>
-}
-
-export interface ProjectPatch {
-  readonly name?: string | undefined
-  readonly color?: ProjectColor | undefined
 }
 
 const FILE_VERSION = 1
@@ -40,7 +37,11 @@ export class ProjectStore {
 
     const parsed = projectsFileSchema.safeParse(safeJsonParse(raw))
     if (parsed.success) {
-      this.projects = parsed.data.projects
+      // Names always follow the folder, including projects saved when names were editable.
+      this.projects = parsed.data.projects.map((project) => ({
+        ...project,
+        name: suggestProjectName(project.rootPath),
+      }))
       return
     }
     await this.quarantineCorruptFile()
@@ -55,26 +56,13 @@ export class ProjectStore {
 
     const project: Project = {
       id: this.deps.createId(),
-      name: request.name,
+      name: suggestProjectName(rootPath),
       rootPath,
-      color: request.color,
+      color: pickProjectColor(this.projects, this.deps.random),
       createdAt: this.deps.now().toISOString(),
     }
     await this.commit([...this.projects, project])
     return project
-  }
-
-  async update(id: ProjectId, patch: ProjectPatch): Promise<Project> {
-    const current = this.projects.find((project) => project.id === id)
-    if (!current) throw new Error('Project not found.')
-
-    const updated: Project = {
-      ...current,
-      ...(patch.name !== undefined && { name: patch.name }),
-      ...(patch.color !== undefined && { color: patch.color }),
-    }
-    await this.commit(this.projects.map((project) => (project.id === id ? updated : project)))
-    return updated
   }
 
   async remove(id: ProjectId): Promise<void> {
