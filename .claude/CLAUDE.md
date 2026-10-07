@@ -28,6 +28,7 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 | `npm run test:e2e` | Build, then drive the real app with Playwright |
 | `npm run build`    | Typecheck and production build into `out/`     |
 | `npm run dist`     | Package the macOS app (DMG, zip) into `dist/`  |
+| `npm run demo:gif` | Record the README demo GIF (`scripts/demo/`)   |
 
 **Definition of done:** `npm run check` and `npm run test:e2e` both pass, and the docs are
 updated as `.claude/rules/docs.md` describes. CI (`.github/workflows/ci.yml`) runs both checks on
@@ -59,6 +60,7 @@ src/
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.
+scripts/demo/ Records docs/media/demo.gif: sample repos, scripted stand-in agents, frame capture.
 docs/         Decisions and design notes.
 ```
 
