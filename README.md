@@ -44,6 +44,12 @@ shows as "Dugout Dev" in the Dock.
 See [docs/decisions.md](docs/decisions.md) for design decisions and the roadmap, and
 [.claude/CLAUDE.md](.claude/CLAUDE.md) for the codebase guide.
 
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), and report security issues
+privately as described in [SECURITY.md](SECURITY.md). Everyone taking part is expected to follow
+the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
 [MIT](LICENSE)
