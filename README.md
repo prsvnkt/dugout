@@ -6,6 +6,12 @@ One desktop app for running and supervising coding agents across all your projec
 projects, multiple real terminals per window, and a git panel for reviewing what the agents
 changed.
 
+<p align="center">
+  <a href="https://github.com/prsvnkt/dugout/releases/latest"><b>Download for macOS</b></a>
+</p>
+
+![Dugout running a Claude Code and a Codex agent side by side in one project, with two other projects working in the background, then opening an agent's change in the git panel](docs/media/demo.gif)
+
 Dugout runs each agent's own CLI in a real terminal, so any terminal-based agent works in a
 shell pane. Claude Code and Codex are integrated today (live status, notifications, resumable
 sessions, task tools); more agents will get the same support one by one.
@@ -61,6 +67,8 @@ installed app's `Dugout` folder, and shows as "Dugout Dev" in the Dock.
 - `npm run build` — production build
 - `npm run dist` — package the macOS app into `dist/`
 - `npm run test:e2e:packaged` — run the e2e tests against the packaged app (after `dist`)
+- `npm run demo:gif` — record the demo above with sample projects and scripted agents into
+  `docs/media/demo.gif` (needs `brew install ffmpeg gifski`)
 
 See [docs/decisions.md](docs/decisions.md) for design decisions and the roadmap, and
 [.claude/CLAUDE.md](.claude/CLAUDE.md) for the codebase guide.

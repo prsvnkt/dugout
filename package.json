@@ -31,6 +31,7 @@
     "icons": "electron scripts/generate-icons.mjs",
     "test:e2e": "electron-vite build && playwright test",
     "dist": "npm run build && electron-builder --mac",
+    "demo:gif": "electron-vite build && playwright test -c scripts/demo/playwright.config.ts && sh scripts/demo/makeGif.sh",
     "test:e2e:packaged": "DUGOUT_E2E_EXECUTABLE=dist/mac-arm64/Dugout.app/Contents/MacOS/Dugout playwright test"
   },
   "dependencies": {
