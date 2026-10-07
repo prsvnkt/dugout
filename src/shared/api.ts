@@ -9,7 +9,6 @@ import type { PullRequestStatus } from './pullRequest'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
   ProjectAddRequest,
-  ProjectUpdateRequest,
   CloneRequest,
   SettingsUpdateRequest,
   TaskCreateRequest,
@@ -23,6 +22,7 @@ import type { AppSettings } from './settings'
 import type { AgentKind, TerminalExit, TerminalId } from './terminal'
 import type { Task, TaskDetail } from './tasks'
 import type { TaskSession } from './taskSession'
+import type { AgentCliCheck, LocalRepo, RepoSearchScope } from './welcome'
 import type { GitCheckout, Worktree } from './worktree'
 
 export type Unsubscribe = () => void
@@ -47,7 +47,6 @@ export interface DugoutApi {
   readonly projects: {
     list(): Promise<Result<readonly Project[]>>
     add(request: ProjectAddRequest): Promise<Result<Project>>
-    update(request: ProjectUpdateRequest): Promise<Result<Project>>
     remove(id: ProjectId): Promise<Result<void>>
   }
   /** Git operations on a project's main checkout or one of its worktrees. */
@@ -168,6 +167,11 @@ export interface DugoutApi {
   readonly workspace: {
     load(): Promise<Result<WorkspaceSnapshot>>
     save(snapshot: WorkspaceSnapshot): Promise<Result<void>>
+  }
+  /** What the first-run screen offers: repos on this Mac and whether the agent CLIs exist. */
+  readonly welcome: {
+    findRepos(scope: RepoSearchScope): Promise<Result<readonly LocalRepo[]>>
+    checkAgents(): Promise<Result<AgentCliCheck>>
   }
   readonly dialog: {
     /** Resolves to the chosen absolute folder path, or null if cancelled. */

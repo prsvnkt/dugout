@@ -8,14 +8,16 @@ import { ACTIVITY_LABEL } from '@renderer/features/workspace/paneActivity'
 import { useProjectAttention } from '@renderer/features/workspace/workspaceStore'
 import { projectColorVar } from './projectColor'
 import { useProjectsStore } from './projectsStore'
+import { useCloseProject, useOpenPaneCount } from './useCloseProject'
 import styles from './ProjectTabs.module.css'
 
 const SHORTCUT_LIMIT = 9
+const CONFIRM_WIDTH_PX = 260
+const CONFIRM_GAP_PX = 4
 
 interface ProjectTabsProps {
   onAddProject(): void
   onCloneProject(): void
-  onEditProject(project: Project): void
 }
 
 /** The most urgent agent status in a project, e.g. "Needs you". */
@@ -32,7 +34,7 @@ function TabAttention({ projectId }: { projectId: string }) {
 }
 
 /** "+" next to the tabs: open an existing folder or clone a repository. */
-function NewProjectMenu({ onAddProject, onCloneProject }: Omit<ProjectTabsProps, 'onEditProject'>) {
+function NewProjectMenu({ onAddProject, onCloneProject }: ProjectTabsProps) {
   const [isOpen, setIsOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -73,8 +75,72 @@ function NewProjectMenu({ onAddProject, onCloneProject }: Omit<ProjectTabsProps,
   )
 }
 
+/** "×" on a tab: closes the project, asking first when agents or shells would stop. */
+function CloseProjectButton({ project }: { project: Project }) {
+  const openPanes = useOpenPaneCount(project.id)
+  const closeProject = useCloseProject()
+  // Where the confirmation opens. Fixed to the window: the scrolling tab strip would clip it.
+  const [confirmAt, setConfirmAt] = useState<CSSProperties | null>(null)
+  const isConfirming = confirmAt !== null
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useDismiss(
+    wrapRef,
+    isConfirming,
+    useCallback(() => setConfirmAt(null), []),
+  )
+
+  const askToClose = (button: HTMLElement) => {
+    const rect = button.getBoundingClientRect()
+    setConfirmAt({
+      top: rect.bottom + CONFIRM_GAP_PX,
+      left: Math.max(CONFIRM_GAP_PX, rect.right - CONFIRM_WIDTH_PX),
+    })
+  }
+
+  const close = () => {
+    setConfirmAt(null)
+    closeProject(project.id).catch((error: unknown) =>
+      console.error('[projects] could not close the project', error),
+    )
+  }
+
+  return (
+    <div className={styles.closeWrap} ref={wrapRef}>
+      <button
+        className={styles.close}
+        onClick={(event) => (openPanes > 0 ? askToClose(event.currentTarget) : close())}
+        aria-label={`Close ${project.name}`}
+        title="Close project (the folder stays on disk)"
+      >
+        ×
+      </button>
+      {confirmAt && (
+        <div
+          className={styles.confirm}
+          style={confirmAt}
+          role="dialog"
+          aria-label={`Close ${project.name}?`}
+        >
+          <p>
+            Close {project.name}? Its{' '}
+            {openPanes === 1 ? 'agent or shell' : `${openPanes} agents and shells`} will stop. The
+            folder stays on disk.
+          </p>
+          <div className={styles.confirmActions}>
+            <button onClick={() => setConfirmAt(null)}>Cancel</button>
+            <button className={styles.danger} onClick={close} autoFocus>
+              Close project
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Chrome-style project tabs in the title bar, with the GitHub account at the far end. */
-export function ProjectTabs({ onAddProject, onCloneProject, onEditProject }: ProjectTabsProps) {
+export function ProjectTabs({ onAddProject, onCloneProject }: ProjectTabsProps) {
   const { projects, selectedId, select } = useProjectsStore()
 
   return (
@@ -86,7 +152,7 @@ export function ProjectTabs({ onAddProject, onCloneProject, onEditProject }: Pro
               key={project.id}
               className={styles.tab}
               data-selected={project.id === selectedId}
-              style={{ '--accent': projectColorVar(project.color) } as CSSProperties}
+              style={{ '--project-color': projectColorVar(project.color) } as CSSProperties}
             >
               <button
                 className={styles.select}
@@ -99,18 +165,14 @@ export function ProjectTabs({ onAddProject, onCloneProject, onEditProject }: Pro
                 <span className={styles.name}>{project.name}</span>
                 <TabAttention projectId={project.id} />
               </button>
-              <button
-                className={styles.edit}
-                onClick={() => onEditProject(project)}
-                aria-label={`Edit ${project.name}`}
-                title="Edit project"
-              >
-                ⋯
-              </button>
+              <CloseProjectButton project={project} />
             </li>
           ))}
         </ul>
-        <NewProjectMenu onAddProject={onAddProject} onCloneProject={onCloneProject} />
+        {/* With no projects, the welcome screen already offers both. */}
+        {projects.length > 0 && (
+          <NewProjectMenu onAddProject={onAddProject} onCloneProject={onCloneProject} />
+        )}
       </nav>
       <div className={styles.end}>
         <InboxButton />

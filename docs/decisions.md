@@ -138,12 +138,13 @@ anything starting with "-", and passed after `--`). It clones with `git clone --
 `<parent>/<folder>`, streaming progress and supporting cancel; the destination must not exist or
 be empty, and a folder the clone created is removed on failure or cancel. The parent folder is
 remembered in `<userData>/settings.json` (default `~/Developer`, else home). On success the
-repo is added as a project with the next free colour.
+repo is added as a project (named after its folder, in a random free colour).
 
 ## 017 — Projects as title-bar tabs; collapsible side panels (2026-10-05)
 
 Projects are Chrome-style tabs in the title bar (colour dot, name, most urgent agent status,
-⋯ to edit, + for Add project / Clone repository), with the GitHub account at the right. The
+× to close, + for Add project / Clone repository; see decision 029), with the GitHub account at
+the right. The
 left sidebar is gone: the Explorer is the leftmost panel. Explorer and Git panel collapse to
 28px rails (header button, ⌘B / ⇧⌘G, or dragging them closed) and stay mounted in fixed
 slots, so collapsing never remounts terminals. New-pane buttons live in a Terminals header.
@@ -226,8 +227,9 @@ Dugout switches from its dark theme to one light theme (no dark option; it could
 token override). Cool neutrals, Schibsted Grotesk for UI and JetBrains Mono for code, both
 bundled as variable fonts (CSP allows only `font-src 'self'`). The selected project's colour is
 the UI `--accent`, set on the app root: it washes the title bar and the rail (the project's
-"room"), underlines the focused pane, fills the status bar and drives focus rings. Project colours
-are deep variants with white text at least 4.5:1 on each.
+"room"), underlines the focused pane, fills the status bar and drives focus rings. With no
+project open the accent is field green (decision 028). Project colours are deep variants with
+white text at least 4.5:1 on each.
 
 A 48px activity rail replaces the collapsed side-panel rails. It toggles Files (⌘B), Review
 (⇧⌘G, with the change count) and Tasks, and its "+" menu holds the new-pane actions and Agent
@@ -294,6 +296,61 @@ only a code name. Repos stay "projects": a dugout full of agents working on many
 **Not done (yet).** ⌘T still opens Claude rather than the default agent, and the prompt box has no
 worktree toggle.
 
+## 027 — A welcome screen for first launch (2026-10-07)
+
+**Context.** With no projects, the app showed one heading and two buttons on an empty window.
+New users had to know where their repos were, and found out only later whether the agent CLIs
+were installed or what GitHub sign-in unlocks.
+
+**Decision.** With no projects, `features/welcome/WelcomeScreen.tsx` shows a full-width hero and
+three steps on how Dugout works, then two columns (one below 900px): repos on this Mac on the
+left, GitHub and the agent check on the right.
+
+- **Add project… / Clone repository…** in the hero, as before.
+- **On this Mac:** git repos in the usual code folders (`~/Developer`, `~/code`, `~/Projects`,
+  … and the remembered clone folder), at most two levels down, most recently changed first.
+  One click adds a repo as a project. Documents and Desktop are searched only when the user
+  clicks "Also look in Documents and Desktop", because reading them shows a macOS permission
+  prompt. Searching never starts from the home folder itself, which holds those folders.
+- **GitHub:** signed out, a card explaining what sign-in unlocks (one-click clone, tasks from
+  issues, PR and CI status). Signed in, the five most recently pushed repos, each cloned into
+  the remembered folder and added in one click.
+- **Agents:** whether `claude` and `codex` are on the PATH of the user's interactive login
+  shell (`command -v`, the same way terminals launch them), with the install command when
+  one is missing.
+
+The search and the check live in `services/welcome/` behind the read-only `welcome` IPC domain.
+
+## 028 — Field green on the welcome screen; inside a project, its own colour (2026-10-07)
+
+**Context.** The first-run screen fell back to a generic blue and looked plain, and Dugout had
+no colour of its own.
+
+**Decision.** The logo's palette becomes brand tokens (`--field-deep`, `--field`,
+`--field-bright`, `--chalk`, `--clay`, and the four agent dots). They are used only where no
+project is open: `--accent` defaults to `--field` (#1d6b48, white text 6.5:1), and the welcome
+screen opens with a field-green hero carrying the logo (`lib/Logo.tsx`, coloured from the
+tokens), with step numbers in the logo's colours. Once a project is selected, everything (title
+bar, rail, status bar, buttons, focus, panes) is that project's colour, as in decision 023, so
+projects stay clearly apart.
+
+The traffic lights (`trafficLightPosition`), tabs, "+" and the title bar's end items share the
+tab row's centre line (`--tab-height`). The selected tab is marked Chrome-style: a white card that
+merges into the window, with a bold name and the project's colour dot; no accent line.
+
+## 029 — Projects are named after their folder; colours are random; tabs close with × (2026-10-07)
+
+**Context.** Adding a project asked for a name and a colour, and the tab's ⋯ reopened that
+dialog to change them. Neither choice was worth a step: users know repos by their folder name.
+
+**Decision.** `ProjectStore.add` takes only a folder. The name is always the repo folder's name
+(projects saved with a custom name are renamed on load), and the colour is picked at random
+among the colours no project uses (any colour once all are taken). The add/edit dialog and the
+`project:update` IPC are gone: picking a folder adds it straight away, and errors (not a git
+repo, already added) show in the window. The tab's ⋯ is now ×, which closes the project (the
+folder stays on disk); if it has agents or shells open, a confirmation says they will stop. The
+title bar's "+" shows only once there is a project, since the welcome screen offers the same.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -308,4 +365,5 @@ worktree toggle.
 6. **Done since:** agent settings (`.mcp.json` editor, AGENTS.md as shared instructions) ✅.
 7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅, Seti
    file icons ✅, VS Code-style Source Control ✅, branch picker ✅, app icon and logo ✅.
-8. **Done since:** start screen with a default agent and resumable sessions ✅.
+8. **Done since:** start screen with a default agent and resumable sessions ✅, welcome screen
+   with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅.

@@ -59,7 +59,6 @@ test('a worktree session isolates an agent and can be reviewed and removed', asy
   const repo = makeRepo()
   await stubFolderPicker(app, repo)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
 
   // Act: start a worktree session
   await chooseNewAgentAction(workspace(), 'New Claude agent in worktree')

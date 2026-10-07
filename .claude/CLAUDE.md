@@ -45,7 +45,8 @@ src/
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API),
                 settings/ (app preferences: default agent, clone folder),
                 tasks/ (GitHub Issues as tasks),
-                agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions).
+                agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions),
+                welcome/ (first-run repo search, agent CLI check).
     mcp/        The "dugout" MCP server agents use for tasks (separate build entry: mcp.js).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
@@ -53,7 +54,8 @@ src/
   renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.
               Layout: project tabs (title bar) / Explorer | editor over terminals | Git panel;
               side panels collapse to rails via workspace/SidePanel.tsx. A project with no
-              agents open shows start/StartScreen.tsx (prompt box, sessions to resume, open tasks).
+              agents open shows start/StartScreen.tsx (prompt box, sessions to resume, open tasks);
+              with no projects at all, welcome/WelcomeScreen.tsx (repos to add, agent check).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.
@@ -100,6 +102,7 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   e2e tests assert this. Network git commands go through `GitService.runNetwork`.
 - **Agents reach Dugout only through the MCP server → hook socket RPC**, scoped to their
   terminal's project. Never put tokens in MCP configs or tool results.
-- **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` (the e2e helpers do).
+- **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` and `DUGOUT_HOME_DIR` (the
+  welcome screen searches the home folder for repos); the e2e helpers set both.
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.

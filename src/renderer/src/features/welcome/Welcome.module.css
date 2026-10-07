@@ -1,0 +1,280 @@
+.welcome {
+  display: flex;
+  justify-content: center;
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+/* Fills the window up to a comfortable reading width; scrolls when the window is short. */
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 1120px;
+  margin: auto 0;
+}
+
+/* Repos to add on the left; GitHub and the agent check on the right. */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+@media (max-width: 900px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The ballpark: deep field green with a clay line, like the logo's bench. */
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-bottom: 3px solid var(--clay);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 100% 0%, var(--field) 0%, transparent 65%), var(--field-deep);
+  color: var(--chalk);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  margin: 0;
+  color: color-mix(in oklch, var(--chalk) 80%, transparent);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.heroPrimary {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--field-bright);
+  border-radius: var(--radius-md);
+  background: var(--field-bright);
+  color: var(--field-deep);
+  font-weight: 700;
+}
+
+.heroPrimary:hover {
+  background: color-mix(in oklch, var(--field-bright) 85%, var(--chalk));
+}
+
+.heroSecondary {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid color-mix(in oklch, var(--chalk) 40%, transparent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--chalk);
+}
+
+.heroSecondary:hover {
+  background: color-mix(in oklch, var(--chalk) 10%, transparent);
+}
+
+.hero :focus-visible {
+  outline-color: var(--field-bright);
+}
+
+.secondary {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-canvas);
+  counter-increment: step;
+}
+
+.step:nth-child(1) {
+  --step-color: var(--field-bright);
+}
+
+.step:nth-child(2) {
+  --step-color: var(--logo-blue);
+}
+
+.step:nth-child(3) {
+  --step-color: var(--logo-amber);
+}
+
+.step::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-bottom: var(--space-1);
+  border-radius: 50%;
+  background: var(--step-color);
+  color: var(--field-deep);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.stepTitle {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.stepText {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.muted {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.footer:empty {
+  display: none;
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+}
+
+.cardText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cardTitle {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.benefits {
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.agentRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.agentState {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.installed {
+  color: var(--status-done);
+}
+
+.missing {
+  color: var(--status-needs-input);
+}
+
+.unknown,
+.checking {
+  color: var(--text-muted);
+}
+
+.code {
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  user-select: text;
+}
+
+/* The logo shares the hero's green, so a faint chalk ring sets it apart. */
+.brand svg {
+  border-radius: 22%;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--chalk) 25%, transparent);
+}

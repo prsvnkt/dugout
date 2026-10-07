@@ -3,11 +3,11 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
+  addProjectFolder,
   clickMenuItem,
   launchApp,
   makeTempDir,
   recordTerminalOutput,
-  stubFolderPicker,
   terminalIdsSeen,
 } from './helpers'
 
@@ -28,10 +28,7 @@ test.beforeEach(async () => {
   app = await launchApp(makeTempDir())
   page = await app.firstWindow()
   repo = makeRepo()
-  await stubFolderPicker(app, repo)
-  await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
-  await expect(page.getByRole('dialog')).toBeHidden()
+  await addProjectFolder(app, page, repo)
 })
 
 test.afterEach(async () => {

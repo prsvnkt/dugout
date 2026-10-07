@@ -52,7 +52,6 @@ async function openPicker(): Promise<void> {
 async function addProject(repo: string): Promise<void> {
   await stubFolderPicker(app, repo)
   await page.getByRole('button', { name: 'Add project…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
   await expect(page.getByRole('contentinfo')).toContainText('⎇ main')
 }
 

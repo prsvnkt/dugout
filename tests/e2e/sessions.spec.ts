@@ -1,12 +1,12 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
+  addProjectFolder,
   clickMenuItem,
   launchApp,
   makeFakeClaude,
   makeGitRepo,
   makeTempDir,
   recordTerminalOutput,
-  stubFolderPicker,
 } from './helpers'
 
 let app: ElectronApplication
@@ -33,11 +33,7 @@ const workspace = () => page.locator('[data-active="true"]')
 const paneRegions = () => workspace().getByRole('region', { name: /terminal$/ })
 
 async function addProject(name: string): Promise<void> {
-  await stubFolderPicker(app, makeGitRepo(name))
-  await page.getByRole('button', { name: 'Add project…' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByRole('button', { name: 'Add project' }).click()
-  await expect(dialog).toBeHidden()
+  await addProjectFolder(app, page, makeGitRepo(name))
 }
 
 function sessionFrom(output: string): string {

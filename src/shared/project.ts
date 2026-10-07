@@ -1,12 +1,12 @@
 export const PROJECT_COLORS = [
-  'teal',
+  'blue',
   'orange',
   'purple',
-  'blue',
   'pink',
-  'green',
   'yellow',
   'red',
+  'teal',
+  'green',
 ] as const
 
 export type ProjectColor = (typeof PROJECT_COLORS)[number]
@@ -24,15 +24,22 @@ export interface Project {
 
 export const MAX_PROJECT_NAME_LENGTH = 60
 
-/** Default name for a new project: the repo folder's name. */
+/** A project's name: always its repo folder's name. */
 export function suggestProjectName(rootPath: string): string {
   const folder = rootPath.split('/').filter(Boolean).at(-1) ?? 'Project'
   return folder.slice(0, MAX_PROJECT_NAME_LENGTH)
 }
 
-/** The first colour no project uses yet, cycling once every colour is taken. */
-export function nextProjectColor(projects: readonly Pick<Project, 'color'>[]): ProjectColor {
+/**
+ * A random colour no project uses yet, or any colour once all are taken. `random` returns a
+ * number in [0, 1), like Math.random.
+ */
+export function pickProjectColor(
+  projects: readonly Pick<Project, 'color'>[],
+  random: () => number,
+): ProjectColor {
   const used = new Set(projects.map((project) => project.color))
-  const unused = PROJECT_COLORS.find((color) => !used.has(color))
-  return unused ?? PROJECT_COLORS[projects.length % PROJECT_COLORS.length] ?? 'teal'
+  const unused = PROJECT_COLORS.filter((color) => !used.has(color))
+  const candidates = unused.length > 0 ? unused : PROJECT_COLORS
+  return candidates[Math.floor(random() * candidates.length)] ?? PROJECT_COLORS[0]
 }

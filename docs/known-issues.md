@@ -101,3 +101,15 @@ there are no automatic updates.
 **Likely fix:** with a Developer ID, enable `hardenedRuntime` with entitlements (node-pty and
 the Node-mode MCP server need `cs.allow-jit` / `cs.disable-library-validation`), add
 `notarize`, add an `x64` or `universal` target, and use `electron-updater` with GitHub Releases.
+
+## The welcome screen offers to clone repos that are already on this Mac
+
+- **Area:** welcome screen (`src/renderer/src/features/welcome/GitHubSection.tsx`)
+- **Found:** 2026-10-07, while building the welcome screen (decision 027)
+
+**What happens:** a GitHub repo that is already cloned locally shows under both "On this Mac"
+and "GitHub". Clicking Clone fails with "not empty" when the folder already exists in the clone
+folder, and makes a second copy when it does not.
+
+**Likely fix:** read each local repo's `origin` URL in the search and hide GitHub rows (or
+offer "Add") for repos that match.

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { CloneProgress } from '@shared/clone'
 import type { GitHubRepo } from '@shared/github'
-import { nextProjectColor } from '@shared/project'
 import {
   isAuthError,
   isSignedIn as isSignedInState,
@@ -95,7 +94,7 @@ function RepoList({ onPick, picked }: { onPick(repo: GitHubRepo): void; picked: 
 export function CloneDialog({ onClose }: { onClose(): void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const signIn = useAuthStore((state) => state.signIn)
-  const { projects, add } = useProjectsStore()
+  const add = useProjectsStore((state) => state.add)
   const [source, setSource] = useState<Source>('repos')
   const [url, setUrl] = useState('')
   const [folderName, setFolderName] = useState('')
@@ -135,7 +134,7 @@ export function CloneDialog({ onClose }: { onClose(): void }) {
       return
     }
     try {
-      await add({ name: folderName, rootPath: result.data, color: nextProjectColor(projects) })
+      await add({ rootPath: result.data })
       onClose()
     } catch (cause) {
       setIsCloning(false)

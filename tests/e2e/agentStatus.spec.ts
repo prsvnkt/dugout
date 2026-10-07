@@ -1,7 +1,7 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
   clickMenuItem,
-  openAddProjectFromTabs,
+  openAddProject,
   launchApp,
   makeFakeClaude,
   makeFakeCodex,
@@ -27,10 +27,10 @@ test.afterEach(async () => {
 
 async function addProject(name: string): Promise<void> {
   await stubFolderPicker(app, makeGitRepo(name))
-  await openAddProjectFromTabs(page)
-  const dialog = page.getByRole('dialog')
-  await dialog.getByRole('button', { name: 'Add project' }).click()
-  await expect(dialog).toBeHidden()
+  await openAddProject(page)
+  await expect(
+    page.getByRole('navigation').getByRole('button', { name, exact: true }),
+  ).toBeVisible()
 }
 
 const paneHeader = () =>
