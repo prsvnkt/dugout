@@ -40,6 +40,7 @@ import { TaskService } from './services/tasks/TaskService'
 import { LayoutStore } from './services/workspace/LayoutStore'
 import { WorktreeManager } from './services/worktrees/WorktreeManager'
 import { createMainWindow } from './window'
+import { applyAppIcon } from './appIcon'
 
 const PROJECTS_FILE = 'projects.json'
 const WORKTREES_DIR = 'worktrees'
@@ -179,6 +180,7 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
 }
 
 async function start(): Promise<void> {
+  applyAppIcon()
   const dataDir = app.getPath('userData')
   const projectStore = new ProjectStore({
     filePath: join(dataDir, PROJECTS_FILE),

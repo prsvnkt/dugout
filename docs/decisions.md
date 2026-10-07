@@ -261,6 +261,17 @@ when it has no work the main checkout lacks, so finished sessions stop piling up
 Every command goes through `GitService` (decision 009), which only switches to branches that
 exist and validates new names with `git check-ref-format`.
 
+## 025 — The logo: "Window" on the field (2026-10-07)
+
+The mark is an app window whose title bar is also a dugout roof, with a bench of coloured session
+dots inside, on field green (`#0f3d2e`). It shows what Dugout is, an app holding your agents,
+without leaning on baseball clip art. The amber dot doubles as the "needs you" status.
+`resources/logo.svg` is the one source for the mark; `icon.svg` puts it on the macOS icon grid
+and `icon-small.svg` simplifies it to two dots for 32 px and below. `npm run icons` renders
+`icon.png` and `icon.icns` with Electron itself, so no extra image tools are needed. At runtime
+`applyAppIcon` sets the Dock and About panel icon, since unpackaged Electron shows its own.
+`icon.icns` is ready for packaging but unused until we package the app.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -274,4 +285,4 @@ exist and validates new names with `git check-ref-format`.
    Codex adapter with Compare ✅.
 6. **Done since:** agent settings (`.mcp.json` editor, AGENTS.md as shared instructions) ✅.
 7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅, Seti
-   file icons ✅, VS Code-style Source Control ✅, branch picker ✅.
+   file icons ✅, VS Code-style Source Control ✅, branch picker ✅, app icon and logo ✅.

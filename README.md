@@ -1,3 +1,5 @@
+<p align="center"><img src="resources/logo.svg" width="96" alt="Dugout logo"></p>
+
 # Dugout
 
 One desktop app for running and supervising Claude Code sessions across all your projects:
@@ -18,6 +20,7 @@ npm run dev
 
 - `npm run dev` — run with hot reload
 - `npm run check` — typecheck, lint, format check, unit tests
+- `npm run icons` — regenerate `resources/icon.png` and `icon.icns` from the SVGs
 - `npm run test:e2e` — end-to-end tests against the built app
 - `npm run build` — production build
 

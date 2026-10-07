@@ -1,0 +1,10 @@
+<!-- The app icon simplified for 32 px and below: heavier strokes, two session dots. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <g transform="translate(100 100) scale(8.24)">
+    <rect width="100" height="100" rx="22" fill="#0f3d2e"/>
+    <rect x="15" y="20" width="70" height="62" rx="10" fill="none" stroke="#f4f1ea" stroke-width="6"/>
+    <path d="M15 37 V30 A10 10 0 0 1 25 20 H75 A10 10 0 0 1 85 30 V37 Z" fill="#f4f1ea"/>
+    <circle cx="38" cy="59" r="7.5" fill="#4ec27a"/>
+    <circle cx="62" cy="59" r="7.5" fill="#f59e0b"/>
+  </g>
+</svg>
