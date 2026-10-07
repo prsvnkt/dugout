@@ -1,0 +1,26 @@
+# Packages the electron-vite build in out/ into a macOS app: `npm run dist`.
+appId: com.dugout.app
+productName: Dugout
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+# node-pty's native module and spawn-helper must run from real files, not from inside app.asar.
+asarUnpack:
+  - node_modules/node-pty/**
+mac:
+  target:
+    - target: dmg
+      arch: arm64
+    - target: zip
+      arch: arm64
+  icon: resources/icon.icns
+  category: public.app-category.developer-tools
+  # No Developer ID yet: ad-hoc sign so the app runs on Apple Silicon.
+  identity: '-'
+  # Hardened runtime needs a real Developer ID and entitlements; off until we notarize.
+  hardenedRuntime: false
+dmg:
+  title: Dugout

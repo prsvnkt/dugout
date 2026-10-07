@@ -71,8 +71,12 @@ function broadcast(channel: string, ...args: unknown[]): void {
 }
 const WORKTREE_ID_BYTES = 3
 
-// Lets tests (and parallel dev instances) use an isolated data folder.
-const userDataOverride = process.env.DUGOUT_USER_DATA_DIR
+// Lets tests (and parallel dev instances) use an isolated data folder. Unpackaged runs default
+// to "Dugout Dev" so `npm run dev` never shares projects or the hook socket with the installed app.
+const DEV_DATA_FOLDER = 'Dugout Dev'
+const userDataOverride =
+  process.env.DUGOUT_USER_DATA_DIR ??
+  (app.isPackaged ? undefined : join(app.getPath('appData'), DEV_DATA_FOLDER))
 if (userDataOverride) app.setPath('userData', userDataOverride)
 
 let agentHooks: AgentHooks | null = null
