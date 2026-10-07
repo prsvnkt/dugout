@@ -48,8 +48,6 @@
 
 .tab[data-selected='true'] {
   background: var(--bg-panel);
-  /* The project's colour marks its tab; the rest of the window stays field green. */
-  box-shadow: inset 0 2px 0 var(--project-color);
   color: var(--text-primary);
 }
 

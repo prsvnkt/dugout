@@ -335,7 +335,8 @@ bar, rail, status bar, buttons, focus, panes) is that project's colour, as in de
 projects stay clearly apart.
 
 The traffic lights (`trafficLightPosition`), tabs, "+" and the title bar's end items share the
-tab row's centre line (`--tab-height`).
+tab row's centre line (`--tab-height`). The selected tab is marked Chrome-style: a white card that
+merges into the window, with a bold name and the project's colour dot; no accent line.
 
 ## 029 — Projects are named after their folder; colours are random; tabs close with × (2026-10-07)
 

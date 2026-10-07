@@ -76,7 +76,8 @@
   --titlebar-height: 40px;
   /* Tabs, the "+" and the traffic lights (window.ts) share this row's centre line. */
   --tab-height: 31px;
-  --titlebar-inset: 80px;
+  /* Clears the traffic lights (x 18 in window.ts, ~52px wide) with a gap before the first tab. */
+  --titlebar-inset: 92px;
   --rail-width: 48px;
   --pane-header-height: 38px;
   --statusbar-height: 26px;
