@@ -64,5 +64,7 @@ export const IpcChannel = {
   agentConfigRead: 'agent-config:read',
   agentConfigSaveMcp: 'agent-config:save-mcp',
   agentConfigLinkInstructions: 'agent-config:link-instructions',
+  welcomeFindRepos: 'welcome:find-repos',
+  welcomeCheckAgents: 'welcome:check-agents',
   appCommand: 'app:command',
 } as const

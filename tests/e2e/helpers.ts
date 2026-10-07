@@ -35,7 +35,13 @@ export async function launchApp(
   const packagedApp = process.env.DUGOUT_E2E_EXECUTABLE
   return electron.launch({
     ...(packagedApp ? { executablePath: packagedApp, args: [] } : { args: ['.'] }),
-    env: { ...process.env, DUGOUT_USER_DATA_DIR: userDataDir, ...extraEnv },
+    env: {
+      ...process.env,
+      DUGOUT_USER_DATA_DIR: userDataDir,
+      // The welcome screen searches the home folder for repos; never the real one in tests.
+      DUGOUT_HOME_DIR: makeTempDir('dugout-home-'),
+      ...extraEnv,
+    },
   })
 }
 

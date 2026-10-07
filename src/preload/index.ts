@@ -110,6 +110,10 @@ const api: DugoutApi = {
     load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),
     save: (snapshot) => ipcRenderer.invoke(IpcChannel.workspaceSave, snapshot),
   },
+  welcome: {
+    findRepos: (scope) => ipcRenderer.invoke(IpcChannel.welcomeFindRepos, scope),
+    checkAgents: () => ipcRenderer.invoke(IpcChannel.welcomeCheckAgents),
+  },
   dialog: {
     pickFolder: () => ipcRenderer.invoke(IpcChannel.dialogPickFolder),
   },

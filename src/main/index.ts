@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, shell } from 'electron'
 import type { AppCommand } from '@shared/commands'
@@ -18,6 +19,7 @@ import { registerWorkspaceIpc } from './ipc/registerWorkspaceIpc'
 import { registerPullRequestIpc } from './ipc/registerPullRequestIpc'
 import { registerTaskIpc } from './ipc/registerTaskIpc'
 import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
+import { registerWelcomeIpc } from './ipc/registerWelcomeIpc'
 import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
 import { GitService } from './services/git/GitService'
@@ -33,7 +35,12 @@ import { FileService } from './services/files/FileService'
 import { resolveRepoRoot } from './services/git/resolveRepoRoot'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
-import { TerminalManager } from './services/terminal/TerminalManager'
+import {
+  DEFAULT_CLAUDE_COMMAND,
+  DEFAULT_CODEX_COMMAND,
+  TerminalManager,
+} from './services/terminal/TerminalManager'
+import { loginShellRunner } from './services/welcome/checkAgentClis'
 import { SettingsStore } from './services/settings/SettingsStore'
 import { registerSettingsIpc } from './ipc/registerSettingsIpc'
 import { GitHubIssues } from './services/tasks/GitHubIssues'
@@ -300,6 +307,16 @@ async function start(): Promise<void> {
   const settings = new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) })
   registerCloneIpc(git, settings)
   registerSettingsIpc(settings)
+  registerWelcomeIpc({
+    settings,
+    // Tests point this at a temp folder so they never search the real home folder.
+    homeDir: process.env.DUGOUT_HOME_DIR ?? homedir(),
+    runInLoginShell: loginShellRunner(process.env),
+    agentCommands: {
+      claude: process.env.DUGOUT_CLAUDE_COMMAND ?? DEFAULT_CLAUDE_COMMAND,
+      codex: process.env.DUGOUT_CODEX_COMMAND ?? DEFAULT_CODEX_COMMAND,
+    },
+  })
   registerWorkspaceIpc(new LayoutStore({ filePath: join(dataDir, WORKSPACE_FILE) }), projectStore)
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)

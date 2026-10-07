@@ -22,35 +22,6 @@
   min-width: 0;
 }
 
-.welcome {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  height: 100%;
-}
-
-.heading {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.hint {
-  margin: 0 0 var(--space-4);
-  color: var(--text-secondary);
-}
-
-.primary {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--project-teal);
-  border-radius: var(--radius-md);
-  background: var(--project-teal);
-  color: var(--text-on-accent);
-  font-weight: 600;
-}
-
 .error {
   position: absolute;
   right: var(--space-4);
@@ -60,16 +31,4 @@
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
   color: var(--status-error);
-}
-
-.welcomeActions {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.secondary {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--bg-panel);
 }

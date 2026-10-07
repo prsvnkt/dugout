@@ -13,25 +13,9 @@ import { useAppCommands } from '@renderer/features/workspace/useAppCommands'
 import { useHasUnsavedChanges, useEditorStore } from '@renderer/features/editor/editorStore'
 import { useWorkspacePersistence } from '@renderer/features/workspace/useWorkspacePersistence'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
+import { WelcomeScreen } from '@renderer/features/welcome/WelcomeScreen'
 import { dugout } from '@renderer/lib/dugout'
 import styles from './App.module.css'
-
-function Welcome({ onAddProject, onClone }: { onAddProject(): void; onClone(): void }) {
-  return (
-    <div className={styles.welcome}>
-      <h1 className={styles.heading}>Add your first project</h1>
-      <p className={styles.hint}>A project is a git repository you run agents in.</p>
-      <div className={styles.welcomeActions}>
-        <button className={styles.primary} onClick={onAddProject}>
-          Add project…
-        </button>
-        <button className={styles.secondary} onClick={onClone}>
-          Clone repository…
-        </button>
-      </div>
-    </div>
-  )
-}
 
 export function App() {
   const { projects, selectedId, isLoaded, loadError, load } = useProjectsStore()
@@ -88,7 +72,7 @@ export function App() {
       <div className={styles.body}>
         <main className={styles.main}>
           {projects.length === 0 ? (
-            <Welcome onAddProject={addProject} onClone={openClone} />
+            <WelcomeScreen onAddProject={addProject} onClone={openClone} />
           ) : (
             projects.map((project) => (
               <ProjectWorkspace

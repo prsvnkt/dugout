@@ -23,6 +23,7 @@ import type { AppSettings } from './settings'
 import type { AgentKind, TerminalExit, TerminalId } from './terminal'
 import type { Task, TaskDetail } from './tasks'
 import type { TaskSession } from './taskSession'
+import type { AgentCliCheck, LocalRepo, RepoSearchScope } from './welcome'
 import type { GitCheckout, Worktree } from './worktree'
 
 export type Unsubscribe = () => void
@@ -168,6 +169,11 @@ export interface DugoutApi {
   readonly workspace: {
     load(): Promise<Result<WorkspaceSnapshot>>
     save(snapshot: WorkspaceSnapshot): Promise<Result<void>>
+  }
+  /** What the first-run screen offers: repos on this Mac and whether the agent CLIs exist. */
+  readonly welcome: {
+    findRepos(scope: RepoSearchScope): Promise<Result<readonly LocalRepo[]>>
+    checkAgents(): Promise<Result<AgentCliCheck>>
   }
   readonly dialog: {
     /** Resolves to the chosen absolute folder path, or null if cancelled. */

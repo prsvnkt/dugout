@@ -45,8 +45,8 @@ interface ManagedTerminal {
   readonly detail: string | null
 }
 
-const DEFAULT_CLAUDE_COMMAND = 'claude'
-const DEFAULT_CODEX_COMMAND = 'codex'
+export const DEFAULT_CLAUDE_COMMAND = 'claude'
+export const DEFAULT_CODEX_COMMAND = 'codex'
 const CONVERSATION_STATUSES: ReadonlySet<AgentStatus> = new Set(['working', 'needs-input', 'done'])
 
 const SIGNAL_STATUS: Readonly<Record<HookSignal, AgentStatus>> = {

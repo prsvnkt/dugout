@@ -294,6 +294,30 @@ only a code name. Repos stay "projects": a dugout full of agents working on many
 **Not done (yet).** ⌘T still opens Claude rather than the default agent, and the prompt box has no
 worktree toggle.
 
+## 027 — A welcome screen for first launch (2026-10-07)
+
+**Context.** With no projects, the app showed one heading and two buttons on an empty window.
+New users had to know where their repos were, and found out only later whether the agent CLIs
+were installed or what GitHub sign-in unlocks.
+
+**Decision.** With no projects, `features/welcome/WelcomeScreen.tsx` shows, in the start screen's
+style:
+
+- **Add project… / Clone repository…** as before, plus three steps on how Dugout works.
+- **On this Mac:** git repos in the usual code folders (`~/Developer`, `~/code`, `~/Projects`,
+  … and the remembered clone folder), at most two levels down, most recently changed first.
+  One click adds a repo as a project. Documents and Desktop are searched only when the user
+  clicks "Also look in Documents and Desktop", because reading them shows a macOS permission
+  prompt. Searching never starts from the home folder itself, which holds those folders.
+- **GitHub:** signed out, a card explaining what sign-in unlocks (one-click clone, tasks from
+  issues, PR and CI status). Signed in, the five most recently pushed repos, each cloned into
+  the remembered folder and added in one click.
+- **Agents:** whether `claude` and `codex` are on the PATH of the user's interactive login
+  shell (`command -v`, the same way terminals launch them), with the install command when
+  one is missing.
+
+The search and the check live in `services/welcome/` behind the read-only `welcome` IPC domain.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -308,4 +332,5 @@ worktree toggle.
 6. **Done since:** agent settings (`.mcp.json` editor, AGENTS.md as shared instructions) ✅.
 7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅, Seti
    file icons ✅, VS Code-style Source Control ✅, branch picker ✅, app icon and logo ✅.
-8. **Done since:** start screen with a default agent and resumable sessions ✅.
+8. **Done since:** start screen with a default agent and resumable sessions ✅, welcome screen
+   with local and GitHub repos and an agent CLI check ✅.
