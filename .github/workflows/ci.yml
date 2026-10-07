@@ -16,6 +16,9 @@ jobs:
   check:
     runs-on: macos-latest
     timeout-minutes: 30
+    env:
+      # Bundling Monaco needs more than Node's default heap on the runner.
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
