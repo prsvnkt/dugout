@@ -26,6 +26,19 @@ function makeProject(withCommit = true): Project {
   return { id: 'proj-1', name: 'app', rootPath, color: 'teal', createdAt: '2026-10-05T00:00:00Z' }
 }
 
+function commitIn(cwd: string, message: string): void {
+  execFileSync('git', ['commit', '-q', '--allow-empty', '-m', message], { cwd, env: ENV })
+}
+
+function branches(project: Project): string[] {
+  return execFileSync('git', ['branch', '--format=%(refname:short)'], {
+    cwd: project.rootPath,
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter(Boolean)
+}
+
 describe('WorktreeManager', () => {
   let manager: WorktreeManager
   let baseDir: string
@@ -88,6 +101,25 @@ describe('WorktreeManager', () => {
     expect(await manager.list(project)).toEqual([])
     await expect(manager.remove(project, project.rootPath)).rejects.toThrow('not a worktree')
   })
+
+  test('deletes the session branch on remove when it has no unmerged work', async () => {
+    const project = makeProject()
+    const worktree = await manager.create(project)
+
+    await manager.remove(project, worktree.path)
+
+    expect(branches(project)).toEqual(['main'])
+  })
+
+  test('keeps the session branch on remove when it has commits not in the checkout', async () => {
+    const project = makeProject()
+    const worktree = await manager.create(project)
+    commitIn(worktree.path, 'feat: agent work')
+
+    await manager.remove(project, worktree.path)
+
+    expect(branches(project)).toEqual(['dugout/s1', 'main'])
+  })
 })
 
 describe('WorktreeManager named worktrees', () => {
@@ -119,7 +151,8 @@ describe('WorktreeManager leftover branches', () => {
     })
     const project = makeProject()
     const first = await manager.create(project, { name: '7-task' })
-    await manager.remove(project, first.path) // the branch dugout/7-task stays
+    commitIn(first.path, 'feat: work only on the session branch')
+    await manager.remove(project, first.path) // unmerged work, so dugout/7-task stays
 
     const again = await manager.create(project, { name: '7-task' })
 

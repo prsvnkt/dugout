@@ -38,6 +38,7 @@ export function BranchPicker({ checkout, currentBranch, children }: BranchPicker
   const [mode, setMode] = useState<PickerMode>(SWITCH_MODE)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [armedId, setArmedId] = useState<string | null>(null)
+  const [showSessions, setShowSessions] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const list = useBranches(checkout, isOpen)
   const busyAgents = useBusyAgents(checkout)
@@ -50,12 +51,14 @@ export function BranchPicker({ checkout, currentBranch, children }: BranchPicker
     setQuery('')
     setMode(SWITCH_MODE)
     setArmedId(null)
+    setShowSessions(false)
   }, [])
   useDismiss(wrapRef, isOpen, close)
 
   const sections = useMemo(
-    () => (list.state === 'loaded' ? pickerSections(list.branches, query, mode) : []),
-    [list, query, mode],
+    () =>
+      list.state === 'loaded' ? pickerSections(list.branches, query, mode, { showSessions }) : [],
+    [list, query, mode, showSessions],
   )
   const enabled = sections.flatMap((section) => section.items).filter(isEnabled)
   // By default Enter picks the best branch match (the most recent other branch when the search
@@ -72,6 +75,10 @@ export function BranchPicker({ checkout, currentBranch, children }: BranchPicker
     if (!isEnabled(item)) return
     if (busyAgents > 0 && changesFiles(item) && armedId !== item.id) {
       setArmedId(item.id)
+      return
+    }
+    if (item.kind === 'sessions') {
+      setShowSessions(!item.isExpanded)
       return
     }
     if (item.kind === 'createFrom') {

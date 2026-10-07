@@ -86,6 +86,22 @@ test('switches branches by searching, and creates new ones', async () => {
   expect(git(repo, 'log', '-1', '--format=%s').trim()).toBe('feat: only on main')
 })
 
+test('agent session branches are grouped last, behind a toggle', async () => {
+  const repo = makeRepo()
+  git(repo, 'branch', 'dugout/a1b2c3')
+  git(repo, 'branch', 'dugout/d4e5f6')
+  await addProject(repo)
+
+  await openPicker()
+  await expect(picker().getByRole('option', { name: /dugout\/a1b2c3/ })).toHaveCount(0)
+  await picker().getByRole('option', { name: '2 agent session branches' }).click()
+
+  await expect(picker().getByRole('option', { name: /dugout\/a1b2c3/ })).toBeVisible()
+  await expect(picker().getByRole('group', { name: 'Agent sessions' })).toContainText(
+    'dugout/d4e5f6',
+  )
+})
+
 test('Escape closes the picker without changing branch', async () => {
   await addProject(makeRepo())
 

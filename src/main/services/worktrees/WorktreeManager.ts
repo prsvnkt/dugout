@@ -1,7 +1,7 @@
 import { mkdirSync, realpathSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import type { Project } from '@shared/project'
-import type { Worktree } from '@shared/worktree'
+import { SESSION_BRANCH_PREFIX, type Worktree } from '@shared/worktree'
 import type { GitService } from '../git/GitService'
 
 export interface WorktreeManagerDeps {
@@ -10,8 +10,6 @@ export interface WorktreeManagerDeps {
   readonly baseDir: string
   readonly createId: () => string
 }
-
-const BRANCH_PREFIX = 'dugout/'
 
 /**
  * Creates and removes the git worktrees that isolate agent sessions. It only ever touches
@@ -41,15 +39,22 @@ export class WorktreeManager {
 
     const name = await this.availableName(project, options.name)
     const path = join(this.projectDir(project), name)
-    const branch = `${BRANCH_PREFIX}${name}`
+    const branch = `${SESSION_BRANCH_PREFIX}${name}`
     mkdirSync(this.projectDir(project), { recursive: true })
     await this.deps.git.addWorktree(project.rootPath, path, branch)
     return { path, branch, name }
   }
 
+  /**
+   * Removes the worktree, then its session branch unless that has work the main checkout does
+   * not (`git branch -d`, never -D), so finished sessions don't pile up as branches.
+   */
   async remove(project: Project, path: string): Promise<void> {
-    await this.assertManaged(project, path)
+    const worktree = await this.assertManaged(project, path)
     await this.deps.git.removeWorktree(project.rootPath, path)
+    if (worktree.branch?.startsWith(SESSION_BRANCH_PREFIX)) {
+      await this.deps.git.deleteBranchIfMerged(project.rootPath, worktree.branch)
+    }
   }
 
   /** The folder git should run in: the main checkout, or a validated managed worktree. */
@@ -65,15 +70,14 @@ export class WorktreeManager {
     // A removed worktree leaves its branch behind; that name is taken too.
     const isFree =
       !taken.has(wanted) &&
-      !(await this.deps.git.branchExists(project.rootPath, `${BRANCH_PREFIX}${wanted}`))
+      !(await this.deps.git.branchExists(project.rootPath, `${SESSION_BRANCH_PREFIX}${wanted}`))
     return isFree ? wanted : `${wanted}-${this.deps.createId()}`
   }
 
-  private async assertManaged(project: Project, path: string): Promise<void> {
-    const managed = await this.list(project)
-    if (!managed.some((worktree) => worktree.path === path)) {
-      throw new Error('That folder is not a worktree of this project.')
-    }
+  private async assertManaged(project: Project, path: string): Promise<Worktree> {
+    const worktree = (await this.list(project)).find((candidate) => candidate.path === path)
+    if (!worktree) throw new Error('That folder is not a worktree of this project.')
+    return worktree
   }
 
   private projectDir(project: Project): string {

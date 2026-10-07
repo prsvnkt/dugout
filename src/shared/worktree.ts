@@ -1,4 +1,7 @@
 /** A git worktree Dugout created for a project, used to isolate one agent session. */
+/** Branches Dugout creates for worktree sessions, e.g. `dugout/42-fix-login`. */
+export const SESSION_BRANCH_PREFIX = 'dugout/'
+
 export interface Worktree {
   /** Absolute path of the worktree checkout. */
   readonly path: string

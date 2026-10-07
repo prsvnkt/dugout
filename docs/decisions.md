@@ -255,6 +255,9 @@ their files mid-task. So when an agent in that checkout is starting, working or 
 you, the picker says so, offers a worktree session instead, and asks for a second Enter/click
 before anything that changes files. Branches checked out in another worktree are shown but
 cannot be picked (git refuses). Detached checkouts and tags are left out; fetching is a follow-up.
+Worktree sessions' own `dugout/*` branches are grouped last under a collapsed "Agent sessions"
+row (searching shows matches), and removing a session now deletes its branch with `git branch -d`
+when it has no work the main checkout lacks, so finished sessions stop piling up as branches.
 Every command goes through `GitService` (decision 009), which only switches to branches that
 exist and validates new names with `git check-ref-format`.
 

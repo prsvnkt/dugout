@@ -34,6 +34,15 @@ function Content({ item }: { item: PickerItem }) {
           <span className={styles.detail}>An agent on its own branch; this checkout stays put</span>
         </>
       )
+    case 'sessions':
+      return (
+        <span className={styles.title}>
+          <span className={styles.glyph}>{item.isExpanded ? '▾' : '▸'}</span>
+          {item.isExpanded
+            ? 'Hide agent session branches'
+            : `${item.count} agent session ${item.count === 1 ? 'branch' : 'branches'}`}
+        </span>
+      )
     case 'branch': {
       const { branch } = item
       const { commit } = branch

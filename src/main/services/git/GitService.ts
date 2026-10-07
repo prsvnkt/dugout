@@ -26,6 +26,8 @@ const CLONE_TIMEOUT_MS = 30 * 60_000
 const CHECK_IGNORE_OK = [0, 1]
 const MISSING_AT_REVISION =
   /does not exist|exists on disk, but not in|invalid object name|bad revision|not in the index/i
+/** `git branch -d` exits 1 when the branch has unmerged work (it is then kept). */
+const BRANCH_DELETE_OK = [0, 1]
 /** `git check-ref-format` exits 1 for an invalid name. */
 const CHECK_REF_FORMAT_OK = [0, 1]
 /** `git symbolic-ref --quiet` exits 1 when the ref does not exist. */
@@ -322,6 +324,16 @@ export class GitService {
 
   async addWorktree(root: string, path: string, branch: string): Promise<void> {
     await this.run(root, ['worktree', 'add', '--quiet', '-b', branch, path, 'HEAD'])
+  }
+
+  /**
+   * Deletes a branch only if git considers it merged (`branch -d`); a branch with work found
+   * nowhere else is kept. Resolves whether it was deleted.
+   */
+  async deleteBranchIfMerged(root: string, branch: string): Promise<boolean> {
+    if (branch.startsWith('-')) throw new GitError(`"${branch}" is not a valid branch name.`)
+    await this.run(root, ['branch', '--delete', branch], { okExitCodes: BRANCH_DELETE_OK })
+    return !(await this.branchExists(root, branch))
   }
 
   /** Fails (with git's explanation) if the worktree has uncommitted work. */
