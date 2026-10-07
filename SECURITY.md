@@ -28,4 +28,5 @@ Especially relevant:
 - Anything that lets one terminal's agent act on another project through the MCP server or the
   hook socket.
 
-Vulnerabilities in Claude Code itself should go to Anthropic, not here.
+Vulnerabilities in an agent CLI itself (Claude Code, Codex, …) should go to that agent's vendor,
+not here.

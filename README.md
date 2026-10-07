@@ -2,14 +2,19 @@
 
 # Dugout
 
-One desktop app for running and supervising Claude Code sessions across all your projects:
-coloured projects, multiple real terminals per window, and a git panel for reviewing what the
-agents changed.
+One desktop app for running and supervising coding agents across all your projects: coloured
+projects, multiple real terminals per window, and a git panel for reviewing what the agents
+changed.
+
+Dugout runs each agent's own CLI in a real terminal, so any terminal-based agent works in a
+shell pane. Claude Code and Codex are integrated today (live status, notifications, resumable
+sessions, task tools); more agents will get the same support one by one.
 
 ## Getting started
 
-Requires macOS, Node 22+ and the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code)
-on your shell's PATH.
+Requires macOS and Node 22+, plus the CLI of each agent you want to run on your shell's PATH,
+for example [Claude Code](https://docs.claude.com/en/docs/claude-code) or
+[Codex](https://github.com/openai/codex).
 
 ```sh
 npm install

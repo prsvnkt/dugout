@@ -5,8 +5,8 @@ Thanks for your interest! Dugout is a small project, so the process is light.
 ## Before you start
 
 - **Bugs:** open an issue with steps to reproduce, your macOS version and Dugout version.
-- **Features:** open an issue to discuss it first. Dugout deliberately wraps the real Claude Code
-  CLI rather than reinventing it, and keeps git to review (not a full git client). See the
+- **Features:** open an issue to discuss it first. Dugout deliberately wraps each agent's real CLI
+  (Claude Code, Codex, …) rather than reinventing it, and keeps git to review (not a full git client). See the
   product principles in [.claude/CLAUDE.md](.claude/CLAUDE.md) and the decisions in
   [docs/decisions.md](docs/decisions.md).
 - **Security issues:** do not open a public issue. See [SECURITY.md](SECURITY.md).
