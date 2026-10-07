@@ -1,7 +1,7 @@
 {
   "name": "dugout",
   "productName": "Dugout",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A desktop workspace for running and supervising coding agents across projects.",
   "license": "MIT",
   "author": "Prasanna Venkatesan",
