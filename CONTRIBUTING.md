@@ -48,11 +48,29 @@ npm run test:e2e   # build, then drive the real app with Playwright
 
 ## Releasing (maintainers)
 
-1. Bump `version` in `package.json` on `main` (e.g. `npm version minor --no-git-tag-version`),
-   commit and push.
-2. Tag that commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
-3. The Release workflow builds the app and creates a draft release with the DMG and zip. Edit
-   the generated notes, then publish it.
+Versions follow [semantic versioning](https://semver.org): `patch` for fixes, `minor` for new
+features, `major` for breaking changes.
+
+1. Bump the version in a pull request, and merge it once CI passes:
+
+   ```sh
+   git checkout -b chore/release-0.2.0
+   npm version minor --no-git-tag-version   # updates package.json and package-lock.json
+   git commit -am "chore: release 0.2.0"
+   git push -u origin chore/release-0.2.0
+   gh pr create --fill
+   ```
+
+2. Tag the merged commit on `main` and push the tag (tags are not branch-protected):
+
+   ```sh
+   git checkout main && git pull
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+3. The Release workflow checks that the tag matches `package.json`, builds the app, and creates a
+   draft release with the DMG and zip. Review the generated notes, then publish it.
 
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE)
 and that you will follow the [Code of Conduct](CODE_OF_CONDUCT.md).
