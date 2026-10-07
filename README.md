@@ -43,3 +43,7 @@ shows as "Dugout Dev" in the Dock.
 
 See [docs/decisions.md](docs/decisions.md) for design decisions and the roadmap, and
 [.claude/CLAUDE.md](.claude/CLAUDE.md) for the codebase guide.
+
+## License
+
+[MIT](LICENSE)
