@@ -237,9 +237,8 @@ panel is "Review": a segmented checkout picker (a select beyond three checkouts)
 box pinned to the bottom. xterm and Monaco use matching light themes; set Claude Code itself to a
 light theme with `/theme` so its TUI colours read on the light background.
 
-Next: per-file `+N −M` diff stats in Review (needs `git diff --numstat` in `GitService`). A prompt
-dock that types into the focused pane was designed too but waits for a separate decision, since it
-edges towards a custom chat input (principle: wrap Claude Code, never reinvent it).
+Next: per-file `+N −M` diff stats in Review (needs `git diff --numstat` in `GitService`). A
+prompt dock that types into the focused pane was considered and dropped: the terminal is the input.
 
 ## Roadmap
 
