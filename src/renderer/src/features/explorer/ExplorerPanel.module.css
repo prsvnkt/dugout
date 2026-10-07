@@ -103,10 +103,25 @@
 }
 
 .chevron {
+  display: grid;
   flex-shrink: 0;
-  width: 12px;
-  color: var(--text-faint);
-  font-size: 10px;
+  place-items: center;
+  width: 14px;
+  color: var(--text-muted);
+}
+
+.chevron svg {
+  transition: transform 120ms ease;
+}
+
+.row[aria-expanded='true'] .chevron svg {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron svg {
+    transition: none;
+  }
 }
 
 .icon {

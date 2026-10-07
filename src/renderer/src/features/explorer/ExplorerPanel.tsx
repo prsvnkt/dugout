@@ -13,6 +13,22 @@ import styles from './ExplorerPanel.module.css'
 const INDENT_PX = 12
 const ROW_INSET_PX = 6
 
+/** Points right; CSS turns it down when its folder is expanded. */
+function Chevron() {
+  return (
+    <svg viewBox="0 0 16 16" width="12" height="12">
+      <path
+        d="M6 4l4 4-4 4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 interface GitMarks {
   readonly files: ReadonlyMap<string, GitChangeKind>
   readonly dirs: ReadonlySet<string>
@@ -80,7 +96,7 @@ function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
           }
         >
           <span className={styles.chevron} aria-hidden>
-            {entry.kind === 'dir' ? (isExpanded ? '▾' : '▸') : ''}
+            {entry.kind === 'dir' && <Chevron />}
           </span>
           {entry.kind === 'file' && (
             <span className={styles.icon} style={{ color: icon.color }} aria-hidden>
