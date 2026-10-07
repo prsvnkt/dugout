@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
-  chooseNewPaneAction,
+  chooseNewAgentAction,
   launchApp,
   makeFakeClaude,
   makeTempDir,
@@ -62,7 +62,7 @@ test('a worktree session isolates an agent and can be reviewed and removed', asy
   await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
 
   // Act: start a worktree session
-  await chooseNewPaneAction(workspace(), 'New worktree session')
+  await chooseNewAgentAction(workspace(), 'New Claude agent in worktree')
 
   // Assert: the pane runs on its own dugout/* branch in a separate checkout
   await expect(workspace().getByRole('region', { name: /terminal$/ })).toContainText('⎇ dugout/')

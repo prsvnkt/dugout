@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
-  chooseNewPaneAction,
+  chooseNewAgentAction,
   clickMenuItem,
   launchApp,
   makeFakeCodex,
@@ -69,12 +69,12 @@ test('edits .mcp.json servers that Codex panes then receive', async () => {
 
   // A new Codex pane gets the project's server next to Dugout's own
   const output = await recordTerminalOutput(page)
-  await clickMenuItem(app, 'File', 'New Codex Pane')
+  await clickMenuItem(app, 'File', 'New Codex Agent')
   await expect.poll(output).toContain('mcp=dugout,docs')
 })
 
 test('makes AGENTS.md the shared instructions', async () => {
-  await chooseNewPaneAction(page, 'Agent settings')
+  await chooseNewAgentAction(page, 'Agent settings')
   await settings().getByRole('button', { name: 'Make AGENTS.md the source' }).click()
 
   await expect(settings()).toContainText('CLAUDE.md imports AGENTS.md')

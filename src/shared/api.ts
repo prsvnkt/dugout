@@ -11,6 +11,7 @@ import type {
   ProjectAddRequest,
   ProjectUpdateRequest,
   CloneRequest,
+  SettingsUpdateRequest,
   TaskCreateRequest,
   TaskUpdateRequest,
   TerminalCreateRequest,
@@ -18,6 +19,7 @@ import type {
 } from './ipc/contract'
 import type { Project, ProjectId } from './project'
 import type { Result } from './result'
+import type { AppSettings } from './settings'
 import type { AgentKind, TerminalExit, TerminalId } from './terminal'
 import type { Task, TaskDetail } from './tasks'
 import type { TaskSession } from './taskSession'
@@ -124,6 +126,11 @@ export interface DugoutApi {
     start(request: CloneRequest): Promise<Result<string>>
     cancel(): void
     onProgress(listener: (progress: CloneProgress) => void): Unsubscribe
+  }
+  /** App preferences, such as the default agent. */
+  readonly settings: {
+    get(): Promise<Result<AppSettings>>
+    update(change: SettingsUpdateRequest): Promise<Result<AppSettings>>
   }
   /** A project's tasks: the GitHub Issues of its origin repository. */
   readonly tasks: {

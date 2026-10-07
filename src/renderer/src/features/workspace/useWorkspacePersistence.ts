@@ -18,7 +18,8 @@ export function useWorkspacePersistence(areProjectsLoaded: boolean): void {
     const saveSoon = () => {
       window.clearTimeout(timer)
       timer = window.setTimeout(() => {
-        const snapshot = toSnapshot(useWorkspaceStore.getState().layouts)
+        const { layouts, recentSessions } = useWorkspaceStore.getState()
+        const snapshot = toSnapshot(layouts, recentSessions)
         void dugout.workspace.save(snapshot).then((result) => {
           if (!result.ok) console.error('[workspace] could not save layout:', result.error)
         })
@@ -30,7 +31,9 @@ export function useWorkspacePersistence(areProjectsLoaded: boolean): void {
       if (result.ok) useWorkspaceStore.getState().hydrate(result.data)
       else console.error('[workspace] could not restore layout:', result.error)
       unsubscribe = useWorkspaceStore.subscribe((state, previous) => {
-        if (state.layouts !== previous.layouts) saveSoon()
+        const hasChanged =
+          state.layouts !== previous.layouts || state.recentSessions !== previous.recentSessions
+        if (hasChanged) saveSoon()
       })
     })
 

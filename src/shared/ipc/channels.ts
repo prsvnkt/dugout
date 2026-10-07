@@ -51,6 +51,8 @@ export const IpcChannel = {
   cloneStart: 'clone:start',
   cloneCancel: 'clone:cancel',
   cloneProgress: 'clone:progress',
+  settingsGet: 'settings:get',
+  settingsUpdate: 'settings:update',
   tasksList: 'tasks:list',
   tasksGet: 'tasks:get',
   tasksCreate: 'tasks:create',

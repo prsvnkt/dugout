@@ -10,6 +10,7 @@ import { useProjectTabs } from '@renderer/features/editor/editorStore'
 import { ExplorerPanel } from '@renderer/features/explorer/ExplorerPanel'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { WorktreeError } from '@renderer/features/worktrees/WorktreeError'
+import { StartScreen } from '@renderer/features/start/StartScreen'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { ActivityRail } from './ActivityRail'
 import { SidePanel } from './SidePanel'
@@ -33,22 +34,6 @@ const MIN_EDITOR_PX = 120
 const MIN_TERMINALS_PX = 120
 const DEFAULT_EDITOR_SIZE = '60%'
 
-function EmptyWorkspace({ onAdd }: { onAdd(kind: TerminalKind): void }) {
-  return (
-    <div className={styles.empty}>
-      <p className={styles.hint}>No terminals yet.</p>
-      <div className={styles.emptyActions}>
-        <button className={styles.primary} onClick={() => onAdd('claude')}>
-          New Claude pane <kbd>⌘T</kbd>
-        </button>
-        <button className={styles.secondary} onClick={() => onAdd('shell')}>
-          New shell <kbd>⇧⌘T</kbd>
-        </button>
-      </div>
-    </div>
-  )
-}
-
 interface TerminalsAreaProps {
   readonly project: Project
   readonly isActive: boolean
@@ -66,7 +51,9 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
   const clearInitialPrompt = useWorkspaceStore((state) => state.clearInitialPrompt)
   const accent = projectColorVar(project.color)
 
-  if (layout.panes.length === 0) return <EmptyWorkspace onAdd={onAdd} />
+  if (layout.panes.length === 0) {
+    return <StartScreen project={project} isActive={isActive} onAdd={onAdd} />
+  }
   return (
     <Group orientation="horizontal" className={styles.panes}>
       {layout.panes.map((pane, index) => (

@@ -214,7 +214,7 @@ export async function openAddProjectFromTabs(page: Page): Promise<void> {
 }
 
 /** Picks an action (e.g. "New shell") from the activity rail's "+" menu. */
-export async function chooseNewPaneAction(scope: Page | Locator, action: string): Promise<void> {
-  await scope.getByRole('button', { name: 'New pane' }).click()
+export async function chooseNewAgentAction(scope: Page | Locator, action: string): Promise<void> {
+  await scope.getByRole('button', { name: 'New agent' }).click()
   await scope.getByRole('menuitem', { name: action }).click()
 }

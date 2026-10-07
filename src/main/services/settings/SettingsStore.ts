@@ -1,11 +1,14 @@
 import { readFile } from 'node:fs/promises'
 import { z } from 'zod'
+import { AGENT_KINDS } from '@shared/terminal'
 import { writeFileAtomic } from '../projects/atomicWrite'
 
 const settingsSchema = z.object({
   version: z.literal(1),
   /** Folder new clones go into, remembered from the last clone. */
   cloneParentDir: z.string().min(1).optional(),
+  /** The agent the start screen's prompt box sends work to. */
+  defaultAgent: z.enum(AGENT_KINDS).optional(),
 })
 
 export type Settings = z.infer<typeof settingsSchema>
