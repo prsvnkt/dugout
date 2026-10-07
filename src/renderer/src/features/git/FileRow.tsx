@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import type { GitChangeKind } from '@shared/git'
+import type { GitChangeKind, GitLineStats } from '@shared/git'
 import { CHANGE_LETTER, splitPath } from './changeKind'
+import { diffBar } from './diffBar'
 import styles from './GitPanel.module.css'
 
 interface FileRowProps {
   readonly path: string
   readonly kind: GitChangeKind
+  readonly stats: GitLineStats | null
   readonly isSelected: boolean
   readonly isBusy: boolean
   onSelect(): void
@@ -31,8 +33,35 @@ function useConfirm(action: (() => void) | undefined) {
   return { isArmed, trigger }
 }
 
+/** "12 added, 3 removed", for screen readers and tooltips. */
+function describeStats(stats: GitLineStats): string {
+  if (stats.kind === 'binary') return 'binary file'
+  return `${stats.additions} added, ${stats.deletions} removed`
+}
+
+/** "+12 −3" and a small green/red bar sized by how much changed. */
+function DiffStats({ stats }: { stats: GitLineStats }) {
+  const bar = diffBar(stats)
+  return (
+    <span className={styles.stats} title={describeStats(stats)} aria-hidden>
+      {stats.kind === 'binary' ? (
+        <span className={styles.binary}>bin</span>
+      ) : (
+        <span className={styles.counts}>
+          {stats.additions > 0 && <span className={styles.added}>+{stats.additions}</span>}
+          {stats.deletions > 0 && <span className={styles.removed}>−{stats.deletions}</span>}
+        </span>
+      )}
+      <span className={styles.bar}>
+        <span className={styles.barAdded} style={{ width: bar.added }} />
+        <span className={styles.barRemoved} style={{ width: bar.removed }} />
+      </span>
+    </span>
+  )
+}
+
 export function FileRow(props: FileRowProps) {
-  const { path, kind, isSelected, isBusy, onSelect, onStage, onUnstage, onDiscard } = props
+  const { path, kind, stats, isSelected, isBusy, onSelect, onStage, onUnstage, onDiscard } = props
   const { name, dir } = splitPath(path)
   const discard = useConfirm(onDiscard)
 
@@ -42,7 +71,7 @@ export function FileRow(props: FileRowProps) {
         className={styles.fileButton}
         onClick={onSelect}
         title={path}
-        aria-label={`Open diff of ${path} (${kind})`}
+        aria-label={`Open diff of ${path} (${kind}${stats ? `, ${describeStats(stats)}` : ''})`}
       >
         <span className={styles.changeLetter} data-kind={kind} aria-hidden>
           {CHANGE_LETTER[kind]}
@@ -50,41 +79,46 @@ export function FileRow(props: FileRowProps) {
         <span className={styles.fileName}>{name}</span>
         {dir && <span className={styles.fileDir}>{dir}</span>}
       </button>
-      <span className={styles.rowActions}>
-        {onDiscard && (
-          <button
-            className={styles.rowAction}
-            data-armed={discard.isArmed}
-            onClick={discard.trigger}
-            disabled={isBusy}
-            aria-label={discard.isArmed ? `Confirm discard ${path}` : `Discard changes to ${path}`}
-            title={discard.isArmed ? 'Click again to discard' : 'Discard changes'}
-          >
-            {discard.isArmed ? 'Discard?' : '↺'}
-          </button>
-        )}
-        {onStage && (
-          <button
-            className={styles.rowAction}
-            onClick={onStage}
-            disabled={isBusy}
-            aria-label={`Stage ${path}`}
-            title="Stage"
-          >
-            +
-          </button>
-        )}
-        {onUnstage && (
-          <button
-            className={styles.rowAction}
-            onClick={onUnstage}
-            disabled={isBusy}
-            aria-label={`Unstage ${path}`}
-            title="Unstage"
-          >
-            −
-          </button>
-        )}
+      <span className={styles.rowEnd}>
+        {stats && <DiffStats stats={stats} />}
+        <span className={styles.rowActions}>
+          {onDiscard && (
+            <button
+              className={styles.rowAction}
+              data-armed={discard.isArmed}
+              onClick={discard.trigger}
+              disabled={isBusy}
+              aria-label={
+                discard.isArmed ? `Confirm discard ${path}` : `Discard changes to ${path}`
+              }
+              title={discard.isArmed ? 'Click again to discard' : 'Discard changes'}
+            >
+              {discard.isArmed ? 'Discard?' : '↺'}
+            </button>
+          )}
+          {onStage && (
+            <button
+              className={styles.rowAction}
+              onClick={onStage}
+              disabled={isBusy}
+              aria-label={`Stage ${path}`}
+              title="Stage"
+            >
+              +
+            </button>
+          )}
+          {onUnstage && (
+            <button
+              className={styles.rowAction}
+              onClick={onUnstage}
+              disabled={isBusy}
+              aria-label={`Unstage ${path}`}
+              title="Unstage"
+            >
+              −
+            </button>
+          )}
+        </span>
       </span>
     </li>
   )

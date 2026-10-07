@@ -67,3 +67,15 @@ start straight away. If a Dugout update changes the hook commands, Codex asks ag
 
 **Possible improvement:** detect a Codex pane stuck in "Starting" and show a hint about the
 review prompt.
+
+## Untracked files over the counting limits show no diff stats
+
+- **Area:** `src/main/services/git/untrackedLineStats.ts`
+- **Found:** 2026-10-07, while adding diff stats to Review
+
+**What happens:** git has no line counts for untracked files, so Dugout reads them itself on
+every status poll. To keep that cheap it counts only the first 200 untracked files and skips
+files over 1 MB and symlinks; those rows show no `+N` or bar.
+
+**Likely fix:** cache counts by path, size and mtime, and lift the limits; or count in the
+file watcher once polling is replaced (see "Change detection polls instead of watching files").

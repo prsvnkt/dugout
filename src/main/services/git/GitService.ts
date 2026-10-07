@@ -5,9 +5,11 @@ import { MAX_OPEN_FILE_BYTES, type GitRevision, type RevisionContent } from '@sh
 import type { GitChangeKind, GitStatus } from '@shared/git'
 import type { GitCredentialConfig } from '../github/gitCredentials'
 import { cloneProgressHandler } from './cloneProgressHandler'
+import { parseNumstat, withLineStats } from './lineStats'
 import { parseStatus } from './parseStatus'
 import { buildPullRequestUrl } from './pullRequestUrl'
 import { GitError, runGit, type RunGitOptions } from './runGit'
+import { untrackedLineStats } from './untrackedLineStats'
 
 type Env = Readonly<Record<string, string | undefined>>
 
@@ -52,14 +54,22 @@ export class GitService {
   }
 
   async status(root: string): Promise<GitStatus> {
-    const { stdout } = await this.run(root, [
-      'status',
-      '--porcelain=v2',
-      '--branch',
-      '-z',
-      '--untracked-files=all',
+    const [{ stdout }, { stdout: staged }, { stdout: unstaged }, baseBranch] = await Promise.all([
+      this.run(root, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all']),
+      this.run(root, ['diff', '--cached', '--numstat', '-z']),
+      this.run(root, ['diff', '--numstat', '-z']),
+      this.baseBranch(root),
     ])
-    return { ...parseStatus(stdout), baseBranch: await this.baseBranch(root) }
+    const status = parseStatus(stdout)
+    const untrackedPaths = status.files
+      .filter((file) => file.unstaged === 'untracked')
+      .map((file) => file.path)
+    const files = withLineStats(status.files, {
+      staged: parseNumstat(staged),
+      unstaged: parseNumstat(unstaged),
+      untracked: await untrackedLineStats(root, untrackedPaths),
+    })
+    return { ...status, files, baseBranch }
   }
 
   /** The page for opening a pull request from the current branch into the base branch. */

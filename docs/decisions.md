@@ -237,7 +237,9 @@ panel is "Review": a segmented checkout picker (a select beyond three checkouts)
 box pinned to the bottom. xterm and Monaco use matching light themes; set Claude Code itself to a
 light theme with `/theme` so its TUI colours read on the light background.
 
-Next: per-file `+N −M` diff stats in Review (needs `git diff --numstat` in `GitService`). A
+Review rows show per-side `+N −M` and a small green/red bar (log-scaled, so a tweak and a
+rewrite look different), from `git diff --numstat` and `--cached --numstat` run alongside
+`git status`; untracked files count as all added lines (limits in known-issues). A
 prompt dock that types into the focused pane was considered and dropped: the terminal is the input.
 
 ## Roadmap
@@ -252,4 +254,4 @@ prompt dock that types into the focused pane was considered and dropped: the ter
 5. **Done since:** tasks from GitHub Issues ✅, "needs you" inbox ✅, PR/CI status ✅,
    Codex adapter with Compare ✅.
 6. **Done since:** agent settings (`.mcp.json` editor, AGENTS.md as shared instructions) ✅.
-7. **Done since:** "Day game" light theme with activity rail ✅. Next: Review diff stats.
+7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅.

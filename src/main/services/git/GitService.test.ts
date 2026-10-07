@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -57,11 +58,63 @@ describe('GitService.status', () => {
     expect(status.branch).toBe('main')
     expect(status.files).toEqual(
       expect.arrayContaining([
-        { path: 'readme.md', staged: null, unstaged: 'modified' },
-        { path: 'new*file.ts', staged: null, unstaged: 'untracked' },
-        { path: 'src/staged.ts', staged: 'added', unstaged: null },
+        expect.objectContaining({ path: 'readme.md', staged: null, unstaged: 'modified' }),
+        expect.objectContaining({ path: 'new*file.ts', staged: null, unstaged: 'untracked' }),
+        expect.objectContaining({ path: 'src/staged.ts', staged: 'added', unstaged: null }),
       ]),
     )
+  })
+
+  test('reports lines added and removed for each side of a change', async () => {
+    // Arrange: a staged edit plus a further unstaged edit, a new file, a binary and a rename
+    const repo = makeRepoWithCommit()
+    writeFileSync(join(repo, 'old.ts'), 'a\nb\nc\n')
+    git(repo, 'add', '.')
+    git(repo, 'commit', '-qm', 'more')
+    writeFileSync(join(repo, 'readme.md'), 'hello\nstaged\n')
+    git(repo, 'add', 'readme.md')
+    writeFileSync(join(repo, 'readme.md'), 'staged\n')
+    writeFileSync(join(repo, 'notes.md'), 'one\ntwo\nthree')
+    writeFileSync(join(repo, 'logo.png'), Buffer.from([0x89, 0x50, 0x00, 0x01]))
+    git(repo, 'mv', 'old.ts', 'new.ts')
+
+    // Act
+    const files = new Map((await service.status(repo)).files.map((file) => [file.path, file]))
+
+    // Assert
+    expect(files.get('readme.md')).toMatchObject({
+      stagedStats: { kind: 'text', additions: 1, deletions: 0 },
+      unstagedStats: { kind: 'text', additions: 0, deletions: 1 },
+    })
+    expect(files.get('notes.md')?.unstagedStats).toEqual({
+      kind: 'text',
+      additions: 3,
+      deletions: 0,
+    })
+    expect(files.get('logo.png')?.unstagedStats).toEqual({ kind: 'binary' })
+    expect(files.get('new.ts')).toMatchObject({
+      staged: 'renamed',
+      stagedStats: { kind: 'text', additions: 0, deletions: 0 },
+    })
+  })
+
+  test('reports staged line stats before the first commit', async () => {
+    const repo = makeRepo()
+    writeFileSync(join(repo, 'first.ts'), 'a\nb\n')
+    git(repo, 'add', '.')
+
+    const [file] = (await service.status(repo)).files
+
+    expect(file?.stagedStats).toEqual({ kind: 'text', additions: 2, deletions: 0 })
+  })
+
+  test('does not count untracked files it should not read', async () => {
+    const repo = makeRepoWithCommit()
+    symlinkSync('/etc/hosts', join(repo, 'link'))
+
+    const [file] = (await service.status(repo)).files
+
+    expect(file).toMatchObject({ path: 'link', unstaged: 'untracked', unstagedStats: null })
   })
 
   test('does not take the index lock, so it never blocks an agent', async () => {
@@ -94,7 +147,7 @@ describe('GitService staging', () => {
     await service.unstage(repo, ['a.txt'])
 
     expect((await service.status(repo)).files).toEqual([
-      { path: 'a.txt', staged: null, unstaged: 'untracked' },
+      expect.objectContaining({ path: 'a.txt', staged: null, unstaged: 'untracked' }),
     ])
   })
 

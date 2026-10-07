@@ -1,4 +1,4 @@
-import type { GitChangeKind } from '@shared/git'
+import type { GitChangeKind, GitLineStats } from '@shared/git'
 import { FileRow } from './FileRow'
 import styles from './GitPanel.module.css'
 
@@ -11,6 +11,8 @@ export interface GitSelection {
 export interface ChangeEntry {
   readonly path: string
   readonly kind: GitChangeKind
+  /** Null when unknown. */
+  readonly stats: GitLineStats | null
 }
 
 interface ChangeSectionProps {
@@ -42,11 +44,12 @@ export function ChangeSection(props: ChangeSectionProps) {
         </button>
       </header>
       <ul className={styles.fileList}>
-        {entries.map(({ path, kind }) => (
+        {entries.map(({ path, kind, stats }) => (
           <FileRow
             key={path}
             path={path}
             kind={kind}
+            stats={stats}
             isBusy={isBusy}
             isSelected={selection?.path === path && selection.staged === isStaged}
             onSelect={() => onSelect(path)}

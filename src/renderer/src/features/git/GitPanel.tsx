@@ -20,7 +20,8 @@ interface GitPanelProps {
 function entries(files: readonly GitFileChange[], side: 'staged' | 'unstaged'): ChangeEntry[] {
   return files.flatMap((file) => {
     const kind = file[side]
-    return kind ? [{ path: file.path, kind }] : []
+    const stats = (side === 'staged' ? file.stagedStats : file.unstagedStats) ?? null
+    return kind ? [{ path: file.path, kind, stats }] : []
   })
 }
 

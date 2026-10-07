@@ -8,6 +8,11 @@ export type GitChangeKind =
   | 'untracked'
   | 'conflicted'
 
+/** Lines added and removed in one side of a change (`git diff --numstat`). */
+export type GitLineStats =
+  | { readonly kind: 'text'; readonly additions: number; readonly deletions: number }
+  | { readonly kind: 'binary' }
+
 /** One path in `git status`. A file can have both staged and unstaged changes. */
 export interface GitFileChange {
   readonly path: string
@@ -15,6 +20,9 @@ export interface GitFileChange {
   readonly originalPath?: string
   readonly staged: GitChangeKind | null
   readonly unstaged: GitChangeKind | null
+  /** Null when unknown (e.g. a conflict, or an untracked file too large to count). */
+  readonly stagedStats?: GitLineStats | null
+  readonly unstagedStats?: GitLineStats | null
 }
 
 export interface GitStatus {
