@@ -7,7 +7,7 @@ import { CHANGE_LETTER } from '@renderer/features/git/changeKind'
 import { useCheckoutGit } from '@renderer/features/git/gitStore'
 import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore'
 import { useCheckoutTree, useExplorerStore } from './explorerStore'
-import { iconFor } from './fileIcons'
+import { FileTypeIcon } from './FileTypeIcon'
 import styles from './ExplorerPanel.module.css'
 
 const INDENT_PX = 12
@@ -71,7 +71,6 @@ function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
     const isExpanded = entry.kind === 'dir' && tree.expanded.includes(entry.path)
     const change = marks.files.get(entry.path)
     const hasChangesInside = entry.kind === 'dir' && marks.dirs.has(entry.path)
-    const icon = iconFor(entry.name)
     return (
       <li key={entry.path} role="none">
         <button
@@ -98,15 +97,7 @@ function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
           <span className={styles.chevron} aria-hidden>
             {entry.kind === 'dir' && <Chevron />}
           </span>
-          {entry.kind === 'file' && (
-            <span
-              className={styles.icon}
-              style={{ color: icon.color }}
-              // Static SVG from the vendored Seti icon set (seti/icons.json), never user data.
-              dangerouslySetInnerHTML={{ __html: icon.svg }}
-              aria-hidden
-            />
-          )}
+          {entry.kind === 'file' && <FileTypeIcon name={entry.name} />}
           <span className={styles.name}>{entry.name}</span>
           {change && (
             <span className={styles.mark} aria-hidden>

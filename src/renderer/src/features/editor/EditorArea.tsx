@@ -4,6 +4,7 @@ import { splitPath } from '@renderer/features/git/changeKind'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { AgentSettingsView } from '@renderer/features/agentConfig/AgentSettingsView'
 import { CompareView } from '@renderer/features/compare/CompareView'
+import { FileTypeIcon } from '@renderer/features/explorer/FileTypeIcon'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
 import { checkoutOf, fileKeyOf } from './fileKey'
 import type { EditorTab } from './tabs'
@@ -113,6 +114,9 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
                 onDoubleClick={() => pin(projectId, tab.id)}
                 title={tab.path}
               >
+                {(tab.kind === 'file' || tab.kind === 'diff') && (
+                  <FileTypeIcon name={splitPath(tab.path).name} />
+                )}
                 {tab.kind === 'diff' && (
                   <span className={styles.diffMark} aria-hidden>
                     Δ

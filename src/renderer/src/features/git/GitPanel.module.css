@@ -299,20 +299,6 @@
   text-align: left;
 }
 
-.fileIcon {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-}
-
-.fileIcon svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-
 /* M / U / A / D on the right, coloured like VS Code. */
 .changeLetter {
   flex-shrink: 0;

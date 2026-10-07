@@ -124,20 +124,6 @@
   }
 }
 
-.icon {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-}
-
-.icon svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-
 .name {
   flex: 1;
   overflow: hidden;
