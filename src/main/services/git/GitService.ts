@@ -122,7 +122,13 @@ export class GitService {
     if (toRestore.length > 0) await this.run(root, ['restore', '--worktree', '--', ...toRestore])
   }
 
-  async commit(root: string, message: string): Promise<void> {
+  /** Commits what is staged, or with `includeAll` every change including new files. */
+  async commit(
+    root: string,
+    message: string,
+    options: { includeAll?: boolean } = {},
+  ): Promise<void> {
+    if (options.includeAll) await this.run(root, ['add', '--all'])
     await this.run(root, ['commit', '--quiet', '--file=-'], { input: message })
   }
 

@@ -108,6 +108,18 @@ describe('git schemas', () => {
     expect(gitPathsRequestSchema.safeParse({ projectId: 'p1', paths: [] }).success).toBe(false)
   })
 
+  test('commits staged changes only unless includeAll is set', () => {
+    const parse = (extra: object) =>
+      gitCommitRequestSchema.parse({ projectId: 'p1', message: 'm', ...extra })
+
+    expect(parse({}).includeAll).toBe(false)
+    expect(parse({ includeAll: true }).includeAll).toBe(true)
+    expect(
+      gitCommitRequestSchema.safeParse({ projectId: 'p1', message: 'm', includeAll: 'yes' })
+        .success,
+    ).toBe(false)
+  })
+
   test('rejects an empty commit message', () => {
     expect(gitCommitRequestSchema.safeParse({ projectId: 'p1', message: '  ' }).success).toBe(false)
   })

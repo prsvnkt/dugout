@@ -69,7 +69,7 @@ export function GitPanel({ project }: GitPanelProps) {
     <button
       className={styles.hide}
       onClick={() => setPanelOpen(false)}
-      title="Hide review panel (⇧⌘G)"
+      title="Hide source control (⇧⌘G)"
       aria-label="Hide Git panel"
     >
       »
@@ -80,7 +80,7 @@ export function GitPanel({ project }: GitPanelProps) {
     return (
       <aside className={styles.panel} aria-label="Source control">
         <header className={styles.header}>
-          <span className={styles.heading}>Review</span>
+          <span className={styles.heading}>Source Control</span>
           {hideButton}
         </header>
         <CheckoutPicker project={project} />
@@ -98,7 +98,7 @@ export function GitPanel({ project }: GitPanelProps) {
   return (
     <aside className={styles.panel} aria-label="Source control">
       <header className={styles.header}>
-        <span className={styles.heading}>Review</span>
+        <span className={styles.heading}>Source Control</span>
         {push && (
           <button
             className={styles.pushButton}
@@ -130,14 +130,26 @@ export function GitPanel({ project }: GitPanelProps) {
         )}
         {hideButton}
       </header>
-      {hasWorktrees ? (
-        <CheckoutPicker project={project} />
-      ) : (
-        <div className={styles.branchRow}>
-          <BranchSummary status={git.status} />
-        </div>
-      )}
+      {hasWorktrees && <CheckoutPicker project={project} />}
+      <div className={styles.branchRow}>
+        <BranchSummary status={git.status} />
+        <button
+          className={styles.iconButton}
+          onClick={() => void actions.refresh(id)}
+          title="Refresh"
+          aria-label="Refresh source control"
+        >
+          ↻
+        </button>
+      </div>
       {pullRequest && <PullRequestBlock pullRequest={pullRequest} />}
+      <CommitBox
+        stagedCount={staged.length}
+        unstagedCount={unstaged.length}
+        branch={git.status.branch}
+        isBusy={git.isBusy}
+        onCommit={(message, options) => actions.commit(id, message, options)}
+      />
 
       {git.actionError && (
         <div className={styles.error} role="alert">
@@ -155,12 +167,13 @@ export function GitPanel({ project }: GitPanelProps) {
           <p className={styles.notice}>No changes. Working tree clean.</p>
         )}
         <ChangeSection
-          title="Staged"
+          title="Staged Changes"
           entries={staged}
           isStaged
           selection={selection}
           isBusy={git.isBusy}
           bulkLabel="Unstage all"
+          bulkGlyph="−"
           onBulk={() =>
             void actions.unstage(
               id,
@@ -177,6 +190,7 @@ export function GitPanel({ project }: GitPanelProps) {
           selection={selection}
           isBusy={git.isBusy}
           bulkLabel="Stage all"
+          bulkGlyph="+"
           onBulk={() =>
             void actions.stage(
               id,
@@ -188,11 +202,6 @@ export function GitPanel({ project }: GitPanelProps) {
           onDiscard={(path) => void actions.discard(id, [path])}
         />
       </div>
-      <CommitBox
-        stagedCount={staged.length}
-        isBusy={git.isBusy}
-        onCommit={(message) => actions.commit(id, message)}
-      />
     </aside>
   )
 }

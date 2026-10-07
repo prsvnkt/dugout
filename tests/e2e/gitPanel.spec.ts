@@ -66,7 +66,7 @@ test('reviews, stages, commits, publishes and discards changes', async () => {
 
   // Stage and commit
   await changes.getByRole('button', { name: 'Stage readme.md' }).click()
-  const staged = panel().getByRole('region', { name: 'Staged' })
+  const staged = panel().getByRole('region', { name: 'Staged Changes' })
   await expect(staged.getByRole('listitem')).toHaveCount(1)
   await panel().getByRole('textbox', { name: 'Commit message' }).fill('docs: agent note')
   await panel().getByRole('button', { name: 'Commit 1 staged' }).click()
@@ -83,6 +83,35 @@ test('reviews, stages, commits, publishes and discards changes', async () => {
   await changes.getByRole('button', { name: 'Confirm discard scratch.txt' }).click()
   await expect(panel()).toContainText('Working tree clean')
   expect(existsSync(join(repo, 'scratch.txt'))).toBe(false)
+})
+
+test('with nothing staged, Commit & Push commits every change and pushes it', async () => {
+  // Arrange: an edited file and a new one, nothing staged
+  const { repo, remote } = makeRepoWithRemote()
+  git(repo, 'push', '-q', '-u', 'origin', 'main')
+  await stubFolderPicker(app, repo)
+  await page.getByRole('button', { name: 'Add project…' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Add project' }).click()
+  writeFileSync(join(repo, 'readme.md'), 'hello\nedited\n')
+  writeFileSync(join(repo, 'new.ts'), 'export {}\n')
+  await expect(panel().getByRole('button', { name: 'Commit all 2 changes' })).toBeVisible({
+    timeout: 10_000,
+  })
+
+  // Act
+  await panel().getByRole('textbox', { name: 'Commit message' }).fill('feat: everything')
+  await panel().getByRole('button', { name: 'More commit actions' }).click()
+  await panel().getByRole('menuitem', { name: 'Commit & Push' }).click()
+
+  // Assert: both files committed, pushed, tree clean
+  await expect(panel()).toContainText('Working tree clean')
+  expect(git(repo, 'show', '--name-only', '--format=', 'HEAD').trim().split('\n').sort()).toEqual([
+    'new.ts',
+    'readme.md',
+  ])
+  await expect
+    .poll(() => git(remote, 'log', '-1', '--format=%s', 'main').trim())
+    .toBe('feat: everything')
 })
 
 test('shows git errors in the panel', async () => {

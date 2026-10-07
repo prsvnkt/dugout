@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GitChangeKind, GitLineStats } from '@shared/git'
 import { CHANGE_LETTER, splitPath } from './changeKind'
+import { iconFor } from '@renderer/features/explorer/fileIcons'
 import { diffBar } from './diffBar'
 import styles from './GitPanel.module.css'
 
@@ -63,6 +64,7 @@ function DiffStats({ stats }: { stats: GitLineStats }) {
 export function FileRow(props: FileRowProps) {
   const { path, kind, stats, isSelected, isBusy, onSelect, onStage, onUnstage, onDiscard } = props
   const { name, dir } = splitPath(path)
+  const icon = iconFor(name)
   const discard = useConfirm(onDiscard)
 
   return (
@@ -73,9 +75,13 @@ export function FileRow(props: FileRowProps) {
         title={path}
         aria-label={`Open diff of ${path} (${kind}${stats ? `, ${describeStats(stats)}` : ''})`}
       >
-        <span className={styles.changeLetter} data-kind={kind} aria-hidden>
-          {CHANGE_LETTER[kind]}
-        </span>
+        <span
+          className={styles.fileIcon}
+          style={{ color: icon.color }}
+          // Static SVG from the vendored Seti icon set (explorer/seti), never user data.
+          dangerouslySetInnerHTML={{ __html: icon.svg }}
+          aria-hidden
+        />
         <span className={styles.fileName}>{name}</span>
         {dir && <span className={styles.fileDir}>{dir}</span>}
       </button>
@@ -119,6 +125,9 @@ export function FileRow(props: FileRowProps) {
             </button>
           )}
         </span>
+      </span>
+      <span className={styles.changeLetter} data-kind={kind} aria-hidden>
+        {CHANGE_LETTER[kind]}
       </span>
     </li>
   )

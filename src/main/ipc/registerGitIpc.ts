@@ -54,7 +54,7 @@ export function registerGitIpc(deps: GitIpcDeps): void {
     git.discard(await rootOf(request), request.paths),
   )
   handleRequest(IpcChannel.gitCommit, gitCommitRequestSchema, async (request) =>
-    git.commit(await rootOf(request), request.message),
+    git.commit(await rootOf(request), request.message, { includeAll: request.includeAll }),
   )
   handleRequest(IpcChannel.gitPush, gitProjectRequestSchema, async (request) =>
     git.push(await rootOf(request)),

@@ -35,8 +35,8 @@ const api: DugoutApi = {
     stage: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitStage, { ...checkout, paths }),
     unstage: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitUnstage, { ...checkout, paths }),
     discard: (checkout, paths) => ipcRenderer.invoke(IpcChannel.gitDiscard, { ...checkout, paths }),
-    commit: (checkout, message) =>
-      ipcRenderer.invoke(IpcChannel.gitCommit, { ...checkout, message }),
+    commit: (checkout, message, options) =>
+      ipcRenderer.invoke(IpcChannel.gitCommit, { ...checkout, message, ...options }),
     push: (checkout) => ipcRenderer.invoke(IpcChannel.gitPush, checkout),
     openPullRequest: (checkout) => ipcRenderer.invoke(IpcChannel.gitOpenPullRequest, checkout),
     pullRequestStatus: (checkout) => ipcRenderer.invoke(IpcChannel.gitPullRequestStatus, checkout),

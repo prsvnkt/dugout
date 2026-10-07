@@ -21,7 +21,31 @@
 }
 
 .branchRow {
-  padding: 0 14px var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 10px var(--space-1) 14px;
+}
+
+.branchRow .branch {
+  flex: 1;
+  min-width: 0;
+}
+
+.iconButton {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.iconButton:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 .branch {
@@ -49,7 +73,6 @@
 
 .pushButton:disabled,
 .commitButton:disabled,
-.linkButton:disabled,
 .rowAction:disabled {
   opacity: 0.45;
   cursor: default;
@@ -62,18 +85,21 @@
 }
 
 /* Pinned to the bottom of the panel. */
+/* VS Code layout: message and a full-width Commit button above the changes. */
 .commitBox {
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
   gap: var(--space-2);
-  padding: 12px 14px 14px;
-  border-top: 1px solid var(--border);
+  padding: var(--space-1) 14px var(--space-3);
 }
 
 .commitInput {
-  resize: vertical;
-  padding: var(--space-2);
+  min-height: 32px;
+  max-height: 160px;
+  resize: none;
+  field-sizing: content;
+  padding: 6px var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   background: var(--bg-app);
@@ -87,38 +113,156 @@
   outline-offset: -1px;
 }
 
+.commitButtons {
+  display: flex;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+}
+
+.commitButton,
+.commitMore {
+  border: none;
+  background: transparent;
+  color: var(--text-on-accent);
+}
+
 .commitButton {
+  flex: 1;
+  padding: 6px var(--space-3);
+  font-weight: 600;
+}
+
+.commitMenuWrap {
+  position: relative;
+  display: flex;
+}
+
+.commitMore {
+  width: 32px;
+  border-left: 1px solid rgb(255 255 255 / 35%);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.commitButton:hover:not(:disabled),
+.commitMore:hover:not(:disabled) {
+  background: rgb(255 255 255 / 12%);
+}
+
+.commitButtons:has(:disabled) {
+  opacity: 0.5;
+}
+
+.commitMore:disabled {
+  cursor: default;
+}
+
+.commitMenu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-menu);
+}
+
+.commitMenu button {
   padding: 6px var(--space-3);
   border: none;
-  border-radius: var(--radius-md);
-  background: var(--text-primary);
-  color: var(--text-on-accent);
-  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+}
+
+.commitMenu button:hover,
+.commitMenu button:focus-visible {
+  background: var(--bg-elevated);
 }
 
 .sectionHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 14px 4px;
+  gap: var(--space-1);
+  height: 26px;
+  padding: 0 10px 0 6px;
 }
 
-.sectionTitle,
-.linkButton {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 11.5px;
-  font-weight: 500;
-}
-
-.linkButton {
+.sectionToggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  height: 100%;
   padding: 0;
   border: none;
   background: transparent;
+  text-align: left;
 }
 
-.linkButton:hover:not(:disabled) {
+.sectionChevron {
+  display: inline-block;
+  width: 14px;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+  transition: transform 120ms ease;
+}
+
+.sectionToggle[aria-expanded='true'] .sectionChevron {
+  transform: rotate(90deg);
+}
+
+.sectionAction {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  opacity: 0;
+}
+
+.sectionHeader:hover .sectionAction,
+.sectionAction:focus-visible {
+  opacity: 1;
+}
+
+.sectionAction:hover:not(:disabled) {
+  background: var(--bg-elevated);
   color: var(--text-primary);
+}
+
+.countPill {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionChevron {
+    transition: none;
+  }
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .fileList {
@@ -144,22 +288,39 @@
 .fileButton {
   display: flex;
   flex: 1;
-  align-items: baseline;
-  gap: var(--space-2);
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  padding: 5px 0 5px 14px;
+  padding: 3px 0 3px 26px;
   border: none;
   background: transparent;
   text-align: left;
 }
 
+.fileIcon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.fileIcon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+/* M / U / A / D on the right, coloured like VS Code. */
 .changeLetter {
   flex-shrink: 0;
-  width: 12px;
+  width: 16px;
+  margin-left: 6px;
+  color: var(--status-needs-input);
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
-  color: var(--status-working);
+  text-align: center;
 }
 
 .changeLetter[data-kind='added'],
@@ -173,6 +334,10 @@
 }
 
 .fileName {
+  flex-shrink: 0;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

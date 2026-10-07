@@ -117,6 +117,8 @@ export const gitCommitRequestSchema = z.object({
   projectId,
   worktreePath: absolutePath.optional(),
   message: z.string().trim().min(1).max(MAX_COMMIT_MESSAGE_LENGTH),
+  /** Stage every change (including new files) first: VS Code's "smart commit". */
+  includeAll: z.boolean().default(false),
 })
 
 export type GitProjectRequest = z.infer<typeof gitProjectRequestSchema>

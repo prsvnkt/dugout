@@ -60,7 +60,12 @@ export interface DugoutApi {
     stage(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
     unstage(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
     discard(checkout: GitCheckout, paths: readonly string[]): Promise<Result<void>>
-    commit(checkout: GitCheckout, message: string): Promise<Result<void>>
+    /** `includeAll` stages every change first (smart commit). */
+    commit(
+      checkout: GitCheckout,
+      message: string,
+      options?: { includeAll?: boolean },
+    ): Promise<Result<void>>
     push(checkout: GitCheckout): Promise<Result<void>>
     /** Pushes if needed, then opens the new pull request page. Resolves to its URL. */
     openPullRequest(checkout: GitCheckout): Promise<Result<string>>

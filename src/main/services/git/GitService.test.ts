@@ -189,6 +189,35 @@ describe('GitService.commit', () => {
     expect((await service.status(repo)).files).toEqual([])
   })
 
+  test('commits every change, including new files, when asked to include all', async () => {
+    // Arrange: nothing staged; one modified and one untracked file
+    const repo = makeRepoWithCommit()
+    writeFileSync(join(repo, 'readme.md'), 'changed\n')
+    writeFileSync(join(repo, 'new.ts'), 'x\n')
+
+    // Act
+    await service.commit(repo, 'feat: everything', { includeAll: true })
+
+    // Assert
+    expect((await service.status(repo)).files).toEqual([])
+    expect(git(repo, 'show', '--name-only', '--format=%s', 'HEAD').split('\n')).toEqual(
+      expect.arrayContaining(['feat: everything', 'new.ts', 'readme.md']),
+    )
+  })
+
+  test('commits only what is staged by default', async () => {
+    const repo = makeRepoWithCommit()
+    writeFileSync(join(repo, 'readme.md'), 'changed\n')
+    writeFileSync(join(repo, 'staged.ts'), 'x\n')
+    git(repo, 'add', 'staged.ts')
+
+    await service.commit(repo, 'feat: staged only')
+
+    expect((await service.status(repo)).files).toEqual([
+      expect.objectContaining({ path: 'readme.md', unstaged: 'modified' }),
+    ])
+  })
+
   test('reports git errors in a readable way', async () => {
     const repo = makeRepoWithCommit()
     await expect(service.commit(repo, 'nothing staged')).rejects.toThrow(/nothing.*commit/i)

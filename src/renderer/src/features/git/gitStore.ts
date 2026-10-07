@@ -26,6 +26,11 @@ export function checkoutKey(checkout: GitCheckout): string {
     : checkout.projectId
 }
 
+export interface CommitOptions {
+  readonly includeAll?: boolean
+  readonly andPush?: boolean
+}
+
 interface GitState {
   readonly byCheckout: Readonly<Record<string, ProjectGitState>>
   readonly isPanelOpen: boolean
@@ -38,8 +43,11 @@ interface GitState {
   stage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
   unstage(checkout: GitCheckout, paths: readonly string[]): Promise<void>
   discard(checkout: GitCheckout, paths: readonly string[]): Promise<void>
-  /** Resolves true when the commit succeeded, so the caller can clear its message. */
-  commit(checkout: GitCheckout, message: string): Promise<boolean>
+  /**
+   * Resolves true when the commit succeeded, so the caller can clear its message.
+   * `includeAll` stages every change first; `andPush` pushes after a successful commit.
+   */
+  commit(checkout: GitCheckout, message: string, options?: CommitOptions): Promise<boolean>
   push(checkout: GitCheckout): Promise<void>
   openPullRequest(checkout: GitCheckout): Promise<void>
 }
@@ -97,7 +105,14 @@ export const useGitStore = create<GitState>()((set, get) => {
       runAction(checkout, () => dugout.git.unstage(checkout, paths)).then(() => {}),
     discard: (checkout, paths) =>
       runAction(checkout, () => dugout.git.discard(checkout, paths)).then(() => {}),
-    commit: (checkout, message) => runAction(checkout, () => dugout.git.commit(checkout, message)),
+    async commit(checkout, message, options = {}) {
+      const { includeAll = false, andPush = false } = options
+      const isCommitted = await runAction(checkout, () =>
+        dugout.git.commit(checkout, message, { includeAll }),
+      )
+      if (isCommitted && andPush) await get().push(checkout)
+      return isCommitted
+    },
     push: (checkout) => runAction(checkout, () => dugout.git.push(checkout)).then(() => {}),
     openPullRequest: (checkout) =>
       runAction(checkout, () => dugout.git.openPullRequest(checkout)).then(() => {}),
