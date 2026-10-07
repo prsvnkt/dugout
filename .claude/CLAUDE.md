@@ -66,9 +66,10 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 
 - **Words on screen:** Claude/Codex terminals are **agents**, plain terminals are **shells**, and
   repos are **projects**. "Pane" is only a code name (`Pane`, `addPane`); never show it in the UI.
-- **Dev app name:** `postinstall` renames `node_modules/electron/dist/Electron.app` to "Dugout"
-  (and re-signs it ad hoc) so the menu bar and Dock say Dugout in `npm run dev`. If they say
-  "Electron" again after an Electron upgrade, run `npm install`.
+- **Dev app name and data:** `postinstall` renames `node_modules/electron/dist/Electron.app` to
+  "Dugout Dev" (and re-signs it ad hoc), and unpackaged runs keep their data in "Dugout Dev", so
+  `npm run dev` is never confused with the installed app. If the Dock says "Electron" again after
+  an Electron upgrade, run `npm install`.
 - **The preload is sandboxed:** it cannot `require` npm packages. Import only dependency-free
   modules into it (e.g. `@shared/ipc/channels`, never `@shared/ipc/contract`, which pulls zod).
 - **node-pty `spawn-helper`** can install without its executable bit; `postinstall` fixes it.
