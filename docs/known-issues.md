@@ -92,7 +92,8 @@ file watcher once polling is replaced (see "Change detection polls instead of wa
 
 **What happens:** the app is ad-hoc signed without hardened runtime or notarization, and built
 for arm64 only. Copies downloaded from the internet are quarantined, so macOS asks users to
-right-click → Open (or run `xattr -dr com.apple.quarantine`). Intel Macs are not supported, and
+click Open Anyway in System Settings → Privacy & Security (or run
+`xattr -dr com.apple.quarantine`). Intel Macs are not supported, and
 there are no automatic updates.
 
 **Why:** notarization needs an Apple Developer ID; not worth it while Dugout is used locally.
