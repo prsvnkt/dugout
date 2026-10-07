@@ -67,6 +67,9 @@ export function registerGitIpc(deps: GitIpcDeps): void {
   handleRequest(IpcChannel.gitCreateBranch, gitCreateBranchRequestSchema, async (request) =>
     git.createBranch(await rootOf(request), request.name, request.startPoint),
   )
+  handleRequest(IpcChannel.gitFetch, gitProjectRequestSchema, async (request) =>
+    git.fetch(await rootOf(request)),
+  )
   handleRequest(IpcChannel.gitPush, gitProjectRequestSchema, async (request) =>
     git.push(await rootOf(request)),
   )

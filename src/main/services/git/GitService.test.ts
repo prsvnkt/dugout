@@ -262,6 +262,50 @@ describe('GitService.push', () => {
   })
 })
 
+describe('GitService.fetch', () => {
+  /** A clone tracking a bare remote, and a second clone that pushes to it behind its back. */
+  function makeClones(): { clone: string; other: string } {
+    const remote = realpathSync(mkdtempSync(join(tmpdir(), 'dugout-remote-')))
+    git(remote, 'init', '-q', '--bare', '-b', 'main')
+    const clone = makeRepoWithCommit()
+    git(clone, 'remote', 'add', 'origin', remote)
+    git(clone, 'push', '-q', '-u', 'origin', 'main')
+    const other = realpathSync(mkdtempSync(join(tmpdir(), 'dugout-other-')))
+    git(other, 'clone', '-q', remote, '.')
+    return { clone, other }
+  }
+
+  test('updates the behind count and remote branches without touching files', async () => {
+    const { clone, other } = makeClones()
+    writeFileSync(join(other, 'readme.md'), 'from elsewhere\n')
+    git(other, 'commit', '-qam', 'elsewhere')
+    git(other, 'push', '-q', 'origin', 'main', 'main:feat/remote')
+
+    await service.fetch(clone)
+
+    expect((await service.status(clone)).behind).toBe(1)
+    const names = (await service.listBranches(clone)).map((branch) => branch.name)
+    expect(names).toContain('origin/feat/remote')
+    expect(readFileSync(join(clone, 'readme.md'), 'utf8')).toBe('hello\n')
+  })
+
+  test('prunes remote branches deleted on the remote', async () => {
+    const { clone, other } = makeClones()
+    git(other, 'push', '-q', 'origin', 'main:feat/gone')
+    await service.fetch(clone)
+    git(other, 'push', '-q', 'origin', '--delete', 'feat/gone')
+
+    await service.fetch(clone)
+
+    const names = (await service.listBranches(clone)).map((branch) => branch.name)
+    expect(names).not.toContain('origin/feat/gone')
+  })
+
+  test('does nothing for a repository without remotes', async () => {
+    await expect(service.fetch(makeRepoWithCommit())).resolves.toBeUndefined()
+  })
+})
+
 describe('GitService pull requests', () => {
   function makeFeatureRepo(): string {
     const repo = makeRepoWithCommit()

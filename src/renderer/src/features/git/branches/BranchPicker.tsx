@@ -152,9 +152,7 @@ export function BranchPicker({ checkout, currentBranch, children }: BranchPicker
             }}
             onKeyDown={onKeyDown}
             placeholder={
-              mode.kind === 'base'
-                ? 'Choose a starting branch'
-                : 'Switch branch, or type a new name'
+              mode.kind === 'base' ? 'Choose a starting branch' : 'Search or create a new branch'
             }
             aria-label={mode.kind === 'base' ? 'Starting branch' : 'Branch name'}
             role="combobox"

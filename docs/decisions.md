@@ -256,7 +256,7 @@ Unlike an editor, Dugout has agents running in the checkout, and switching branc
 their files mid-task. So when an agent in that checkout is starting, working or waiting for
 you, the picker says so, offers a worktree session instead, and asks for a second Enter/click
 before anything that changes files. Branches checked out in another worktree are shown but
-cannot be picked (git refuses). Detached checkouts and tags are left out; fetching is a follow-up.
+cannot be picked (git refuses). Detached checkouts and tags are left out; fetching is decision 030.
 Worktree sessions' own `dugout/*` branches are grouped last under a collapsed "Agent sessions"
 row (searching shows matches), and removing a session now deletes its branch with `git branch -d`
 when it has no work the main checkout lacks, so finished sessions stop piling up as branches.
@@ -351,6 +351,20 @@ repo, already added) show in the window. The tab's ⋯ is now ×, which closes t
 folder stays on disk); if it has agents or shells open, a confirmation says they will stop. The
 title bar's "+" shows only once there is a project, since the welcome screen offers the same.
 
+## 030 — Fetch from Source Control, never pull (2026-10-07)
+
+**Context.** Dugout never talked to the remote except to push, clone or open a PR, so the ↓behind
+count and "Remote branches" went stale. The ↻ next to the branch only re-read local status, which
+the panel already does on an interval and on focus.
+
+**Decision.** That ↻ is now Fetch: `GitService.fetch` runs `git fetch --all --prune` through
+`runNetwork` (credentials, no prompts; decisions 009 and 015), then the status refreshes. It sits
+next to the branch and its ↑/↓ counts, the things it updates, and spins only while fetching. Fetch
+never changes files, so it is safe while agents work and needs no warning. There is no pull: it
+would change agents' files mid-task, and merging is work for the agent (a git client is out of
+scope). The branch picker's search now reads "Search or create a new branch", so creating one is
+not hidden.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -366,4 +380,5 @@ title bar's "+" shows only once there is a project, since the welcome screen off
 7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅, Seti
    file icons ✅, VS Code-style Source Control ✅, branch picker ✅, app icon and logo ✅.
 8. **Done since:** start screen with a default agent and resumable sessions ✅, welcome screen
-   with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅.
+   with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅,
+   fetch from Source Control ✅.

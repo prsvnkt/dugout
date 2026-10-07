@@ -112,6 +112,28 @@ test('with nothing staged, Commit & Push commits every change and pushes it', as
     .toBe('feat: everything')
 })
 
+test('Fetch shows commits pushed to the remote from elsewhere', async () => {
+  // Arrange: the project tracks origin/main; another clone pushes a commit behind its back
+  const { repo, remote } = makeRepoWithRemote()
+  git(repo, 'push', '-q', '-u', 'origin', 'main')
+  await stubFolderPicker(app, repo)
+  await page.getByRole('button', { name: 'Add project…' }).click()
+  const otherParent = makeTempDir()
+  git(otherParent, 'clone', '-q', remote, 'other')
+  const other = join(otherParent, 'other')
+  writeFileSync(join(other, 'readme.md'), 'from elsewhere\n')
+  git(other, 'commit', '-qam', 'elsewhere')
+  git(other, 'push', '-q', 'origin', 'main')
+  await expect(panel().getByLabel('1 behind')).toHaveCount(0)
+
+  // Act
+  await panel().getByRole('button', { name: 'Fetch from remotes' }).click()
+
+  // Assert: the branch row shows ↓1, and the files are untouched
+  await expect(panel().getByLabel('1 behind')).toBeVisible()
+  expect(git(repo, 'status', '--porcelain').trim()).toBe('')
+})
+
 test('shows git errors in the panel', async () => {
   const repo = join(makeTempDir(), 'lonely')
   mkdirSync(repo)

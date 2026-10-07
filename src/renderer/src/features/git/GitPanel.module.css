@@ -45,9 +45,23 @@
   color: var(--text-secondary);
 }
 
-.iconButton:hover {
+.iconButton:hover:not(:disabled) {
   background: var(--bg-elevated);
   color: var(--text-primary);
+}
+
+.fetchGlyph {
+  display: inline-block;
+}
+
+.iconButton[data-fetching='true'] .fetchGlyph {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .branch {
@@ -258,6 +272,10 @@
 @media (prefers-reduced-motion: reduce) {
   .sectionChevron {
     transition: none;
+  }
+
+  .iconButton[data-fetching='true'] .fetchGlyph {
+    animation: none;
   }
 }
 
