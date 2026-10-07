@@ -31,8 +31,10 @@ export async function launchApp(
   userDataDir: string,
   extraEnv: Record<string, string> = {},
 ): Promise<ElectronApplication> {
+  // DUGOUT_E2E_EXECUTABLE runs the suite against a packaged app (`npm run test:e2e:packaged`).
+  const packagedApp = process.env.DUGOUT_E2E_EXECUTABLE
   return electron.launch({
-    args: ['.'],
+    ...(packagedApp ? { executablePath: packagedApp, args: [] } : { args: ['.'] }),
     env: { ...process.env, DUGOUT_USER_DATA_DIR: userDataDir, ...extraEnv },
   })
 }

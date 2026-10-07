@@ -84,3 +84,19 @@ files over 1 MB and symlinks; those rows show no `+N` or bar.
 
 **Likely fix:** cache counts by path, size and mtime, and lift the limits; or count in the
 file watcher once polling is replaced (see "Change detection polls instead of watching files").
+
+## Packaged app is unsigned and Apple Silicon only
+
+- **Area:** packaging (`electron-builder.yml`)
+- **Found:** 2026-10-07, while adding `npm run dist`
+
+**What happens:** the app is ad-hoc signed without hardened runtime or notarization, and built
+for arm64 only. Copies downloaded from the internet are quarantined, so macOS asks users to
+right-click → Open (or run `xattr -dr com.apple.quarantine`). Intel Macs are not supported, and
+there are no automatic updates.
+
+**Why:** notarization needs an Apple Developer ID; not worth it while Dugout is used locally.
+
+**Likely fix:** with a Developer ID, enable `hardenedRuntime` with entitlements (node-pty and
+the Node-mode MCP server need `cs.allow-jit` / `cs.disable-library-validation`), add
+`notarize`, add an `x64` or `universal` target, and use `electron-updater` with GitHub Releases.
