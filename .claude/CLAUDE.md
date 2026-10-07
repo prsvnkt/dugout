@@ -72,6 +72,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   modules into it (e.g. `@shared/ipc/channels`, never `@shared/ipc/contract`, which pulls zod).
 - **node-pty `spawn-helper`** can install without its executable bit; `postinstall` fixes it.
   If spawning fails with `posix_spawnp failed`, run `npm install` again.
+- **Electron downloads its binary lazily** (on first run, not on install). `postinstall` runs
+  `install-electron` first, so parallel e2e workers do not race the download and the dev bundle
+  exists for `brand-dev-electron.mjs` to rename "Dugout Dev".
 - **Terminal env:** `buildTerminalEnv` strips Electron and parent-agent variables
   (`CLAUDECODE`, `CLAUDE_CODE_*`, …). Without that, launching the app from inside Claude Code
   makes every embedded `claude` think it is a child session.
