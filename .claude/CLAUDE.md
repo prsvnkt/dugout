@@ -29,7 +29,8 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 | `npm run build`    | Typecheck and production build into `out/`     |
 
 **Definition of done:** `npm run check` and `npm run test:e2e` both pass, and the docs are
-updated as `.claude/rules/docs.md` describes.
+updated as `.claude/rules/docs.md` describes. CI (`.github/workflows/ci.yml`) runs both checks on
+macOS for every push to `main` and every pull request.
 
 ## Layout
 
@@ -71,6 +72,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   modules into it (e.g. `@shared/ipc/channels`, never `@shared/ipc/contract`, which pulls zod).
 - **node-pty `spawn-helper`** can install without its executable bit; `postinstall` fixes it.
   If spawning fails with `posix_spawnp failed`, run `npm install` again.
+- **Electron downloads its binary lazily** (on first run, not on install). `postinstall` runs
+  `install-electron` first, so parallel e2e workers do not race the download and the dev bundle
+  exists for `brand-dev-electron.mjs` to rename "Dugout Dev".
 - **Terminal env:** `buildTerminalEnv` strips Electron and parent-agent variables
   (`CLAUDECODE`, `CLAUDE_CODE_*`, …). Without that, launching the app from inside Claude Code
   makes every embedded `claude` think it is a child session.

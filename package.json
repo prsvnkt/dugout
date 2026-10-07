@@ -3,6 +3,12 @@
   "productName": "Dugout",
   "version": "0.1.0",
   "description": "A desktop workspace for running and supervising coding agents across projects.",
+  "license": "MIT",
+  "author": "Prasanna Venkatesan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/prsvnkt/dugout.git"
+  },
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",
@@ -21,7 +27,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
-    "postinstall": "node scripts/fix-node-pty-permissions.mjs && node scripts/brand-dev-electron.mjs",
+    "postinstall": "node scripts/fix-node-pty-permissions.mjs && install-electron && node scripts/brand-dev-electron.mjs",
     "icons": "electron scripts/generate-icons.mjs",
     "test:e2e": "electron-vite build && playwright test",
     "dist": "npm run build && electron-builder --mac",
