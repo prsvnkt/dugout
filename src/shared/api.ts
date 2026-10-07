@@ -67,6 +67,8 @@ export interface DugoutApi {
       message: string,
       options?: { includeAll?: boolean },
     ): Promise<Result<void>>
+    /** Fetches every remote (with prune); never changes files. */
+    fetch(checkout: GitCheckout): Promise<Result<void>>
     push(checkout: GitCheckout): Promise<Result<void>>
     /** Pushes if needed, then opens the new pull request page. Resolves to its URL. */
     openPullRequest(checkout: GitCheckout): Promise<Result<string>>

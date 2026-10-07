@@ -21,6 +21,7 @@ export interface GitServiceDeps {
 }
 
 const PUSH_TIMEOUT_MS = 120_000
+const FETCH_TIMEOUT_MS = 120_000
 const CLONE_TIMEOUT_MS = 30 * 60_000
 /** `git check-ignore` exits 1 when nothing is ignored. */
 const CHECK_IGNORE_OK = [0, 1]
@@ -160,6 +161,11 @@ export class GitService {
       if (isCreatedHere) await rm(destination, { recursive: true, force: true })
       throw error
     }
+  }
+
+  /** Updates every remote-tracking branch, dropping ones deleted on the remote. Never touches files. */
+  async fetch(root: string): Promise<void> {
+    await this.runNetwork(root, ['fetch', '--all', '--prune'], { timeoutMs: FETCH_TIMEOUT_MS })
   }
 
   /** Pushes the current branch, publishing it to origin when it has no upstream yet. */

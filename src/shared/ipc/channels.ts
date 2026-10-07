@@ -28,6 +28,7 @@ export const IpcChannel = {
   gitUnstage: 'git:unstage',
   gitDiscard: 'git:discard',
   gitCommit: 'git:commit',
+  gitFetch: 'git:fetch',
   gitPush: 'git:push',
   gitOpenPullRequest: 'git:open-pull-request',
   gitPullRequestStatus: 'git:pr-status',

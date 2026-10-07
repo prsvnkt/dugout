@@ -6,6 +6,7 @@ import { CheckoutPicker } from '@renderer/features/worktrees/CheckoutPicker'
 import { useProjectWorktrees } from '@renderer/features/worktrees/worktreeStore'
 import { ChangeSection, type ChangeEntry, type GitSelection } from './ChangeSection'
 import { BranchPicker } from './branches/BranchPicker'
+import { FetchButton } from './FetchButton'
 import { CommitBox } from './CommitBox'
 import { isAuthError, useAuthStore } from '@renderer/features/github/authStore'
 import { useCheckoutGit, useGitStore } from './gitStore'
@@ -136,14 +137,7 @@ export function GitPanel({ project }: GitPanelProps) {
         <BranchPicker checkout={checkout} currentBranch={git.status.branch}>
           <BranchSummary status={git.status} />
         </BranchPicker>
-        <button
-          className={styles.iconButton}
-          onClick={() => void actions.refresh(id)}
-          title="Refresh"
-          aria-label="Refresh source control"
-        >
-          ↻
-        </button>
+        <FetchButton checkout={checkout} isBusy={git.isBusy} />
       </div>
       {pullRequest && <PullRequestBlock pullRequest={pullRequest} />}
       <CommitBox

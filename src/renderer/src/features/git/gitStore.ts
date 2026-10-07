@@ -48,6 +48,8 @@ interface GitState {
    * `includeAll` stages every change first; `andPush` pushes after a successful commit.
    */
   commit(checkout: GitCheckout, message: string, options?: CommitOptions): Promise<boolean>
+  /** Fetches every remote, then refreshes the ahead/behind counts. */
+  fetch(checkout: GitCheckout): Promise<void>
   push(checkout: GitCheckout): Promise<void>
   /** Resolve true on success. */
   switchBranch(
@@ -119,6 +121,7 @@ export const useGitStore = create<GitState>()((set, get) => {
       if (isCommitted && andPush) await get().push(checkout)
       return isCommitted
     },
+    fetch: (checkout) => runAction(checkout, () => dugout.git.fetch(checkout)).then(() => {}),
     push: (checkout) => runAction(checkout, () => dugout.git.push(checkout)).then(() => {}),
     switchBranch: (checkout, branch) =>
       runAction(checkout, () => dugout.git.switchBranch(checkout, branch)),
