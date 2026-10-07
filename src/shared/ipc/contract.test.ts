@@ -4,6 +4,8 @@ import {
   filesReadDirRequestSchema,
   filesWriteRequestSchema,
   gitCommitRequestSchema,
+  gitCreateBranchRequestSchema,
+  gitSwitchBranchRequestSchema,
   gitPathsRequestSchema,
   gitProjectRequestSchema,
   projectAddRequestSchema,
@@ -122,6 +124,41 @@ describe('git schemas', () => {
 
   test('rejects an empty commit message', () => {
     expect(gitCommitRequestSchema.safeParse({ projectId: 'p1', message: '  ' }).success).toBe(false)
+  })
+})
+
+describe('branch requests', () => {
+  test('accept ordinary branch names', () => {
+    expect(
+      gitSwitchBranchRequestSchema.safeParse({
+        projectId: 'p1',
+        kind: 'remote',
+        name: 'origin/feat/x',
+      }).success,
+    ).toBe(true)
+    expect(
+      gitCreateBranchRequestSchema.safeParse({
+        projectId: 'p1',
+        name: 'feat/y',
+        startPoint: 'main',
+      }).success,
+    ).toBe(true)
+  })
+
+  test('reject names that look like options or contain spaces', () => {
+    for (const name of ['-f', '--force', 'feat x', 'a\tb', '']) {
+      expect(gitCreateBranchRequestSchema.safeParse({ projectId: 'p1', name }).success).toBe(false)
+    }
+    expect(
+      gitCreateBranchRequestSchema.safeParse({ projectId: 'p1', name: 'ok', startPoint: '-b' })
+        .success,
+    ).toBe(false)
+  })
+
+  test('reject unknown branch kinds', () => {
+    expect(
+      gitSwitchBranchRequestSchema.safeParse({ projectId: 'p1', kind: 'tag', name: 'v1' }).success,
+    ).toBe(false)
   })
 })
 

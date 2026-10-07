@@ -369,6 +369,83 @@ describe('GitService revisions', () => {
   })
 })
 
+describe('GitService branches', () => {
+  test('lists local branches, newest first, with the current one marked', async () => {
+    const repo = makeRepoWithCommit()
+    git(repo, 'branch', 'feat/old')
+    // A later committer date than the first commit, so the order does not depend on timing
+    execFileSync('git', [...IDENTITY, 'commit', '-q', '--allow-empty', '-m', 'feat: newer'], {
+      cwd: repo,
+      env: { ...process.env, GIT_COMMITTER_DATE: '2099-01-01T00:00:00Z' },
+    })
+
+    const branches = await service.listBranches(repo)
+
+    expect(
+      branches.map((branch) => [branch.name, branch.kind === 'local' && branch.isCurrent]),
+    ).toEqual([
+      ['main', true],
+      ['feat/old', false],
+    ])
+    expect(branches[0]?.commit.subject).toBe('feat: newer')
+  })
+
+  test('switches to another local branch, keeping uncommitted edits', async () => {
+    const repo = makeRepoWithCommit()
+    git(repo, 'branch', 'feat/x')
+    writeFileSync(join(repo, 'notes.md'), 'wip\n')
+
+    await service.switchBranch(repo, { kind: 'local', name: 'feat/x' })
+
+    expect((await service.status(repo)).branch).toBe('feat/x')
+    expect(readFileSync(join(repo, 'notes.md'), 'utf8')).toBe('wip\n')
+  })
+
+  test('checks out a remote-only branch as a local branch that tracks it', async () => {
+    const repo = makeRepoWithCommit()
+    git(repo, 'update-ref', 'refs/remotes/origin/feat/remote', 'HEAD')
+    git(repo, 'config', 'remote.origin.url', repo)
+    git(repo, 'config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*')
+
+    await service.switchBranch(repo, { kind: 'remote', name: 'origin/feat/remote' })
+
+    const status = await service.status(repo)
+    expect(status.branch).toBe('feat/remote')
+    expect(status.upstream).toBe('origin/feat/remote')
+  })
+
+  test('refuses to switch to a branch that does not exist', async () => {
+    const repo = makeRepoWithCommit()
+
+    await expect(service.switchBranch(repo, { kind: 'local', name: 'nope' })).rejects.toThrow(
+      /no branch named "nope"/i,
+    )
+  })
+
+  test('creates a branch from HEAD or from another branch and switches to it', async () => {
+    const repo = makeRepoWithCommit()
+    git(repo, 'branch', 'base')
+    git(repo, 'commit', '-q', '--allow-empty', '-m', 'feat: only on main')
+
+    await service.createBranch(repo, 'feat/from-base', 'base')
+
+    expect((await service.status(repo)).branch).toBe('feat/from-base')
+    expect(git(repo, 'log', '-1', '--format=%s').trim()).toBe('init')
+
+    await service.createBranch(repo, 'feat/from-head')
+    expect((await service.status(repo)).branch).toBe('feat/from-head')
+  })
+
+  test('explains invalid branch names instead of passing them to git', async () => {
+    const repo = makeRepoWithCommit()
+
+    await expect(service.createBranch(repo, 'bad name..')).rejects.toThrow(
+      /not a valid branch name/,
+    )
+    await expect(service.createBranch(repo, '--force')).rejects.toThrow(/not a valid branch name/)
+  })
+})
+
 describe('GitService.clone', () => {
   function makeBareRemote(): string {
     const source = makeRepoWithCommit()

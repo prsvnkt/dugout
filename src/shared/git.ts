@@ -40,3 +40,36 @@ export interface GitStatus {
 
 export const MAX_GIT_PATHS_PER_REQUEST = 500
 export const MAX_COMMIT_MESSAGE_LENGTH = 10_000
+
+/** The last commit on a branch, as the branch picker shows it. */
+export interface GitCommitSummary {
+  readonly sha: string
+  readonly subject: string
+  readonly author: string
+  /** ISO 8601 committer date. */
+  readonly date: string
+}
+
+/**
+ * A branch for the branch picker. Remote branches are only listed when there is no local
+ * branch of the same name; picking one creates a local branch that tracks it.
+ */
+export type GitBranch =
+  | {
+      readonly kind: 'local'
+      readonly name: string
+      readonly isCurrent: boolean
+      /** Another worktree that has it checked out; git refuses to check it out twice. */
+      readonly checkedOutAt: string | null
+      readonly commit: GitCommitSummary
+    }
+  | {
+      readonly kind: 'remote'
+      /** e.g. `origin/feat/x` */
+      readonly name: string
+      /** The local branch it would create, e.g. `feat/x`. */
+      readonly localName: string
+      readonly commit: GitCommitSummary
+    }
+
+export const MAX_BRANCH_NAME_LENGTH = 250

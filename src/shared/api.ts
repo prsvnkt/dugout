@@ -4,7 +4,7 @@ import type { CloneDefaults, CloneProgress } from './clone'
 import type { WorktreeChanges } from './compare'
 import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
-import type { GitStatus } from './git'
+import type { GitBranch, GitStatus } from './git'
 import type { PullRequestStatus } from './pullRequest'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
@@ -73,6 +73,14 @@ export interface DugoutApi {
     pullRequestStatus(checkout: GitCheckout): Promise<Result<PullRequestStatus | null>>
     /** Opens a GitHub page (pull request or check) in the browser. */
     openUrl(url: string): Promise<Result<void>>
+    /** Local branches, then remote-only ones, newest first. */
+    branches(checkout: GitCheckout): Promise<Result<readonly GitBranch[]>>
+    switchBranch(
+      checkout: GitCheckout,
+      branch: { kind: GitBranch['kind']; name: string },
+    ): Promise<Result<void>>
+    /** Creates a branch at HEAD (or at `startPoint`) and switches to it. */
+    createBranch(checkout: GitCheckout, name: string, startPoint?: string): Promise<Result<void>>
   }
   /** Isolated checkouts for agent sessions, on their own dugout/* branches. */
   readonly worktrees: {

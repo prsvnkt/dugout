@@ -49,6 +49,12 @@ interface GitState {
    */
   commit(checkout: GitCheckout, message: string, options?: CommitOptions): Promise<boolean>
   push(checkout: GitCheckout): Promise<void>
+  /** Resolve true on success. */
+  switchBranch(
+    checkout: GitCheckout,
+    branch: { kind: 'local' | 'remote'; name: string },
+  ): Promise<boolean>
+  createBranch(checkout: GitCheckout, name: string, startPoint?: string): Promise<boolean>
   openPullRequest(checkout: GitCheckout): Promise<void>
 }
 
@@ -114,6 +120,10 @@ export const useGitStore = create<GitState>()((set, get) => {
       return isCommitted
     },
     push: (checkout) => runAction(checkout, () => dugout.git.push(checkout)).then(() => {}),
+    switchBranch: (checkout, branch) =>
+      runAction(checkout, () => dugout.git.switchBranch(checkout, branch)),
+    createBranch: (checkout, name, startPoint) =>
+      runAction(checkout, () => dugout.git.createBranch(checkout, name, startPoint)),
     openPullRequest: (checkout) =>
       runAction(checkout, () => dugout.git.openPullRequest(checkout)).then(() => {}),
   }

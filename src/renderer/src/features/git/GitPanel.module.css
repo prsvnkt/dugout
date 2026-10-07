@@ -1,4 +1,6 @@
 .panel {
+  /* Popovers (branch picker) size themselves to the panel with cqw units. */
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   height: 100%;

@@ -11,8 +11,11 @@ export function useDismiss(
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onDismiss()
     }
+    // The dispatch path, not `contains(target)`: a click can re-render the popover and detach
+    // the clicked element before this window listener runs.
     const onMouseDown = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) onDismiss()
+      const element = ref.current
+      if (!element || !event.composedPath().includes(element)) onDismiss()
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('mousedown', onMouseDown)

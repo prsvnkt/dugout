@@ -1,6 +1,8 @@
 import { IpcChannel } from '@shared/ipc/channels'
 import {
   gitCommitRequestSchema,
+  gitCreateBranchRequestSchema,
+  gitSwitchBranchRequestSchema,
   gitPathsRequestSchema,
   gitProjectRequestSchema,
   gitShowRequestSchema,
@@ -55,6 +57,15 @@ export function registerGitIpc(deps: GitIpcDeps): void {
   )
   handleRequest(IpcChannel.gitCommit, gitCommitRequestSchema, async (request) =>
     git.commit(await rootOf(request), request.message, { includeAll: request.includeAll }),
+  )
+  handleRequest(IpcChannel.gitBranches, gitProjectRequestSchema, async (request) =>
+    git.listBranches(await rootOf(request)),
+  )
+  handleRequest(IpcChannel.gitSwitchBranch, gitSwitchBranchRequestSchema, async (request) =>
+    git.switchBranch(await rootOf(request), { kind: request.kind, name: request.name }),
+  )
+  handleRequest(IpcChannel.gitCreateBranch, gitCreateBranchRequestSchema, async (request) =>
+    git.createBranch(await rootOf(request), request.name, request.startPoint),
   )
   handleRequest(IpcChannel.gitPush, gitProjectRequestSchema, async (request) =>
     git.push(await rootOf(request)),

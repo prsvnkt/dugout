@@ -2,10 +2,11 @@ import { readdir, rm } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { CloneProgress } from '@shared/clone'
 import { MAX_OPEN_FILE_BYTES, type GitRevision, type RevisionContent } from '@shared/files'
-import type { GitChangeKind, GitStatus } from '@shared/git'
+import type { GitBranch, GitChangeKind, GitStatus } from '@shared/git'
 import type { GitCredentialConfig } from '../github/gitCredentials'
 import { cloneProgressHandler } from './cloneProgressHandler'
 import { parseNumstat, withLineStats } from './lineStats'
+import { BRANCH_FORMAT, parseBranches } from './parseBranches'
 import { parseStatus } from './parseStatus'
 import { buildPullRequestUrl } from './pullRequestUrl'
 import { GitError, runGit, type RunGitOptions } from './runGit'
@@ -25,6 +26,8 @@ const CLONE_TIMEOUT_MS = 30 * 60_000
 const CHECK_IGNORE_OK = [0, 1]
 const MISSING_AT_REVISION =
   /does not exist|exists on disk, but not in|invalid object name|bad revision|not in the index/i
+/** `git check-ref-format` exits 1 for an invalid name. */
+const CHECK_REF_FORMAT_OK = [0, 1]
 /** `git symbolic-ref --quiet` exits 1 when the ref does not exist. */
 const OPTIONAL_REF_OK = [0, 1]
 const FALLBACK_BASE_BRANCH = 'main'
@@ -234,6 +237,61 @@ export class GitService {
       if (stdout.trim()) return stdout.trim()
     }
     return 'HEAD'
+  }
+
+  /** Local branches, then remote-only ones, each newest first. */
+  async listBranches(root: string): Promise<GitBranch[]> {
+    const [{ stdout }, { stdout: topLevel }] = await Promise.all([
+      this.run(root, [
+        'for-each-ref',
+        '--sort=-committerdate',
+        `--format=${BRANCH_FORMAT}`,
+        'refs/heads',
+        'refs/remotes',
+      ]),
+      this.run(root, ['rev-parse', '--show-toplevel']),
+    ])
+    return parseBranches(stdout, topLevel.trim())
+  }
+
+  /**
+   * Checks out an existing branch; uncommitted edits come along (git refuses if they would be
+   * overwritten). A remote branch becomes a new local branch that tracks it.
+   */
+  async switchBranch(
+    root: string,
+    target: { kind: GitBranch['kind']; name: string },
+  ): Promise<void> {
+    const branch = (await this.listBranches(root)).find(
+      (candidate) => candidate.kind === target.kind && candidate.name === target.name,
+    )
+    if (!branch) throw new GitError(`There is no branch named "${target.name}".`)
+    const args =
+      branch.kind === 'remote'
+        ? ['switch', '--track', branch.name]
+        : ['switch', '--no-guess', branch.name]
+    await this.run(root, args)
+  }
+
+  /** Creates `name` at HEAD (or at the existing branch `startPoint`) and switches to it. */
+  async createBranch(root: string, name: string, startPoint?: string): Promise<void> {
+    const valid = await this.validBranchName(root, name)
+    if (startPoint !== undefined) {
+      const isKnown = (await this.listBranches(root)).some((branch) => branch.name === startPoint)
+      if (!isKnown) throw new GitError(`There is no branch named "${startPoint}".`)
+    }
+    await this.run(root, ['switch', '--create', valid, ...(startPoint ? [startPoint] : [])])
+  }
+
+  /** git's own rules (`check-ref-format`); also rejects names that look like options. */
+  private async validBranchName(root: string, name: string): Promise<string> {
+    const invalid = new GitError(`"${name}" is not a valid branch name.`)
+    if (name.startsWith('-')) throw invalid
+    const { stdout } = await this.run(root, ['check-ref-format', '--branch', name], {
+      okExitCodes: CHECK_REF_FORMAT_OK,
+    })
+    if (!stdout.trim()) throw invalid
+    return stdout.trim()
   }
 
   async branchExists(root: string, branch: string): Promise<boolean> {

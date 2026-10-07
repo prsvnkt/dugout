@@ -1,7 +1,11 @@
 import { z } from 'zod'
 import { MAX_OPEN_FILE_BYTES } from '../files'
 import { MAX_TASK_BODY_LENGTH, MAX_TASK_TITLE_LENGTH, TASK_STATUSES } from '../tasks'
-import { MAX_COMMIT_MESSAGE_LENGTH, MAX_GIT_PATHS_PER_REQUEST } from '../git'
+import {
+  MAX_BRANCH_NAME_LENGTH,
+  MAX_COMMIT_MESSAGE_LENGTH,
+  MAX_GIT_PATHS_PER_REQUEST,
+} from '../git'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
 import { AGENT_KINDS, TERMINAL_KINDS } from '../terminal'
 
@@ -119,6 +123,38 @@ export const gitCommitRequestSchema = z.object({
   message: z.string().trim().min(1).max(MAX_COMMIT_MESSAGE_LENGTH),
   /** Stage every change (including new files) first: VS Code's "smart commit". */
   includeAll: z.boolean().default(false),
+})
+
+const DELETE_CHAR_CODE = 0x7f
+const FIRST_PRINTABLE_CHAR_CODE = 0x20
+
+function isSpaceOrControl(char: string): boolean {
+  const code = char.charCodeAt(0)
+  return code < FIRST_PRINTABLE_CHAR_CODE || code === DELETE_CHAR_CODE || /\s/.test(char)
+}
+
+/** A branch name; git checks the full rules, this keeps out option-like and control input. */
+const branchName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_BRANCH_NAME_LENGTH)
+  .refine((name) => !name.startsWith('-'), 'Branch names cannot start with "-"')
+  .refine((name) => ![...name].some(isSpaceOrControl), 'Branch names cannot contain spaces')
+
+export const gitSwitchBranchRequestSchema = z.object({
+  projectId,
+  worktreePath: absolutePath.optional(),
+  kind: z.enum(['local', 'remote']),
+  name: branchName,
+})
+
+export const gitCreateBranchRequestSchema = z.object({
+  projectId,
+  worktreePath: absolutePath.optional(),
+  name: branchName,
+  /** An existing branch to start from; HEAD when omitted. */
+  startPoint: branchName.optional(),
 })
 
 export type GitProjectRequest = z.infer<typeof gitProjectRequestSchema>

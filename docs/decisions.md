@@ -242,6 +242,22 @@ rewrite look different), from `git diff --numstat` and `--cached --numstat` run 
 `git status`; untracked files count as all added lines (limits in known-issues). A
 prompt dock that types into the focused pane was considered and dropped: the terminal is the input.
 
+## 024 — Branch picker, with agents in mind (2026-10-07)
+
+Clicking the branch in Source Control opens a searchable branch picker (keyboard first: type,
+↑↓, Enter, Esc). It lists local branches newest first, then remote branches that have no local
+copy (picking one creates a tracking branch), each with its age and last commit. Enter picks the
+best match; with an empty search that is the most recent other branch, like `git switch -`. A
+name no branch has can be created at HEAD, or "from…" another branch.
+
+Unlike an editor, Dugout has agents running in the checkout, and switching branches changes
+their files mid-task. So when an agent in that checkout is starting, working or waiting for
+you, the picker says so, offers a worktree session instead, and asks for a second Enter/click
+before anything that changes files. Branches checked out in another worktree are shown but
+cannot be picked (git refuses). Detached checkouts and tags are left out; fetching is a follow-up.
+Every command goes through `GitService` (decision 009), which only switches to branches that
+exist and validates new names with `git check-ref-format`.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -254,4 +270,5 @@ prompt dock that types into the focused pane was considered and dropped: the ter
 5. **Done since:** tasks from GitHub Issues ✅, "needs you" inbox ✅, PR/CI status ✅,
    Codex adapter with Compare ✅.
 6. **Done since:** agent settings (`.mcp.json` editor, AGENTS.md as shared instructions) ✅.
-7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅.
+7. **Done since:** "Day game" light theme with activity rail ✅, Review diff stats ✅, Seti
+   file icons ✅, VS Code-style Source Control ✅, branch picker ✅.

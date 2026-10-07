@@ -41,6 +41,11 @@ const api: DugoutApi = {
     openPullRequest: (checkout) => ipcRenderer.invoke(IpcChannel.gitOpenPullRequest, checkout),
     pullRequestStatus: (checkout) => ipcRenderer.invoke(IpcChannel.gitPullRequestStatus, checkout),
     openUrl: (url) => ipcRenderer.invoke(IpcChannel.gitOpenUrl, { url }),
+    branches: (checkout) => ipcRenderer.invoke(IpcChannel.gitBranches, checkout),
+    switchBranch: (checkout, branch) =>
+      ipcRenderer.invoke(IpcChannel.gitSwitchBranch, { ...checkout, ...branch }),
+    createBranch: (checkout, name, startPoint) =>
+      ipcRenderer.invoke(IpcChannel.gitCreateBranch, { ...checkout, name, startPoint }),
   },
   worktrees: {
     list: (projectId) => ipcRenderer.invoke(IpcChannel.worktreeList, { projectId }),
