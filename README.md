@@ -21,20 +21,36 @@ npm install
 npm run dev
 ```
 
-## Install on your Mac
+## Install
+
+### Download
+
+Download `Dugout-<version>-arm64.dmg` from the
+[latest release](https://github.com/prsvnkt/dugout/releases/latest), open it and drag Dugout to
+Applications. Dugout needs a Mac with Apple silicon.
+
+Dugout is not notarized by Apple yet, so the first launch is blocked with "Apple could not verify
+Dugout…". Click **Done**, then open **System Settings → Privacy & Security** and click
+**Open Anyway** next to the Dugout message. Alternatively, run once in Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Dugout.app
+```
+
+There are no automatic updates yet: download the new release and replace the app.
+
+### Build from source
 
 ```sh
 npm install
 npm run dist
 ```
 
-This builds `dist/Dugout-<version>-arm64.dmg` (and `dist/mac-arm64/Dugout.app`). Open the DMG
-and drag Dugout to Applications. To update, pull and run `npm run dist` again.
+This builds `dist/Dugout-<version>-arm64.dmg` (and `dist/mac-arm64/Dugout.app`). A copy you
+build yourself opens without the warning above. To update, pull and run `npm run dist` again.
 
-The build is ad-hoc signed, not notarized: a copy you build yourself opens normally, but a
-downloaded one needs right-click → Open the first time. `npm run dev` keeps its data in
-`~/Library/Application Support/Dugout Dev`, apart from the installed app's `Dugout` folder, and
-shows as "Dugout Dev" in the Dock.
+`npm run dev` keeps its data in `~/Library/Application Support/Dugout Dev`, apart from the
+installed app's `Dugout` folder, and shows as "Dugout Dev" in the Dock.
 
 ## Scripts
 

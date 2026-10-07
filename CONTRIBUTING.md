@@ -46,5 +46,13 @@ npm run test:e2e   # build, then drive the real app with Playwright
 - Keep pull requests focused on one change, and fill in the template.
 - CI runs both checks on macOS; a pull request is merged once they pass and it is reviewed.
 
+## Releasing (maintainers)
+
+1. Bump `version` in `package.json` on `main` (e.g. `npm version minor --no-git-tag-version`),
+   commit and push.
+2. Tag that commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
+3. The Release workflow builds the app and creates a draft release with the DMG and zip. Edit
+   the generated notes, then publish it.
+
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE)
 and that you will follow the [Code of Conduct](CODE_OF_CONDUCT.md).

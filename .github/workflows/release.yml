@@ -1,0 +1,39 @@
+name: Release
+
+# Pushing a tag like v0.2.0 builds the macOS app and attaches it to a draft GitHub Release.
+# Review the draft's notes, then publish it.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      # Bundling Monaco needs more than Node's default heap on the runner.
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Check the tag matches package.json
+        run: |
+          expected="v$(node -p 'require("./package.json").version')"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version ($expected)"
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run dist -- --publish never
+      - name: Create a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip
+          --draft --generate-notes --title "Dugout $GITHUB_REF_NAME"

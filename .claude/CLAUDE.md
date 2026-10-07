@@ -27,6 +27,7 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 | `npm test`         | Unit tests (Vitest)                            |
 | `npm run test:e2e` | Build, then drive the real app with Playwright |
 | `npm run build`    | Typecheck and production build into `out/`     |
+| `npm run dist`     | Package the macOS app (DMG, zip) into `dist/`  |
 
 **Definition of done:** `npm run check` and `npm run test:e2e` both pass, and the docs are
 updated as `.claude/rules/docs.md` describes. CI (`.github/workflows/ci.yml`) runs both checks on
