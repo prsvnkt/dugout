@@ -40,6 +40,11 @@ setup command run in the new worktree (e.g. `npm install`), shown in the pane wh
 once on CI. Shell-based tests wait for the user's login shell, so a slow shell profile under load
 can still stretch them.
 
+**Seen again 2026-10-07:** twice, as `electronApplication.firstWindow` timing out (the window
+never opened) in otherwise unrelated specs, plus "errors not part of any test" from their
+teardown; an immediate rerun passed. This is app launch, not shells, so the profile fix below
+would not cover it; consider retrying once locally too.
+
 **If it recurs:** start test shells with a minimal profile (e.g. `ZDOTDIR` pointing at an empty
 folder) so tests do not depend on the developer's shell setup.
 
