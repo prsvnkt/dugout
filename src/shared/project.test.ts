@@ -13,12 +13,16 @@ describe('suggestProjectName', () => {
 })
 
 describe('nextProjectColor', () => {
-  test('starts with the first colour', () => {
-    expect(nextProjectColor([])).toBe('teal')
+  test('starts with blue', () => {
+    expect(nextProjectColor([])).toBe('blue')
   })
 
   test('picks the first unused colour', () => {
-    expect(nextProjectColor([{ color: 'teal' }, { color: 'purple' }])).toBe('orange')
+    expect(nextProjectColor([{ color: 'blue' }, { color: 'purple' }])).toBe('orange')
+  })
+
+  test('offers the greens last, so new projects stand out from the field-green accent', () => {
+    expect(PROJECT_COLORS.slice(-2)).toEqual(['teal', 'green'])
   })
 
   test('cycles once every colour is used', () => {

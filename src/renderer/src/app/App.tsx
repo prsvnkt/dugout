@@ -56,14 +56,14 @@ export function App() {
 
   if (!isLoaded) return <div className={styles.app} />
 
-  // The selected project's colour tints the whole window (title bar, rail, status bar, focus).
+  // The UI accent is always field green; the selected project's colour marks only what is its.
   const selected = projects.find((project) => project.id === selectedId)
-  const accent = selected
-    ? ({ '--accent': projectColorVar(selected.color) } as CSSProperties)
+  const projectAccent = selected
+    ? ({ '--project-accent': projectColorVar(selected.color) } as CSSProperties)
     : undefined
 
   return (
-    <div className={styles.app} style={accent}>
+    <div className={styles.app} style={projectAccent}>
       <ProjectTabs
         onAddProject={addProject}
         onCloneProject={openClone}

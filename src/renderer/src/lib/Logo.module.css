@@ -1,0 +1,39 @@
+.logo {
+  flex-shrink: 0;
+}
+
+.field {
+  fill: var(--field-deep);
+}
+
+.frame {
+  fill: none;
+  stroke: var(--chalk);
+  stroke-width: 4;
+}
+
+.roof {
+  fill: var(--chalk);
+}
+
+.bench {
+  stroke: var(--clay);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.green {
+  fill: var(--field-bright);
+}
+
+.blue {
+  fill: var(--logo-blue);
+}
+
+.amber {
+  fill: var(--logo-amber);
+}
+
+.violet {
+  fill: var(--logo-violet);
+}

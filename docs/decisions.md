@@ -224,10 +224,10 @@ Claude-only section, so both agents follow one set of instructions.
 
 Dugout switches from its dark theme to one light theme (no dark option; it could return as a
 token override). Cool neutrals, Schibsted Grotesk for UI and JetBrains Mono for code, both
-bundled as variable fonts (CSP allows only `font-src 'self'`). The selected project's colour is
-the UI `--accent`, set on the app root: it washes the title bar and the rail (the project's
-"room"), underlines the focused pane, fills the status bar and drives focus rings. Project colours
-are deep variants with white text at least 4.5:1 on each.
+bundled as variable fonts (CSP allows only `font-src 'self'`). The accent washes the title bar
+and the rail, fills the status bar and drives focus rings; since decision 028 it is field green,
+and the selected project's colour only marks what is the project's. Project colours are deep
+variants with white text at least 4.5:1 on each.
 
 A 48px activity rail replaces the collapsed side-panel rails. It toggles Files (⌘B), Review
 (⇧⌘G, with the change count) and Tasks, and its "+" menu holds the new-pane actions and Agent
@@ -317,6 +317,22 @@ style:
   one is missing.
 
 The search and the check live in `services/welcome/` behind the read-only `welcome` IPC domain.
+
+## 028 — Field green is the accent; project colours mark identity only (2026-10-07)
+
+**Context.** The selected project's colour tinted the whole window, so Dugout had no colour of
+its own, and the first-run screen (no project) fell back to a generic blue.
+
+**Decision.** The logo's palette becomes brand tokens (`--field-deep`, `--field`,
+`--field-bright`, `--chalk`, `--clay`, and the four agent dots). `--accent` is `--field`
+(#1d6b48, white text 6.5:1) everywhere: title bar and rail wash, status bar, buttons, links and
+focus rings. The selected project's colour is `--project-accent`, used only for the tab dot,
+a line along the top of the selected tab, and the focused pane's underline and number. New
+projects get blue first; teal and green come last because they sit close to the accent.
+
+The welcome screen opens with a field-green hero carrying the logo (`lib/Logo.tsx`, coloured from
+the tokens). The traffic lights (`trafficLightPosition`), tabs, "+" and the title bar's end items
+share the tab row's centre line (`--tab-height`).
 
 ## Roadmap
 

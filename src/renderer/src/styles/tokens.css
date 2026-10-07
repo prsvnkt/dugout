@@ -27,8 +27,19 @@
   --project-yellow: #a16207;
   --project-red: #c53030;
 
-  /* The UI accent; App sets it to the selected project's colour. */
-  --accent: var(--project-blue);
+  /* Brand: the logo's ballpark (decision 028). Field green is the UI accent everywhere. */
+  --field-deep: #0f3d2e; /* logo background; chalk text on it is 10.8:1 */
+  --field: #1d6b48; /* white text on it is 6.5:1 */
+  --field-bright: #4ec27a; /* on --field-deep only (5.4:1) */
+  --chalk: #f4f1ea;
+  --clay: #c9a77a;
+  --logo-blue: #5b8def;
+  --logo-amber: #f59e0b;
+  --logo-violet: #a78bfa;
+
+  --accent: var(--field);
+  /* Identity only (tab dot and line, focused pane); App sets it to the selected project's colour. */
+  --project-accent: var(--accent);
 
   --status-running: #15803d;
   --status-idle: #8a919c;
@@ -64,6 +75,8 @@
 
   /* Leaves room for the macOS traffic lights with titleBarStyle: hiddenInset. */
   --titlebar-height: 40px;
+  /* Tabs, the "+" and the traffic lights (window.ts) share this row's centre line. */
+  --tab-height: 31px;
   --titlebar-inset: 80px;
   --rail-width: 48px;
   --pane-header-height: 38px;

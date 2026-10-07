@@ -1,7 +1,4 @@
-/* No project is selected yet, so the welcome screen uses Dugout's own teal. */
 .welcome {
-  --accent: var(--project-teal);
-
   display: flex;
   justify-content: center;
   height: 100%;
@@ -19,21 +16,41 @@
   margin: auto 0;
 }
 
+/* The ballpark: deep field green with a clay line, like the logo's bench. */
 .hero {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-bottom: 3px solid var(--clay);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 100% 0%, var(--field) 0%, transparent 65%), var(--field-deep);
+  color: var(--chalk);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .title {
   margin: 0;
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
-  margin: 0 0 var(--space-2);
-  color: var(--text-secondary);
+  margin: 0;
+  color: color-mix(in oklch, var(--chalk) 80%, transparent);
   line-height: 1.5;
 }
 
@@ -42,13 +59,33 @@
   gap: var(--space-3);
 }
 
-.primary {
+.heroPrimary {
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--field-bright);
   border-radius: var(--radius-md);
-  background: var(--accent);
-  color: var(--text-on-accent);
-  font-weight: 600;
+  background: var(--field-bright);
+  color: var(--field-deep);
+  font-weight: 700;
+}
+
+.heroPrimary:hover {
+  background: color-mix(in oklch, var(--field-bright) 85%, var(--chalk));
+}
+
+.heroSecondary {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid color-mix(in oklch, var(--chalk) 40%, transparent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--chalk);
+}
+
+.heroSecondary:hover {
+  background: color-mix(in oklch, var(--chalk) 10%, transparent);
+}
+
+.hero :focus-visible {
+  outline-color: var(--field-bright);
 }
 
 .secondary {
@@ -80,6 +117,18 @@
   counter-increment: step;
 }
 
+.step:nth-child(1) {
+  --step-color: var(--field-bright);
+}
+
+.step:nth-child(2) {
+  --step-color: var(--logo-blue);
+}
+
+.step:nth-child(3) {
+  --step-color: var(--logo-amber);
+}
+
 .step::before {
   content: counter(step);
   display: grid;
@@ -88,8 +137,8 @@
   height: 20px;
   margin-bottom: var(--space-1);
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--step-color);
+  color: var(--field-deep);
   font-size: 11px;
   font-weight: 600;
 }
@@ -200,4 +249,10 @@
   font-family: var(--font-mono);
   font-size: 11px;
   user-select: text;
+}
+
+/* The logo shares the hero's green, so a faint chalk ring sets it apart. */
+.brand svg {
+  border-radius: 22%;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--chalk) 25%, transparent);
 }

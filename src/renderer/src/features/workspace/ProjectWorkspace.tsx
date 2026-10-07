@@ -49,7 +49,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
   const setPaneSession = useWorkspaceStore((state) => state.setPaneSession)
   const restartPane = useWorkspaceStore((state) => state.restartPane)
   const clearInitialPrompt = useWorkspaceStore((state) => state.clearInitialPrompt)
-  const accent = projectColorVar(project.color)
+  const projectColor = projectColorVar(project.color)
 
   if (layout.panes.length === 0) {
     return <StartScreen project={project} isActive={isActive} onAdd={onAdd} />
@@ -70,7 +70,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               projectId={project.id}
               cwd={pane.worktree?.path ?? project.rootPath}
               branch={pane.worktree?.branch ?? null}
-              accentColor={accent}
+              projectColor={projectColor}
               isFocused={layout.focusedPaneId === pane.id}
               shouldFocus={isActive && layout.focusedPaneId === pane.id}
               onFocus={() => focusPane(project.id, pane.id)}

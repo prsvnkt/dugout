@@ -1,3 +1,4 @@
+import { Logo } from '@renderer/lib/Logo'
 import { AgentCheckList } from './AgentCheckList'
 import { GitHubSection } from './GitHubSection'
 import { LocalRepoList } from './LocalRepoList'
@@ -23,15 +24,20 @@ export function WelcomeScreen({ onAddProject, onClone }: WelcomeScreenProps) {
     <div className={styles.welcome}>
       <div className={styles.column}>
         <header className={styles.hero}>
-          <h1 className={styles.title}>Welcome to Dugout</h1>
-          <p className={styles.subtitle}>
-            Run coding agents across your projects in one window, and review what they change.
-          </p>
+          <div className={styles.brand}>
+            <Logo size={56} />
+            <div className={styles.brandText}>
+              <h1 className={styles.title}>Welcome to Dugout</h1>
+              <p className={styles.subtitle}>
+                Run coding agents across your projects in one window, and review what they change.
+              </p>
+            </div>
+          </div>
           <div className={styles.actions}>
-            <button className={styles.primary} onClick={onAddProject}>
+            <button className={styles.heroPrimary} onClick={onAddProject}>
               Add project…
             </button>
-            <button className={styles.secondary} onClick={onClone}>
+            <button className={styles.heroSecondary} onClick={onClone}>
               Clone repository…
             </button>
           </div>

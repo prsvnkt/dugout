@@ -1,12 +1,13 @@
+/** In the order new projects get them. The greens come last: they sit close to the accent. */
 export const PROJECT_COLORS = [
-  'teal',
+  'blue',
   'orange',
   'purple',
-  'blue',
   'pink',
-  'green',
   'yellow',
   'red',
+  'teal',
+  'green',
 ] as const
 
 export type ProjectColor = (typeof PROJECT_COLORS)[number]
@@ -34,5 +35,5 @@ export function suggestProjectName(rootPath: string): string {
 export function nextProjectColor(projects: readonly Pick<Project, 'color'>[]): ProjectColor {
   const used = new Set(projects.map((project) => project.color))
   const unused = PROJECT_COLORS.find((color) => !used.has(color))
-  return unused ?? PROJECT_COLORS[projects.length % PROJECT_COLORS.length] ?? 'teal'
+  return unused ?? PROJECT_COLORS[projects.length % PROJECT_COLORS.length] ?? 'blue'
 }

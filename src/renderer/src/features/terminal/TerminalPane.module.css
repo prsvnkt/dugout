@@ -22,7 +22,7 @@
 
 /* The focused pane is underlined in the project colour. */
 .pane[data-focused='true'] .header {
-  box-shadow: inset 0 -2px 0 var(--accent);
+  box-shadow: inset 0 -2px 0 var(--project-accent);
 }
 
 .number {
@@ -34,7 +34,7 @@
 }
 
 .pane[data-focused='true'] .number {
-  color: var(--accent);
+  color: var(--project-accent);
 }
 
 .kind {

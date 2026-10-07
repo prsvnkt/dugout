@@ -86,7 +86,7 @@ export function ProjectTabs({ onAddProject, onCloneProject, onEditProject }: Pro
               key={project.id}
               className={styles.tab}
               data-selected={project.id === selectedId}
-              style={{ '--accent': projectColorVar(project.color) } as CSSProperties}
+              style={{ '--project-color': projectColorVar(project.color) } as CSSProperties}
             >
               <button
                 className={styles.select}
