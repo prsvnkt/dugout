@@ -8,6 +8,7 @@
 
 ## Checklist
 
-- [ ] `npm run check` passes
-- [ ] `npm run test:e2e` passes
+<!-- CI runs `npm run check` and `npm run test:e2e`; its status shows below, not here. -->
+
+- [ ] Tests added or updated for the change
 - [ ] Docs updated where needed (see `.claude/rules/docs.md`)
