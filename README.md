@@ -28,7 +28,8 @@ and drag Dugout to Applications. To update, pull and run `npm run dist` again.
 
 The build is ad-hoc signed, not notarized: a copy you build yourself opens normally, but a
 downloaded one needs right-click → Open the first time. `npm run dev` keeps its data in
-`~/Library/Application Support/Dugout Dev`, apart from the installed app's `Dugout` folder.
+`~/Library/Application Support/Dugout Dev`, apart from the installed app's `Dugout` folder, and
+shows as "Dugout Dev" in the Dock.
 
 ## Scripts
 
