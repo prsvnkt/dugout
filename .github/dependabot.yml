@@ -14,6 +14,12 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: typescript
         update-types: [version-update:semver-major, version-update:semver-minor]
+      # Its next major needs Vite 8, so it moves together with the Vite pin above.
+      - dependency-name: '@vitejs/plugin-react'
+        update-types: [version-update:semver-major]
+      # Types must match the Node the project runs on (.nvmrc), not the newest Node.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
