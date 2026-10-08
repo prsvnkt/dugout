@@ -139,7 +139,7 @@ export function ActivityRail({ project, changeCount, onAdd }: ActivityRailProps)
       <RailButton
         glyph="≡"
         label={isExplorerOpen ? 'Hide Explorer' : 'Show Explorer'}
-        title="Files (⌘B)"
+        title="Agents and files (⌘B)"
         isActive={isExplorerOpen}
         onClick={toggleExplorer}
       />

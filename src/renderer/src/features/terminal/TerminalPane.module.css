@@ -20,6 +20,12 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* An agent's own colour: a stripe at the left of its header, matching the Agents list. */
+.pane[data-agent-color='true'] .header {
+  border-left: 4px solid var(--agent);
+  padding-left: 10px;
+}
+
 /* The focused pane is underlined in the project colour. */
 .pane[data-focused='true'] .header {
   box-shadow: inset 0 -2px 0 var(--accent);
@@ -35,6 +41,10 @@
 
 .pane[data-focused='true'] .number {
   color: var(--accent);
+}
+
+.pane[data-agent-color='true'] .number {
+  color: var(--agent);
 }
 
 .kind {

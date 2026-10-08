@@ -365,6 +365,26 @@ would change agents' files mid-task, and merging is work for the agent (a git cl
 scope). The branch picker's search now reads "Search or create a new branch", so creating one is
 not hidden.
 
+## 031 — Agents list in the sidebar; each agent has its own colour (2026-10-08)
+
+**Context.** With several agents in a project, each one's status sat only in its own terminal
+header, and the Inbox shows just the ones that need you. There was no single view of what all of
+a project's agents were doing, and terminals 01–06 looked alike apart from their number.
+
+**Decision.** The left sidebar is split: **Agents** on top, the Explorer below, with a
+draggable divider. The list shows the selected project's agents (Claude and Codex; shells are
+left out, since they have no status beyond running), in terminal order: number, agent, status
+(dot and text), the task or title it was started for, its worktree branch, and the latest hook
+detail. Clicking a row focuses that terminal. Its header minimises the list to one line so the
+Explorer gets the full height (`agentsStore`); ⌘B still hides the whole sidebar. Other projects'
+agents stay in the Inbox.
+
+Each agent gets a colour when it starts: the first palette colour (the project colours) that no
+other agent in the project uses, never the project's own colour, which stays the room accent.
+It is shown as a stripe on the agent's row and terminal header and on its number, and is saved
+with the layout (`color` in `workspace.json`; older layouts get colours on load). Status never
+relies on it. Colours are automatic; there is no picker.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -382,3 +402,4 @@ not hidden.
 8. **Done since:** start screen with a default agent and resumable sessions ✅, welcome screen
    with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅,
    fetch from Source Control ✅.
+9. **Done since:** Agents list in the sidebar with per-agent colours ✅.

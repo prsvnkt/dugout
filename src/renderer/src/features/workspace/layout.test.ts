@@ -6,6 +6,7 @@ import {
   closeWorktreePanes,
   EMPTY_LAYOUT,
   focusPane,
+  paneNumber,
   restartPane,
   setPaneSession,
   type ProjectLayout,
@@ -27,6 +28,16 @@ describe('workspace layout', () => {
 
     expect(two.panes.map((pane) => pane.kind)).toEqual(['claude', 'shell'])
     expect(two.focusedPaneId).toBe(two.panes[1]?.id)
+  })
+
+  test('an added pane keeps the colour it was given', () => {
+    const layout = addPane(EMPTY_LAYOUT, 'claude', createId, undefined, { color: 'pink' })
+    expect(layout.panes[0]?.color).toBe('pink')
+  })
+
+  test('a pane number is its position, two digits', () => {
+    expect(paneNumber(0)).toBe('01')
+    expect(paneNumber(9)).toBe('10')
   })
 
   test('adding never mutates the previous layout', () => {

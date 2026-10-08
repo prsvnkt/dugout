@@ -180,6 +180,16 @@ describe('session persistence schemas', () => {
     const bad = { version: 1, projects: { p1: { panes: [{}] } } }
     expect(workspaceSnapshotSchema.safeParse(bad).success).toBe(false)
   })
+
+  test('a saved agent keeps its colour; layouts from before colours still load', () => {
+    const pane = (color?: string) => ({
+      version: 1,
+      projects: { p1: { panes: [{ kind: 'claude', ...(color && { color }) }] } },
+    })
+    expect(workspaceSnapshotSchema.parse(pane('red'))).toEqual(pane('red'))
+    expect(workspaceSnapshotSchema.safeParse(pane()).success).toBe(true)
+    expect(workspaceSnapshotSchema.safeParse(pane('mauve')).success).toBe(false)
+  })
 })
 
 describe('file schemas', () => {

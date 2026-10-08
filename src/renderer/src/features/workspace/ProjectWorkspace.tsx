@@ -7,12 +7,12 @@ import { RightPanel } from '@renderer/features/tasks/RightPanel'
 import { useCheckoutGit, useGitStore } from '@renderer/features/git/gitStore'
 import { EditorArea } from '@renderer/features/editor/EditorArea'
 import { useProjectTabs } from '@renderer/features/editor/editorStore'
-import { ExplorerPanel } from '@renderer/features/explorer/ExplorerPanel'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { WorktreeError } from '@renderer/features/worktrees/WorktreeError'
 import { StartScreen } from '@renderer/features/start/StartScreen'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
 import { ActivityRail } from './ActivityRail'
+import { LeftSidebar } from './LeftSidebar'
 import { SidePanel } from './SidePanel'
 import { useCheckoutRefresh } from './useCheckoutRefresh'
 import { useProjectLayout, useSelectedCheckout, useWorkspaceStore } from './workspaceStore'
@@ -71,6 +71,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               cwd={pane.worktree?.path ?? project.rootPath}
               branch={pane.worktree?.branch ?? null}
               projectColor={projectColor}
+              agentColor={pane.color ? projectColorVar(pane.color) : null}
               isFocused={layout.focusedPaneId === pane.id}
               shouldFocus={isActive && layout.focusedPaneId === pane.id}
               onFocus={() => focusPane(project.id, pane.id)}
@@ -91,7 +92,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
 }
 
 /**
- * One project's workspace: the activity rail, explorer (left), editor tabs above its terminals
+ * One project's workspace: the activity rail, agents over the explorer (left), editor tabs above its terminals
  * (center) and the review/tasks panel (right); the rail toggles both side panels. Stays mounted
  * while another project is shown (hidden with `visibility`, which keeps its size) so terminals
  * keep running.
@@ -123,7 +124,7 @@ export function ProjectWorkspace({ project, isActive }: ProjectWorkspaceProps) {
             minSize={MIN_EXPLORER_PX}
             maxSize={MAX_EXPLORER_SIZE}
           >
-            <ExplorerPanel project={project} />
+            <LeftSidebar project={project} />
           </SidePanel>
           <Separator className={styles.separator} />
           <Panel id="center" minSize={MIN_PANE_SIZE_PX}>

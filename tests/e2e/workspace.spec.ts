@@ -37,6 +37,11 @@ async function addProject(repo: string, opener: () => Promise<void>): Promise<vo
 }
 
 const activeWorkspace = () => page.locator('[data-active="true"]')
+/** Status labels in terminal headers (the Agents list repeats agents' statuses). */
+const paneStatuses = (text: string) =>
+  activeWorkspace()
+    .getByRole('region', { name: /terminal$/ })
+    .getByText(text)
 
 test('adds projects, runs split terminals, and keeps them alive across switches', async () => {
   // Arrange
@@ -50,7 +55,7 @@ test('adds projects, runs split terminals, and keeps them alive across switches'
     .getByRole('button', { name: /New shell/ })
     .click()
   await chooseNewAgentAction(activeWorkspace(), 'New shell')
-  await expect(activeWorkspace().getByText('Running')).toHaveCount(2)
+  await expect(paneStatuses('Running')).toHaveCount(2)
   await expect(page.getByText('2 terminals')).toBeVisible()
 
   // Act: second project, then back to the first
@@ -131,7 +136,7 @@ test('a newly split pane starts its process at the full pane width', async () =>
   await clickMenuItem(app, 'File', 'New Shell')
   await clickMenuItem(app, 'File', 'New Shell')
   await clickMenuItem(app, 'File', 'New Shell')
-  await expect(activeWorkspace().getByText('Running')).toHaveCount(3)
+  await expect(paneStatuses('Running')).toHaveCount(3)
   await activeWorkspace().getByTestId('terminal').last().click()
   await page.keyboard.type('echo "pty-size:$(stty size)"\n')
 

@@ -22,7 +22,8 @@
   min-height: 0;
 }
 
-.center {
+.center,
+.sidebar {
   height: 100%;
 }
 

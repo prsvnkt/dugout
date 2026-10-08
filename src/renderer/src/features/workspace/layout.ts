@@ -1,3 +1,4 @@
+import type { ProjectColor } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
 import type { Worktree } from '@shared/worktree'
 
@@ -18,6 +19,8 @@ export interface Pane {
   readonly initialPrompt?: string
   /** What the agent was started for, shown when offering to resume it. */
   readonly title?: string
+  /** The agent's own colour, in its header and the Agents list. Shells have none. */
+  readonly color?: ProjectColor
 }
 
 export interface PaneTask {
@@ -31,6 +34,7 @@ export interface PaneExtras {
   /** An earlier session to resume instead of starting a new one. */
   readonly sessionId?: string | undefined
   readonly title?: string | undefined
+  readonly color?: ProjectColor | undefined
 }
 
 /** The side-by-side terminal panes of one project. */
@@ -41,6 +45,11 @@ export interface ProjectLayout {
 
 /** More panes than this side by side become too narrow to be useful. */
 export const MAX_PANES_PER_PROJECT = 6
+
+/** A pane's position as shown to the user: "01", "02"… */
+export function paneNumber(index: number): string {
+  return String(index + 1).padStart(2, '0')
+}
 
 export const EMPTY_LAYOUT: ProjectLayout = { panes: [], focusedPaneId: null }
 
@@ -61,6 +70,7 @@ export function addPane(
     ...(extras.initialPrompt && { initialPrompt: extras.initialPrompt }),
     ...(extras.sessionId && { sessionId: extras.sessionId }),
     ...(extras.title && { title: extras.title }),
+    ...(extras.color && { color: extras.color }),
   }
   return { panes: [...layout.panes, pane], focusedPaneId: pane.id }
 }

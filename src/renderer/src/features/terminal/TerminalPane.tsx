@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import '@xterm/xterm/css/xterm.css'
 import { isAgentKind, type TerminalKind } from '@shared/terminal'
+import { paneNumber } from '@renderer/features/workspace/layout'
 import {
   ACTIVITY_LABEL,
   toPaneActivity,
@@ -21,6 +22,8 @@ interface TerminalPaneProps {
   readonly branch: string | null
   /** The project's colour, the accent inside its pane (hidden projects' panes too). */
   readonly projectColor: string
+  /** The agent's own colour (a CSS value), a stripe on its header. Null for shells. */
+  readonly agentColor: string | null
   /** True when this pane should own keyboard focus (focused pane of the visible project). */
   readonly shouldFocus: boolean
   readonly isFocused: boolean
@@ -45,10 +48,6 @@ const KIND_LABEL: Record<TerminalKind, string> = {
   shell: 'Shell',
 }
 
-function paneNumber(index: number): string {
-  return String(index + 1).padStart(2, '0')
-}
-
 function describe(activity: PaneActivity, status: TerminalStatus): string {
   if (status.state === 'exited') return `Exited (${status.exit.exitCode})`
   if (status.state === 'error') return status.message
@@ -57,7 +56,7 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 
 export function TerminalPane(props: TerminalPaneProps) {
   const { index, kind, projectId, cwd, branch, projectColor, shouldFocus, isFocused } = props
-  const { resumeSessionId, initialPrompt, task } = props
+  const { resumeSessionId, initialPrompt, task, agentColor } = props
   const { onFocus, onClose, onActivity, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const { status, agentStatus, agentDetail, terminalId, sessionId, focus } = useTerminal(
@@ -91,12 +90,13 @@ export function TerminalPane(props: TerminalPaneProps) {
     <section
       className={styles.pane}
       data-focused={isFocused}
-      style={{ '--accent': projectColor } as CSSProperties}
+      data-agent-color={agentColor !== null}
+      style={{ '--accent': projectColor, '--agent': agentColor ?? undefined } as CSSProperties}
       onMouseDown={onFocus}
       aria-label={`${KIND_LABEL[kind]} terminal`}
     >
       <header className={styles.header}>
-        <span className={styles.number} aria-hidden>
+        <span className={styles.number} aria-hidden data-testid="pane-number">
           {paneNumber(index)}
         </span>
         <span className={styles.kind}>{KIND_LABEL[kind]}</span>

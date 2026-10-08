@@ -1,9 +1,11 @@
 import { create } from 'zustand'
-import type { ProjectId } from '@shared/project'
-import type { TerminalId, TerminalKind } from '@shared/terminal'
+import type { ProjectColor, ProjectId } from '@shared/project'
+import { isAgentKind, type TerminalId, type TerminalKind } from '@shared/terminal'
 import type { GitCheckout, Worktree } from '@shared/worktree'
 import { useMemo } from 'react'
 import type { WorkspaceSnapshot } from '@shared/ipc/contract'
+import { assignAgentColors, pickAgentColor } from '@renderer/features/agents/agentColor'
+import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import {
   addPane,
   closePane,
@@ -73,6 +75,11 @@ export interface PaneDetail {
 const createPaneId = () => crypto.randomUUID()
 const NO_RECENT: readonly RecentSession[] = []
 
+/** The project's own colour, which its agents never take (it is the room accent). */
+function projectColorOf(projectId: ProjectId): ProjectColor | undefined {
+  return useProjectsStore.getState().projects.find((project) => project.id === projectId)?.color
+}
+
 function withoutKeys<V>(record: Readonly<Record<string, V>>, keys: readonly string[]) {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !keys.includes(key)))
 }
@@ -117,14 +124,18 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       set({
         layouts: Object.fromEntries(
           Object.entries(snapshot.projects).map(([projectId, saved]) => {
-            const panes = saved.panes.map(({ kind, worktree, sessionId, title }): Pane => ({
-              id: createPaneId(),
-              kind,
-              generation: 0,
-              ...(worktree && { worktree }),
-              ...(sessionId && { sessionId }),
-              ...(title && { title }),
-            }))
+            const savedPanes = saved.panes.map(
+              ({ kind, worktree, sessionId, title, color }): Pane => ({
+                id: createPaneId(),
+                kind,
+                generation: 0,
+                ...(worktree && { worktree }),
+                ...(sessionId && { sessionId }),
+                ...(title && { title }),
+                ...(color && isAgentKind(kind) && { color }),
+              }),
+            )
+            const panes = assignAgentColors(savedPanes, projectColorOf(projectId))
             return [projectId, { panes, focusedPaneId: panes.at(-1)?.id ?? null }]
           }),
         ),
@@ -170,7 +181,13 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
     clearInitialPrompt: (projectId, paneId) =>
       updateLayout(projectId, (layout) => clearInitialPrompt(layout, paneId)),
     addPane: (projectId, kind, worktree, extras) => {
-      updateLayout(projectId, (layout) => addPane(layout, kind, createPaneId, worktree, extras))
+      updateLayout(projectId, (layout) => {
+        const used = layout.panes.flatMap((pane) => pane.color ?? [])
+        const color = isAgentKind(kind)
+          ? pickAgentColor(used, projectColorOf(projectId))
+          : undefined
+        return addPane(layout, kind, createPaneId, worktree, { ...extras, color })
+      })
       get().selectCheckout(projectId, worktree?.path ?? null)
     },
     closePane: (projectId, paneId) => {
@@ -290,12 +307,13 @@ export function toSnapshot(
         return [
           projectId,
           {
-            panes: panes.map(({ kind, worktree, sessionId, task, title }) => ({
+            panes: panes.map(({ kind, worktree, sessionId, task, title, color }) => ({
               kind,
               ...(worktree && { worktree }),
               ...(sessionId && { sessionId }),
               ...(task && { task }),
               ...(title && { title }),
+              ...(color && { color }),
             })),
             ...(recent.length > 0 && { recent: [...recent] }),
           },
