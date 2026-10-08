@@ -146,3 +146,32 @@
   color: var(--text-muted);
   font-size: 12px;
 }
+
+.subagents {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+  padding-left: var(--space-3);
+}
+
+.subagent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: 12px;
+}
+
+.subagentType {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more {
+  color: var(--text-muted);
+  font-size: 12px;
+}

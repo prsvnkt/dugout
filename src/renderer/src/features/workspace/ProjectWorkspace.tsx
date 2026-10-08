@@ -45,6 +45,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
   const closePane = useWorkspaceStore((state) => state.closePane)
   const focusPane = useWorkspaceStore((state) => state.focusPane)
   const setActivity = useWorkspaceStore((state) => state.setActivity)
+  const setSubagents = useWorkspaceStore((state) => state.setSubagents)
   const setTerminalId = useWorkspaceStore((state) => state.setTerminalId)
   const setPaneSession = useWorkspaceStore((state) => state.setPaneSession)
   const restartPane = useWorkspaceStore((state) => state.restartPane)
@@ -76,6 +77,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               onFocus={() => focusPane(project.id, pane.id)}
               onClose={() => closePane(project.id, pane.id)}
               onActivity={(activity, detail) => setActivity(pane.id, activity, detail)}
+              onSubagents={(subagents) => setSubagents(pane.id, subagents)}
               onTerminalId={(terminalId) => {
                 setTerminalId(pane.id, terminalId)
                 if (terminalId) clearInitialPrompt(project.id, pane.id)

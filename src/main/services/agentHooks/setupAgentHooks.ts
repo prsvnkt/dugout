@@ -99,6 +99,7 @@ export async function setupAgentHooks(options: {
   readonly claudeCommand?: string | undefined
   readonly onSignal: (terminalId: string, signal: HookSignal, details: HookDetails) => void
   readonly onRpc: HookServerDeps['onRpc']
+  readonly onSubagent: HookServerDeps['onSubagent']
   readonly mcpServer?: McpServerLaunch | undefined
   readonly codexCommand?: string | undefined
 }): Promise<AgentHooks> {
@@ -112,6 +113,7 @@ export async function setupAgentHooks(options: {
     token,
     onSignal: options.onSignal,
     onRpc: options.onRpc,
+    onSubagent: options.onSubagent,
   })
   await server.listen()
   const mcp = options.mcpServer

@@ -1,11 +1,21 @@
 import { useMemo } from 'react'
 import type { Project } from '@shared/project'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
-import { ACTIVITY_LABEL } from '@renderer/features/workspace/paneActivity'
+import { ACTIVITY_LABEL, type PaneActivity } from '@renderer/features/workspace/paneActivity'
 import { useProjectLayout, useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { agentEntries, type AgentEntry } from './agentList'
 import { useAgentsStore } from './agentsStore'
+import type { Subagent } from './subagents'
 import styles from './Agents.module.css'
+
+const SUBAGENT_ACTIVITY: Readonly<Record<Subagent['state'], PaneActivity>> = {
+  running: 'working',
+  done: 'done',
+}
+const SUBAGENT_LABEL: Readonly<Record<Subagent['state'], string>> = {
+  running: 'Running',
+  done: 'Done',
+}
 
 function describeWork(entry: AgentEntry): string | null {
   if (entry.task) return `#${entry.task.number} ${entry.task.title}`
@@ -52,6 +62,28 @@ function AgentRow({ entry, onSelect }: { entry: AgentEntry; onSelect(): void }) 
           </span>
         )}
         {entry.detail && <span className={styles.detail}>{entry.detail}</span>}
+        {entry.subagents.length > 0 && (
+          <span className={styles.subagents} aria-label="Subagents">
+            {entry.subagents.map((subagent) => (
+              <span
+                key={subagent.id}
+                className={styles.subagent}
+                title={subagent.detail}
+                data-testid="subagent"
+              >
+                <span className={styles.subagentType}>↳ {subagent.type}</span>
+                <ActivityIndicator
+                  activity={SUBAGENT_ACTIVITY[subagent.state]}
+                  label={SUBAGENT_LABEL[subagent.state]}
+                  className={styles.status}
+                />
+              </span>
+            ))}
+            {entry.hiddenSubagents > 0 && (
+              <span className={styles.more}>+{entry.hiddenSubagents} more</span>
+            )}
+          </span>
+        )}
       </button>
     </li>
   )
@@ -62,12 +94,13 @@ export function AgentsPanel({ project }: { project: Project }) {
   const layout = useProjectLayout(project.id)
   const activities = useWorkspaceStore((state) => state.activities)
   const details = useWorkspaceStore((state) => state.details)
+  const subagents = useWorkspaceStore((state) => state.subagents)
   const focusPane = useWorkspaceStore((state) => state.focusPane)
   const isCollapsed = useAgentsStore((state) => state.isCollapsed)
   const toggleCollapsed = useAgentsStore((state) => state.toggleCollapsed)
   const entries = useMemo(
-    () => agentEntries({ layout, activities, details }),
-    [layout, activities, details],
+    () => agentEntries({ layout, activities, details, subagents }),
+    [layout, activities, details, subagents],
   )
 
   return (

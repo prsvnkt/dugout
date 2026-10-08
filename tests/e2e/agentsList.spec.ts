@@ -90,3 +90,35 @@ test('the agents list sits below the files and minimises down with its arrow', a
   await agents().getByRole('button', { name: 'Show agents' }).click()
   await expect(agentRows()).toHaveCount(1)
 })
+
+test.describe('subagents', () => {
+  const subagentLines = () => agentRows().first().getByTestId('subagent')
+
+  for (const agent of ['Claude', 'Codex'] as const) {
+    test(`${agent} subagents show under their agent until its next turn`, async () => {
+      // Arrange
+      await clickMenuItem(app, 'File', `New ${agent} Agent`)
+      await expect(agentRows().first()).toContainText('Ready')
+      await send('prompt')
+
+      // Act: two subagents start, one finishes
+      await send('subagent-start a1 Explore')
+      await send('subagent-start a2 code-reviewer')
+      await expect(subagentLines()).toHaveCount(2)
+      await expect(subagentLines().nth(0)).toContainText('Explore')
+      await expect(subagentLines().nth(0)).toContainText('Running')
+      await send('subagent-stop a1 Explore')
+
+      // Assert: running first, the finished one done with its reply as a tooltip
+      await expect(subagentLines().nth(0)).toContainText('code-reviewer')
+      await expect(subagentLines().nth(1)).toContainText('Done')
+      await expect(subagentLines().nth(1)).toHaveAttribute('title', 'Report from a1')
+
+      // The next turn clears finished subagents; running ones stay
+      await send('stop')
+      await send('prompt')
+      await expect(subagentLines()).toHaveCount(1)
+      await expect(subagentLines().first()).toContainText('code-reviewer')
+    })
+  }
+})

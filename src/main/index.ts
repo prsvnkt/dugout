@@ -181,6 +181,7 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
       codexCommand: process.env.DUGOUT_CODEX_COMMAND,
       onSignal: (terminalId, signal, details) =>
         terminalManager?.applyHookSignal(terminalId, signal, details),
+      onSubagent: (terminalId, update) => terminalManager?.applySubagent(terminalId, update),
       onRpc: handleTaskRpc,
       // Electron runs the bundled MCP server in Node mode, so users need no separate Node.
       mcpServer: { command: process.execPath, script: join(import.meta.dirname, 'mcp.js') },

@@ -11,6 +11,7 @@ export const IpcChannel = {
   terminalExit: 'terminal:exit',
   terminalAgentStatus: 'terminal:agent-status',
   terminalAgentSession: 'terminal:agent-session',
+  terminalAgentSubagent: 'terminal:agent-subagent',
   workspaceLoad: 'workspace:load',
   workspaceSave: 'workspace:save',
   dialogPickFolder: 'dialog:pick-folder',

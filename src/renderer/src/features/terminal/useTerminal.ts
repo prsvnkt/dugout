@@ -7,6 +7,14 @@ import { dugout } from '@renderer/lib/dugout'
 import { isAgentKind, type TerminalExit, type TerminalKind } from '@shared/terminal'
 import { XTERM_OPTIONS } from './xtermOptions'
 import { agentKeyOverride } from './agentKeys'
+import {
+  applySubagentUpdate,
+  clearFinished,
+  startsNewTurn,
+  type Subagent,
+} from '@renderer/features/agents/subagents'
+
+const NO_SUBAGENTS: readonly Subagent[] = []
 
 export type TerminalStatus =
   | { readonly state: 'starting' }
@@ -24,6 +32,8 @@ export interface TerminalHandle {
   readonly terminalId: string | null
   /** The Claude session id reported by hooks (Claude terminals only). */
   readonly sessionId: string | null
+  /** Subagents the agent started this turn (finished ones clear on its next turn). */
+  readonly subagents: readonly Subagent[]
   focus(): void
 }
 
@@ -67,6 +77,7 @@ export function useTerminal(
   const [agentDetail, setAgentDetail] = useState<string | null>(null)
   const [connectedId, setConnectedId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [subagents, setSubagents] = useState<readonly Subagent[]>(NO_SUBAGENTS)
   const resumeRef = useRef(resumeSessionId)
   const initialPromptRef = useRef(initialPrompt)
   const terminalRef = useRef<Terminal | null>(null)
@@ -83,6 +94,7 @@ export function useTerminal(
     terminalRef.current = terminal
 
     let terminalId: string | null = null
+    let lastAgentStatus: AgentStatus | null = null
     let isDisposed = false
     const cleanups: Array<() => void> = []
 
@@ -107,12 +119,19 @@ export function useTerminal(
       cleanups.push(
         dugout.terminal.onData((sourceId, data) => sourceId === id && terminal.write(data)),
         dugout.terminal.onExit((sourceId, exit) => {
-          if (sourceId === id) setStatus({ state: 'exited', exit })
+          if (sourceId !== id) return
+          setStatus({ state: 'exited', exit })
+          setSubagents(NO_SUBAGENTS)
         }),
         dugout.terminal.onAgentStatus((sourceId, next, detail) => {
           if (sourceId !== id) return
+          if (startsNewTurn(lastAgentStatus, next)) setSubagents(clearFinished)
+          lastAgentStatus = next
           setAgentStatus(next)
           setAgentDetail(detail ?? null)
+        }),
+        dugout.terminal.onAgentSubagent((sourceId, update) => {
+          if (sourceId === id) setSubagents((list) => applySubagentUpdate(list, update))
         }),
         dugout.terminal.onAgentSession((sourceId, next) => {
           if (sourceId === id) setSessionId(next)
@@ -170,5 +189,13 @@ export function useTerminal(
   }, [containerRef, kind, projectId, cwd])
 
   const focus = useCallback(() => terminalRef.current?.focus(), [])
-  return { status, agentStatus, agentDetail, terminalId: connectedId, sessionId, focus }
+  return {
+    status,
+    agentStatus,
+    agentDetail,
+    terminalId: connectedId,
+    sessionId,
+    subagents,
+    focus,
+  }
 }

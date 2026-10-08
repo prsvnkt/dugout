@@ -1,4 +1,4 @@
-import type { AgentStatus } from './agentStatus'
+import type { AgentStatus, SubagentUpdate } from './agentStatus'
 import type { AgentConfig, McpServer } from './agentConfig'
 import type { CloneDefaults, CloneProgress } from './clone'
 import type { WorktreeChanges } from './compare'
@@ -43,6 +43,8 @@ export interface DugoutApi {
     ): Unsubscribe
     /** Claude session ids, used to resume conversations after a restart. */
     onAgentSession(listener: (id: TerminalId, sessionId: string) => void): Unsubscribe
+    /** Subagents an agent starts and finishes, from its hooks. */
+    onAgentSubagent(listener: (id: TerminalId, update: SubagentUpdate) => void): Unsubscribe
   }
   readonly projects: {
     list(): Promise<Result<readonly Project[]>>

@@ -68,10 +68,25 @@ change events, keeping the poll only as a fallback.
 **What happens:** the first Codex pane shows "Hooks need review". Until you choose _Trust all and
 continue_ (or review them with `/hooks`), Codex runs without them and the pane never leaves
 "Starting". Codex stores the trust in `~/.codex/config.toml` (`[hooks.state]`), so later panes
-start straight away. If a Dugout update changes the hook commands, Codex asks again.
+start straight away. If a Dugout update changes or adds hook commands (as the subagent hooks of
+decision 032 did), Codex asks again.
 
 **Possible improvement:** detect a Codex pane stuck in "Starting" and show a hint about the
 review prompt.
+
+## Subagents show only their type, in one flat list
+
+- **Area:** Agents list (`src/renderer/src/features/agents/`, `HookServer.parseSubagent`)
+- **Found:** 2026-10-08, while adding subagents (decision 032)
+
+**What happens:** a subagent line says only "Explore" or "code-reviewer" until it finishes,
+because `SubagentStart` carries no task description. Codex subagents that start their own
+subagents appear on the same level as their parent. Codex may only start subagents with its
+multi-agent feature enabled (`features.multi_agent_v2`), which is the user's setting. If Dugout
+restarts while subagents run, they are not shown again.
+
+**Possible improvement:** take the description from the `Agent`/`Task` tool's `PreToolUse`
+input (Claude) and match it to the subagent; nest Codex subagents by their task path.
 
 ## Untracked files over the counting limits show no diff stats
 

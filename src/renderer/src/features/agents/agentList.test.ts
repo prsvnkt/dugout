@@ -27,6 +27,7 @@ describe('agentEntries', () => {
       layout,
       activities: { a: 'working', b: 'needs-input', s: 'running' },
       details: { b: { detail: 'Bash: npm test', since: 5 } },
+      subagents: {},
     })
 
     expect(entries).toEqual([
@@ -40,6 +41,8 @@ describe('agentEntries', () => {
         title: null,
         branch: null,
         isFocused: false,
+        subagents: [],
+        hiddenSubagents: 0,
       },
       {
         paneId: 'b',
@@ -51,6 +54,8 @@ describe('agentEntries', () => {
         title: null,
         branch: 'dugout/b',
         isFocused: true,
+        subagents: [],
+        hiddenSubagents: 0,
       },
     ])
   })
@@ -60,7 +65,26 @@ describe('agentEntries', () => {
       layout: { panes: [pane('a', { title: 'Add tests' })], focusedPaneId: null },
       activities: {},
       details: {},
+      subagents: {},
     })
     expect(entries[0]).toMatchObject({ activity: 'starting', title: 'Add tests' })
+  })
+
+  test("lists an agent's subagents, running first, up to five", () => {
+    const sub = (id: string, state: 'running' | 'done') => ({ id, type: 'Explore', state })
+    const list = [
+      sub('d1', 'done'),
+      ...['r1', 'r2', 'r3', 'r4', 'r5'].map((id) => sub(id, 'running')),
+    ]
+
+    const [entry] = agentEntries({
+      layout: { panes: [pane('a')], focusedPaneId: null },
+      activities: { a: 'working' },
+      details: {},
+      subagents: { a: list },
+    })
+
+    expect(entry?.subagents.map((s) => s.id)).toEqual(['r1', 'r2', 'r3', 'r4', 'r5'])
+    expect(entry?.hiddenSubagents).toBe(1)
   })
 })

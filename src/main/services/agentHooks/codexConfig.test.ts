@@ -42,6 +42,8 @@ describe('codexConfigOverrides', () => {
         'hooks.PostToolUse',
         'hooks.PermissionRequest',
         'hooks.Stop',
+        'hooks.SubagentStart',
+        'hooks.SubagentStop',
       ]),
     )
   })
