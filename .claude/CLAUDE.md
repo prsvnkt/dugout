@@ -53,9 +53,9 @@ src/
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
   renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.
-              Layout: project tabs (title bar) / Agents over Explorer | editor over terminals |
+              Layout: project tabs (title bar) / Explorer over Agents | editor over terminals |
               Git panel; side panels collapse via workspace/SidePanel.tsx, and the Agents list
-              (agents/, per-agent colours) minimises to its header (workspace/LeftSidebar.tsx).
+              (agents/) minimises down to its header (workspace/LeftSidebar.tsx).
               A project with no agents open shows start/StartScreen.tsx (prompt box, sessions to
               resume, open tasks); with no projects at all, welcome/WelcomeScreen.tsx (repos to
               add, agent check).

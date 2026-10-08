@@ -74,41 +74,19 @@ test('clicking an agent focuses its terminal', async () => {
   await expect(focusedPane().getByTestId('pane-number')).toHaveText('01')
 })
 
-test('each agent has its own colour, matching its terminal header', async () => {
-  await clickMenuItem(app, 'File', 'New Claude Agent')
-  await clickMenuItem(app, 'File', 'New Claude Agent')
-  await expect(agentRows()).toHaveCount(2)
-
-  const rowColor = (index: number) =>
-    agentRows()
-      .nth(index)
-      .getByRole('button')
-      .evaluate((el) => el.ownerDocument.defaultView?.getComputedStyle(el).borderLeftColor ?? '')
-  const headerColor = (index: number) =>
-    panes()
-      .nth(index)
-      .locator('header')
-      .evaluate((el) => el.ownerDocument.defaultView?.getComputedStyle(el).borderLeftColor ?? '')
-
-  expect(await rowColor(0)).toBe(await headerColor(0))
-  expect(await rowColor(1)).toBe(await headerColor(1))
-  expect(await rowColor(0)).not.toBe(await rowColor(1))
-})
-
-test('the agents list minimises so the explorer gets the full height', async () => {
+test('the agents list sits below the files and minimises down with its arrow', async () => {
   await clickMenuItem(app, 'File', 'New Claude Agent')
   const explorer = workspace().getByRole('complementary', { name: 'Explorer' })
-  const toggle = agents().getByRole('button', { name: /^Agents/ })
-  const heightBefore = (await explorer.boundingBox())?.height ?? 0
+  const box = async (locator: typeof explorer) =>
+    (await locator.boundingBox()) ?? { y: 0, height: 0 }
+  expect((await box(agents())).y).toBeGreaterThan((await box(explorer)).y)
+  const heightBefore = (await box(explorer)).height
 
-  await toggle.click()
+  await agents().getByRole('button', { name: 'Minimise agents' }).click()
 
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect(agentRows()).toHaveCount(0)
-  await expect
-    .poll(async () => (await explorer.boundingBox())?.height ?? 0)
-    .toBeGreaterThan(heightBefore)
+  await expect.poll(async () => (await box(explorer)).height).toBeGreaterThan(heightBefore)
 
-  await toggle.click()
+  await agents().getByRole('button', { name: 'Show agents' }).click()
   await expect(agentRows()).toHaveCount(1)
 })

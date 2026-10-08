@@ -12,11 +12,10 @@ describe('agentEntries', () => {
   test('lists agent panes in terminal order, numbered by position, without shells', () => {
     const layout = {
       panes: [
-        pane('a', { color: 'blue' }),
+        pane('a'),
         pane('s', { kind: 'shell' }),
         pane('b', {
           kind: 'codex',
-          color: 'red',
           task: { number: 12, title: 'Fix login' },
           worktree: { path: '/wt/b', branch: 'dugout/b' },
         }),
@@ -35,7 +34,6 @@ describe('agentEntries', () => {
         paneId: 'a',
         number: '01',
         agentLabel: 'Claude',
-        color: 'blue',
         activity: 'working',
         detail: null,
         task: null,
@@ -47,7 +45,6 @@ describe('agentEntries', () => {
         paneId: 'b',
         number: '03',
         agentLabel: 'Codex',
-        color: 'red',
         activity: 'needs-input',
         detail: 'Bash: npm test',
         task: { number: 12, title: 'Fix login' },
@@ -64,6 +61,6 @@ describe('agentEntries', () => {
       activities: {},
       details: {},
     })
-    expect(entries[0]).toMatchObject({ activity: 'starting', title: 'Add tests', color: null })
+    expect(entries[0]).toMatchObject({ activity: 'starting', title: 'Add tests' })
   })
 })

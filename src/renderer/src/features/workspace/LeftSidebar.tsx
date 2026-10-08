@@ -12,7 +12,7 @@ const DEFAULT_AGENTS_SIZE = '45%'
 const MIN_AGENTS_PX = 120
 const MIN_EXPLORER_PX = 120
 
-/** The left sidebar: the project's agents above its files; the agents half minimises. */
+/** The left sidebar: the project's files above its agents; the agents half minimises down. */
 export function LeftSidebar({ project }: { project: Project }) {
   const isCollapsed = useAgentsStore((state) => state.isCollapsed)
   const setCollapsed = useAgentsStore((state) => state.setCollapsed)
@@ -24,6 +24,10 @@ export function LeftSidebar({ project }: { project: Project }) {
 
   return (
     <Group orientation="vertical" className={styles.sidebar}>
+      <Panel id="files" minSize={MIN_EXPLORER_PX}>
+        <ExplorerPanel project={project} />
+      </Panel>
+      <Separator className={styles.separatorHorizontal} />
       <Panel
         id="agents"
         panelRef={panelRef}
@@ -34,10 +38,6 @@ export function LeftSidebar({ project }: { project: Project }) {
         onResize={onResize}
       >
         <AgentsPanel project={project} />
-      </Panel>
-      <Separator className={styles.separatorHorizontal} />
-      <Panel id="files" minSize={MIN_EXPLORER_PX}>
-        <ExplorerPanel project={project} />
       </Panel>
     </Group>
   )

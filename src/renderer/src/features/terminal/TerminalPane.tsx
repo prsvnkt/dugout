@@ -22,8 +22,6 @@ interface TerminalPaneProps {
   readonly branch: string | null
   /** The project's colour, the accent inside its pane (hidden projects' panes too). */
   readonly projectColor: string
-  /** The agent's own colour (a CSS value), a stripe on its header. Null for shells. */
-  readonly agentColor: string | null
   /** True when this pane should own keyboard focus (focused pane of the visible project). */
   readonly shouldFocus: boolean
   readonly isFocused: boolean
@@ -56,7 +54,7 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 
 export function TerminalPane(props: TerminalPaneProps) {
   const { index, kind, projectId, cwd, branch, projectColor, shouldFocus, isFocused } = props
-  const { resumeSessionId, initialPrompt, task, agentColor } = props
+  const { resumeSessionId, initialPrompt, task } = props
   const { onFocus, onClose, onActivity, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const { status, agentStatus, agentDetail, terminalId, sessionId, focus } = useTerminal(
@@ -90,8 +88,7 @@ export function TerminalPane(props: TerminalPaneProps) {
     <section
       className={styles.pane}
       data-focused={isFocused}
-      data-agent-color={agentColor !== null}
-      style={{ '--accent': projectColor, '--agent': agentColor ?? undefined } as CSSProperties}
+      style={{ '--accent': projectColor } as CSSProperties}
       onMouseDown={onFocus}
       aria-label={`${KIND_LABEL[kind]} terminal`}
     >

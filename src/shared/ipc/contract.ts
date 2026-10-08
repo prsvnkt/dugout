@@ -173,8 +173,6 @@ const savedPaneSchema = z.object({
   sessionId: sessionId.optional(),
   task: paneTaskSchema.optional(),
   title: paneTitle.optional(),
-  /** The agent's colour; layouts saved before agent colours have none. */
-  color: projectColor.optional(),
 })
 
 /** An agent session closed from a project, offered on its start screen to resume. */

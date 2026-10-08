@@ -1,4 +1,3 @@
-import type { ProjectColor } from '@shared/project'
 import { AGENT_LABEL, isAgentKind } from '@shared/terminal'
 import type { PaneActivity } from '@renderer/features/workspace/paneActivity'
 import {
@@ -14,7 +13,6 @@ export interface AgentEntry {
   /** The pane's position, as shown in its terminal header ("01", "02"…). */
   readonly number: string
   readonly agentLabel: string
-  readonly color: ProjectColor | null
   readonly activity: PaneActivity
   readonly detail: string | null
   readonly task: PaneTask | null
@@ -39,7 +37,6 @@ export function agentEntries({ layout, activities, details }: AgentListSource): 
         paneId: pane.id,
         number: paneNumber(index),
         agentLabel: AGENT_LABEL[pane.kind],
-        color: pane.color ?? null,
         activity: activities[pane.id] ?? 'starting',
         detail: details[pane.id]?.detail ?? null,
         task: pane.task ?? null,
