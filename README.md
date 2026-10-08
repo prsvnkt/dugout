@@ -10,7 +10,7 @@ changed.
   <a href="https://github.com/prsvnkt/dugout/releases/latest"><b>Download for macOS</b></a>
 </p>
 
-![Dugout running a Claude Code and a Codex agent side by side in one project, with two other projects working in the background, then opening an agent's change in the git panel](docs/media/demo.gif)
+![Dugout demo: describe a task and pick an agent, Claude Code and Codex working side by side, live status on every project tab, switching projects while agents keep going, and one inbox for every agent that needs you](docs/media/demo.gif)
 
 Dugout runs each agent's own CLI in a real terminal, so any terminal-based agent works in a
 shell pane. Claude Code and Codex are integrated today (live status, notifications, resumable
@@ -67,8 +67,8 @@ installed app's `Dugout` folder, and shows as "Dugout Dev" in the Dock.
 - `npm run build` — production build
 - `npm run dist` — package the macOS app into `dist/`
 - `npm run test:e2e:packaged` — run the e2e tests against the packaged app (after `dist`)
-- `npm run demo:gif` — record the demo above with sample projects and scripted agents into
-  `docs/media/demo.gif` (needs `brew install ffmpeg gifski`)
+- `npm run demo:gif` — record raw demo footage with sample projects and scripted agents into
+  `out/demo/demo.gif`, for editing into the README demo (needs `brew install ffmpeg gifski`)
 
 See [docs/decisions.md](docs/decisions.md) for design decisions and the roadmap, and
 [.claude/CLAUDE.md](.claude/CLAUDE.md) for the codebase guide.
