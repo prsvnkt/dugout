@@ -2,6 +2,22 @@
 
 Limitations we have accepted for now and intend to revisit. Remove an entry when it is fixed.
 
+## `global-agent` is overridden to drop `sprintf-js`
+
+- **Area:** packaging dependencies (`overrides` in `package.json`)
+- **Found:** 2026-10-08, from Dependabot alert #1
+
+**What happens:** `electron-builder` 26.15.3 pins `@electron/get` 3.1.0, which depends on
+`global-agent` 3 → `roarr` 2 → `sprintf-js` 1.1.3. That `sprintf-js` has a denial-of-service
+advisory with no patched release. It only runs when packaging behind a proxy
+(`ELECTRON_GET_USE_PROXY`), never in the shipped app.
+
+**Why:** `package.json` overrides `global-agent` to `^4.1.3`, which has no `roarr` or
+`sprintf-js` and still exports the `bootstrap()` that `@electron/get` calls.
+
+**Likely fix:** remove the override once `electron-builder` depends on `@electron/get` 4 or
+later (which drops `global-agent`); check with `npm ls global-agent`.
+
 ## Parallel tool calls can briefly hide "Needs you"
 
 - **Area:** agent status (`src/main/services/agentHooks/hookSettings.ts`, `TerminalManager.applyHookSignal`)
