@@ -2,8 +2,13 @@ import type { ITerminalOptions } from '@xterm/xterm'
 
 export const XTERM_OPTIONS: ITerminalOptions = {
   fontFamily: "'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace",
-  fontSize: 12.5,
-  lineHeight: 1.5,
+  fontSize: 13,
+  fontWeight: 500,
+  fontWeightBold: 700,
+  lineHeight: 1.3,
+  // Claude Code draws tool output and hints as dim text, which xterm renders at half opacity:
+  // on the light background that fell to ~1.6:1. Darken any colour below 4.5:1 (decision 033).
+  minimumContrastRatio: 4.5,
   cursorBlink: true,
   scrollback: 10_000,
   allowProposedApi: true,
@@ -22,7 +27,7 @@ export const XTERM_OPTIONS: ITerminalOptions = {
     blue: '#2563eb',
     magenta: '#7c3aed',
     cyan: '#0e7490',
-    white: '#8a919c',
+    white: '#6b7280',
     brightBlack: '#545b66',
     brightRed: '#dc2626',
     brightGreen: '#16a34a',
@@ -30,6 +35,6 @@ export const XTERM_OPTIONS: ITerminalOptions = {
     brightBlue: '#3b82f6',
     brightMagenta: '#8b5cf6',
     brightCyan: '#0891b2',
-    brightWhite: '#d9dde3',
+    brightWhite: '#8a919c',
   },
 }

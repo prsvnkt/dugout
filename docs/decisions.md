@@ -398,6 +398,21 @@ background subagents stay visible after the parent is Done. Subagent lines are p
 parent's row: clicking focuses the parent terminal, and a subagent's permission prompt is the
 parent's "Needs you".
 
+## 033 — Readable terminals and visible dividers (2026-10-08)
+
+**Context.** With several agents side by side, terminal text was hard to read. Claude Code draws
+tool output, hints and recaps as dim text, which xterm paints at half opacity: on the light
+background that fell to about 1.6:1. The 12.5px regular-weight font and 1.5 line height made it
+look thinner still, and the `--border` lines between panes and panels (about 1.2:1) almost vanished.
+
+**Decision.** xterm sets `minimumContrastRatio: 4.5`, so any text colour (dim included) below
+4.5:1 is darkened; colours already readable are untouched. The terminal font is 13px at weight
+500 (bold 700) with a 1.3 line height, and the palette's greys are darker (`white` `#6b7280`,
+`brightWhite` `#8a919c`); `xtermOptions.test.ts` checks every colour's contrast. A second line
+token, `--divider`, marks lines between areas (pane and panel separators, terminal headers, the
+rail edge, the status bar, the editor tab strip); `--border` stays for inner hairlines (rows,
+cards, inputs), so the UI does not get busy. The focused pane keeps its project-colour underline.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -415,4 +430,5 @@ parent's "Needs you".
 8. **Done since:** start screen with a default agent and resumable sessions ✅, welcome screen
    with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅,
    fetch from Source Control ✅.
-9. **Done since:** Agents list in the sidebar ✅, with each agent's subagents ✅.
+9. **Done since:** Agents list in the sidebar ✅, with each agent's subagents ✅, readable
+   terminals and visible dividers ✅.

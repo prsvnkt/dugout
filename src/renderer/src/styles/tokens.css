@@ -6,7 +6,8 @@
   --bg-panel: #ffffff; /* explorer, review, pane headers */
   --bg-canvas: #fbfbfc; /* behind terminal panes */
   --bg-elevated: #f1f3f5; /* hover, segmented track */
-  --border: #e3e6eb;
+  --border: #e3e6eb; /* inner hairlines: rows, cards, inputs */
+  --divider: #c4c9d1; /* lines between areas: panes, panels, rail, status bar */
   --border-strong: #d9dde3; /* inputs */
   --text-primary: #14171c;
   --text-secondary: #545b66;

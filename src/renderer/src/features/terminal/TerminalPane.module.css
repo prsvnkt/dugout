@@ -17,7 +17,7 @@
   height: var(--pane-header-height);
   padding: 0 10px 0 14px;
   background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
 }
 
 /* The focused pane is underlined in the project colour. */
