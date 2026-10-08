@@ -365,6 +365,21 @@ would change agents' files mid-task, and merging is work for the agent (a git cl
 scope). The branch picker's search now reads "Search or create a new branch", so creating one is
 not hidden.
 
+## 031 — Agents list in the sidebar (2026-10-08)
+
+**Context.** With several agents in a project, each one's status sat only in its own terminal
+header, and the Inbox shows just the ones that need you. There was no single view of what all of
+a project's agents were doing.
+
+**Decision.** The left sidebar is split: the Explorer on top, **Agents** below, with a draggable
+divider. The list shows the selected project's agents (Claude and Codex; shells are left out,
+since they have no status beyond running), in terminal order: number, agent, status (the usual
+status dot and text), the task or title it was started for, its worktree branch, and the latest
+hook detail. Clicking a row focuses that terminal. The arrow in its header minimises the list
+down to that header so the Explorer gets the full height, and brings it back up
+(`agentsStore`); ⌘B still hides the whole sidebar. Other projects' agents stay in the Inbox.
+Per-agent colours were tried and dropped: status colours are enough.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -382,3 +397,4 @@ not hidden.
 8. **Done since:** start screen with a default agent and resumable sessions ✅, welcome screen
    with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅,
    fetch from Source Control ✅.
+9. **Done since:** Agents list in the sidebar ✅.

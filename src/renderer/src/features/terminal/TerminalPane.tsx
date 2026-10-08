@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import '@xterm/xterm/css/xterm.css'
 import { isAgentKind, type TerminalKind } from '@shared/terminal'
+import { paneNumber } from '@renderer/features/workspace/layout'
 import {
   ACTIVITY_LABEL,
   toPaneActivity,
@@ -43,10 +44,6 @@ const KIND_LABEL: Record<TerminalKind, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
   shell: 'Shell',
-}
-
-function paneNumber(index: number): string {
-  return String(index + 1).padStart(2, '0')
 }
 
 function describe(activity: PaneActivity, status: TerminalStatus): string {
@@ -96,7 +93,7 @@ export function TerminalPane(props: TerminalPaneProps) {
       aria-label={`${KIND_LABEL[kind]} terminal`}
     >
       <header className={styles.header}>
-        <span className={styles.number} aria-hidden>
+        <span className={styles.number} aria-hidden data-testid="pane-number">
           {paneNumber(index)}
         </span>
         <span className={styles.kind}>{KIND_LABEL[kind]}</span>

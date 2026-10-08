@@ -42,6 +42,11 @@ export interface ProjectLayout {
 /** More panes than this side by side become too narrow to be useful. */
 export const MAX_PANES_PER_PROJECT = 6
 
+/** A pane's position as shown to the user: "01", "02"… */
+export function paneNumber(index: number): string {
+  return String(index + 1).padStart(2, '0')
+}
+
 export const EMPTY_LAYOUT: ProjectLayout = { panes: [], focusedPaneId: null }
 
 export function addPane(

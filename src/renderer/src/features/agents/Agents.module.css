@@ -1,0 +1,148 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: var(--bg-panel);
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--pane-header-height);
+  padding: 0 10px 0 14px;
+  border-top: 1px solid var(--border);
+}
+
+.title {
+  font-weight: 600;
+}
+
+.count {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.toggle {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.toggle:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.toggle svg {
+  transition: transform 120ms ease;
+}
+
+.toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0 6px var(--space-2);
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+}
+
+.row:hover {
+  background: var(--bg-elevated);
+}
+
+.row[data-focused='true'] {
+  background: var(--accent-soft);
+}
+
+.line,
+.sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.number {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.label {
+  flex-shrink: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.status {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.work,
+.branch,
+.detail {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work {
+  color: var(--text-secondary);
+}
+
+.branch {
+  flex-shrink: 0;
+  max-width: 50%;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.detail {
+  color: var(--text-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-1) 14px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
