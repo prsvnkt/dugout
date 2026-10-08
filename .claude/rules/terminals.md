@@ -25,3 +25,5 @@ paths:
 - Hook commands must stay async, time-limited, silent and `|| true`; they run inside the user's
   Claude session and must never slow or break it.
 - `DUGOUT_*` variables are per-terminal: stripped from the inherited env, then set explicitly.
+- xterm sends `\r` for both Enter and Shift+Enter. Agent terminals remap Shift+Enter to `\n`
+  (a new line in Claude Code and Codex) in `agentKeys.ts`; shells keep xterm's default.

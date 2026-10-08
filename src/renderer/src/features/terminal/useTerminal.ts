@@ -3,9 +3,10 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { AgentStatus } from '@shared/agentStatus'
-import type { TerminalExit, TerminalKind } from '@shared/terminal'
 import { dugout } from '@renderer/lib/dugout'
+import { isAgentKind, type TerminalExit, type TerminalKind } from '@shared/terminal'
 import { XTERM_OPTIONS } from './xtermOptions'
+import { agentKeyOverride } from './agentKeys'
 
 export type TerminalStatus =
   | { readonly state: 'starting' }
@@ -92,6 +93,16 @@ export function useTerminal(
       // The pane may have resized while the PTY was starting; sync before listening.
       dugout.terminal.resize(id, terminal.cols, terminal.rows)
       const input = terminal.onData((data) => dugout.terminal.write(id, data))
+      if (isAgentKind(kind)) {
+        terminal.attachCustomKeyEventHandler((event) => {
+          const override = agentKeyOverride(event)
+          if (override === null) return true
+          // Also blocks the keypress, or xterm would send `\r` from it and submit anyway.
+          event.preventDefault()
+          dugout.terminal.write(id, override)
+          return false
+        })
+      }
       const resize = terminal.onResize(({ cols, rows }) => dugout.terminal.resize(id, cols, rows))
       cleanups.push(
         dugout.terminal.onData((sourceId, data) => sourceId === id && terminal.write(data)),

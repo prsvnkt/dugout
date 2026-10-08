@@ -138,7 +138,8 @@ process.stdout.write('mcp=' + mcpNames.map((key) => key.slice('mcp_servers.'.len
 /**
  * A stand-in for an agent CLI that runs Dugout's hook commands exactly as the real one would,
  * driven by lines typed into the terminal:
- * prompt | ask | tool | notify-idle | stop | stop-later | exit | agent-comment | edit
+ * prompt | ask | tool | notify-idle | stop | stop-later | exit | agent-comment | edit | raw-keys
+ * (`raw-keys` puts the TTY in raw mode and prints every later input chunk as `keys=<json>`.)
  * It resumes the session it was asked to, or starts a new one, and prints which.
  */
 const FAKE_AGENT_SOURCE = String.raw`
@@ -163,6 +164,11 @@ const actions = {
   'stop-later': () =>
     setTimeout(() => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }), 2500),
   exit: () => process.exit(0),
+  'raw-keys': () => {
+    process.stdin.setRawMode(true)
+    isRawKeys = true
+    process.stdout.write('raw-keys on\r\n')
+  },
   'agent-comment': () =>
     void callDugoutTool('comment_on_task', { number: 1, body: 'Progress from the agent' }),
   // Leaves changes in the working directory: one file of its own and one both agents edit.
@@ -189,8 +195,10 @@ async function callDugoutTool(name, args) {
   process.stdout.write('tool-result=' + JSON.stringify(result.content[0].text).slice(0, 200) + '\r\n')
   await client.close()
 }
+let isRawKeys = false
 process.stdin.setEncoding('utf8')
 process.stdin.on('data', (chunk) => {
+  if (isRawKeys) return void process.stdout.write('keys=' + JSON.stringify(chunk) + '\r\n')
   for (const line of chunk.split(/\r?\n|\r/)) actions[line.trim()]?.()
 })
 `
