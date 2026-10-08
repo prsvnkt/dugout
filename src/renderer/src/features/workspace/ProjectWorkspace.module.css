@@ -29,7 +29,7 @@
 
 .separatorHorizontal {
   height: 1px;
-  background: var(--border);
+  background: var(--divider);
   outline: none;
 }
 
@@ -53,7 +53,7 @@
 
 .separator {
   width: 1px;
-  background: var(--border);
+  background: var(--divider);
   outline: none;
 }
 

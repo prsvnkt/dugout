@@ -1,4 +1,5 @@
-import { basename } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import {
   chooseNewAgentAction,
@@ -34,6 +35,15 @@ async function addProject(repo: string, opener: () => Promise<void>): Promise<vo
   await expect(
     page.getByRole('navigation').getByRole('button', { name, exact: true }),
   ).toBeVisible()
+}
+
+/** A colour token from styles/tokens.css, as the browser reports it (`rgb(r, g, b)`). */
+function tokenAsRgb(name: string): string {
+  const tokens = readFileSync(join(process.cwd(), 'src/renderer/src/styles/tokens.css'), 'utf8')
+  const hex = new RegExp(`${name}: #([0-9a-f]{6});`).exec(tokens)?.[1]
+  if (!hex) throw new Error(`No hex value for ${name} in tokens.css`)
+  const [r, g, b] = [0, 2, 4].map((start) => parseInt(hex.slice(start, start + 2), 16))
+  return `rgb(${r}, ${g}, ${b})`
 }
 
 const activeWorkspace = () => page.locator('[data-active="true"]')
@@ -170,4 +180,26 @@ test('revealing a terminal (as a notification click does) switches to its projec
 
   // Assert
   await expect(page.getByRole('contentinfo')).toContainText('alpha')
+})
+
+test('lines between terminals and panels use the stronger divider colour', async () => {
+  // Arrange: two shells side by side
+  await addProject(makeGitRepo('lines'), () =>
+    page.getByRole('button', { name: 'Add project…' }).click(),
+  )
+  await activeWorkspace()
+    .getByRole('button', { name: /New shell/ })
+    .click()
+  await chooseNewAgentAction(activeWorkspace(), 'New shell')
+  await expect(paneStatuses('Running')).toHaveCount(2)
+
+  // Act
+  const divider = tokenAsRgb('--divider')
+  const separators = activeWorkspace().locator('[role="separator"][data-separator]')
+
+  // Assert
+  expect(await separators.count()).toBeGreaterThan(0)
+  for (const separator of await separators.all()) {
+    await expect(separator).toHaveCSS('background-color', divider)
+  }
 })
