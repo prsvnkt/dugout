@@ -1,5 +1,4 @@
-import type { HookSignal } from '@shared/agentStatus'
-import { HOOK_BINDINGS, signalCommand } from './hookSettings'
+import { HOOK_BINDINGS, signalCommand, type AnySignal } from './hookSettings'
 
 /** The Codex events Dugout listens to; same names and meaning as Claude Code's. */
 const CODEX_EVENTS = [
@@ -8,6 +7,8 @@ const CODEX_EVENTS = [
   'PostToolUse',
   'PermissionRequest',
   'Stop',
+  'SubagentStart',
+  'SubagentStop',
 ] as const
 
 export interface McpServerEntry {
@@ -33,7 +34,7 @@ export function tomlInline(value: TomlValue): string {
   return `{ ${entries.join(', ')} }`
 }
 
-function signalFor(event: string): HookSignal | undefined {
+function signalFor(event: string): AnySignal | undefined {
   return HOOK_BINDINGS.find((binding) => binding.event === event)?.signal
 }
 

@@ -1,7 +1,13 @@
 import { timingSafeEqual } from 'node:crypto'
 import { chmod, rm } from 'node:fs/promises'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { HOOK_SIGNALS, type HookSignal } from '@shared/agentStatus'
+import {
+  HOOK_SIGNALS,
+  SUBAGENT_SIGNALS,
+  type HookSignal,
+  type SubagentSignal,
+  type SubagentUpdate,
+} from '@shared/agentStatus'
 import { sessionIdSchema } from '@shared/ipc/contract'
 
 /** Details a hook payload may carry along with its signal. */
@@ -20,7 +26,14 @@ interface HookPayload {
   tool_input?: { command?: unknown; file_path?: unknown; url?: unknown } | null
   message?: unknown
   last_assistant_message?: unknown
+  agent_id?: unknown
+  agent_type?: unknown
 }
+
+/** Subagent ids from Claude Code and Codex are short tokens; anything else is ignored. */
+const SUBAGENT_ID = /^[\w-]{1,128}$/
+const MAX_SUBAGENT_TYPE_LENGTH = 64
+const UNNAMED_SUBAGENT = 'subagent'
 
 function shorten(text: string): string {
   const line = text.trim().split('\n')[0]?.trim() ?? ''
@@ -56,6 +69,8 @@ export interface HookServerDeps {
   readonly onSignal: (terminalId: string, signal: HookSignal, details: HookDetails) => void
   /** Task tool calls from the terminal's MCP server; resolves to the JSON result. */
   readonly onRpc: (terminalId: string, method: string, params: unknown) => Promise<unknown>
+  /** A subagent of the terminal's agent started or stopped. */
+  readonly onSubagent: (terminalId: string, update: SubagentUpdate) => void
 }
 
 const ROUTE = /^\/hooks\/([\w-]{1,64})\/([a-z-]{1,32})$/
@@ -66,6 +81,10 @@ const MAX_BODY_BYTES = 64 * 1024
 
 function isHookSignal(value: string): value is HookSignal {
   return (HOOK_SIGNALS as readonly string[]).includes(value)
+}
+
+function isSubagentSignal(value: string): value is SubagentSignal {
+  return (SUBAGENT_SIGNALS as readonly string[]).includes(value)
 }
 
 /**
@@ -104,22 +123,21 @@ export class HookServer {
     if (rpcMatch?.[1]) return this.handleRpc(rpcMatch[1], req, res)
     const match = req.method === 'POST' ? ROUTE.exec(req.url ?? '') : null
     const [, terminalId, signal] = match ?? []
+    if (terminalId && signal && isSubagentSignal(signal)) {
+      return readBody(req, (body) => {
+        if (body === null) return respond(res, 413)
+        const update = parseSubagent(signal, body)
+        if (update) this.deps.onSubagent(terminalId, update)
+        respond(res, 204)
+      })
+    }
     if (!terminalId || !signal || !isHookSignal(signal)) {
       req.resume()
       return respond(res, 404)
     }
-
-    const chunks: Buffer[] = []
-    let size = 0
-    let isTooLarge = false
-    req.on('data', (chunk: Buffer) => {
-      size += chunk.length
-      if (size > MAX_BODY_BYTES) isTooLarge = true
-      else chunks.push(chunk)
-    })
-    req.on('end', () => {
-      if (isTooLarge) return respond(res, 413)
-      this.deps.onSignal(terminalId, signal, parseDetails(Buffer.concat(chunks).toString('utf8')))
+    readBody(req, (body) => {
+      if (body === null) return respond(res, 413)
+      this.deps.onSignal(terminalId, signal, parseDetails(body))
       respond(res, 204)
     })
   }
@@ -164,6 +182,24 @@ function parseDetails(body: string): HookDetails {
   } catch {
     return {}
   }
+}
+
+/** Which subagent started or stopped; null when the payload names none we can trust. */
+function parseSubagent(signal: SubagentSignal, body: string): SubagentUpdate | null {
+  let payload: HookPayload
+  try {
+    payload = (JSON.parse(body) ?? {}) as HookPayload
+  } catch {
+    return null
+  }
+  const id = payload.agent_id
+  if (typeof id !== 'string' || !SUBAGENT_ID.test(id)) return null
+  const rawType = typeof payload.agent_type === 'string' ? payload.agent_type.trim() : ''
+  const type = rawType.slice(0, MAX_SUBAGENT_TYPE_LENGTH) || UNNAMED_SUBAGENT
+  if (signal === 'subagent-start') return { id, type, state: 'running' }
+  const message = payload.last_assistant_message
+  const detail = typeof message === 'string' && message.trim() ? shorten(message) : undefined
+  return { id, type, state: 'done', ...(detail && { detail }) }
 }
 
 /** Reads a request body up to MAX_BODY_BYTES; null when it is larger. */

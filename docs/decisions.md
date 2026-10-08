@@ -54,8 +54,8 @@ socket (mode 0600) with a per-launch bearer token; the terminal id, socket, toke
 path reach the shell as `DUGOUT_*` env vars. Hooks are no-ops outside Dugout, time out after 2s
 and always succeed, so they can never disturb Claude. "Done" clears once the user views the pane.
 The dock badge counts panes that need the user. If the hook server fails to start, terminals
-still work without status. `DUGOUT_CLAUDE_COMMAND` overrides the `claude` binary (used by e2e
-tests with a fake CLI that runs the generated hooks).
+still work without status. Subagents use the same socket (decision 032). `DUGOUT_CLAUDE_COMMAND`
+overrides the `claude` binary (used by e2e tests with a fake CLI that runs the generated hooks).
 
 ## 009 — Git panel runs the git CLI directly (2026-10-05)
 
@@ -380,6 +380,24 @@ down to that header so the Explorer gets the full height, and brings it back up
 (`agentsStore`); ⌘B still hides the whole sidebar. Other projects' agents stay in the Inbox.
 Per-agent colours were tried and dropped: status colours are enough.
 
+## 032 — Subagents in the Agents list, from hooks (2026-10-08)
+
+**Context.** Claude Code and Codex can start subagents inside a session. They have no terminal of
+their own, so the Agents list never showed them, and a long "Working" spell gave no hint that the
+work was spread over several subagents.
+
+**Decision.** Both CLIs send `SubagentStart` (`agent_id`, `agent_type`) and `SubagentStop` (also
+`last_assistant_message`); verified in Claude Code 2.1.294 and codex-cli 0.155.0. Dugout binds
+both (`subagent-start` / `subagent-stop` signals, which forward the payload) and passes them from
+`HookServer` through `TerminalManager.applySubagent` to the renderer on their own channel; they
+never change the agent's status. Under each agent row the list shows its subagents as `↳ type`
+with Running or Done, running first, at most five and "+N more"; a finished one's tooltip is the
+first line of its reply. Finished subagents clear when the agent starts its next turn (idle or
+done → working); running ones stay until they stop or the terminal exits or restarts, so
+background subagents stay visible after the parent is Done. Subagent lines are part of the
+parent's row: clicking focuses the parent terminal, and a subagent's permission prompt is the
+parent's "Needs you".
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -397,4 +415,4 @@ Per-agent colours were tried and dropped: status colours are enough.
 8. **Done since:** start screen with a default agent and resumable sessions ✅, welcome screen
    with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅,
    fetch from Source Control ✅.
-9. **Done since:** Agents list in the sidebar ✅.
+9. **Done since:** Agents list in the sidebar ✅, with each agent's subagents ✅.

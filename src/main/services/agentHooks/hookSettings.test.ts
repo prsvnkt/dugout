@@ -11,6 +11,12 @@ describe('HOOK_BINDINGS', () => {
     expect(signalFor('Stop')).toBe('done')
   })
 
+  test('reports subagents starting and stopping, apart from the status', () => {
+    const signalFor = (event: string) => HOOK_BINDINGS.find((b) => b.event === event)?.signal
+    expect(signalFor('SubagentStart')).toBe('subagent-start')
+    expect(signalFor('SubagentStop')).toBe('subagent-stop')
+  })
+
   test('only permission-style notifications count as needing the user', () => {
     const notification = HOOK_BINDINGS.find((b) => b.event === 'Notification')
     expect(notification?.matcher).toBe('permission_prompt|elicitation_dialog|agent_needs_input')
@@ -47,6 +53,8 @@ describe('buildHookSettings', () => {
     expect(command('SessionStart')).toContain('--data-binary @-')
     expect(command('PermissionRequest')).toContain('--data-binary @-')
     expect(command('Stop')).toContain('--data-binary @-')
+    expect(command('SubagentStart')).toContain('--data-binary @-')
+    expect(command('SubagentStop')).toContain('--data-binary @-')
     expect(command('PostToolUse')).not.toContain('--data-binary')
   })
 

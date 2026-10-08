@@ -91,6 +91,7 @@ function setupWithHooks() {
     onExit: vi.fn(),
     onAgentStatus: vi.fn(),
     onAgentSession: vi.fn(),
+    onAgentSubagent: vi.fn(),
   }
   return { manager, spawned, events, onAgentStatusChange }
 }
@@ -219,6 +220,22 @@ describe('TerminalManager agent status', () => {
     manager.applyHookSignal(id, 'working')
     manager.applyHookSignal(id, 'working')
     expect(events.onAgentStatus).toHaveBeenCalledTimes(1)
+  })
+
+  test('forwards subagent updates for agents only, leaving the status alone', () => {
+    const { manager, events } = setupWithHooks()
+    const agent = manager.create(request, events)
+    const shellSetup = setupWithHooks()
+    const shell = shellSetup.manager.create({ ...request, kind: 'shell' }, shellSetup.events)
+    const update = { id: 'a-1', type: 'Explore', state: 'running' } as const
+
+    expect(manager.applySubagent(agent, update)).toBe(true)
+    expect(manager.applySubagent('missing', update)).toBe(false)
+    expect(shellSetup.manager.applySubagent(shell, update)).toBe(false)
+
+    expect(events.onAgentSubagent.mock.calls).toEqual([[agent, update]])
+    expect(shellSetup.events.onAgentSubagent).not.toHaveBeenCalled()
+    expect(events.onAgentStatus).not.toHaveBeenCalled()
   })
 
   test('ignores signals for unknown or shell terminals', () => {

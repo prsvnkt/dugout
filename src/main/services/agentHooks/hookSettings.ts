@@ -1,8 +1,11 @@
-import type { HookSignal } from '@shared/agentStatus'
+import type { HookSignal, SubagentSignal } from '@shared/agentStatus'
+
+/** Every signal a hook command can send. */
+export type AnySignal = HookSignal | SubagentSignal
 
 export interface HookBinding {
   readonly event: string
-  readonly signal: HookSignal
+  readonly signal: AnySignal
   readonly matcher?: string
 }
 
@@ -19,6 +22,8 @@ export const HOOK_BINDINGS: readonly HookBinding[] = [
   },
   { event: 'Stop', signal: 'done' },
   { event: 'StopFailure', signal: 'done' },
+  { event: 'SubagentStart', signal: 'subagent-start' },
+  { event: 'SubagentStop', signal: 'subagent-stop' },
 ]
 
 const CURL_TIMEOUT_SECONDS = 2
@@ -48,11 +53,18 @@ const ALLOWED_TOOLS = ['mcp__dugout']
  */
 /**
  * Signals that forward the hook's JSON payload (stdin): the session id (ready), what the agent
- * is asking (needs-input) and its last message (done). Frequent ones (working) send nothing.
+ * is asking (needs-input), its last message (done) and which subagent started or stopped.
+ * Frequent ones (working) send nothing.
  */
-const FORWARDS_PAYLOAD: ReadonlySet<HookSignal> = new Set(['ready', 'needs-input', 'done'])
+const FORWARDS_PAYLOAD: ReadonlySet<AnySignal> = new Set([
+  'ready',
+  'needs-input',
+  'done',
+  'subagent-start',
+  'subagent-stop',
+])
 
-export function signalCommand(signal: HookSignal): string {
+export function signalCommand(signal: AnySignal): string {
   return [
     '[ -n "$DUGOUT_TERMINAL_ID" ] &&',
     `curl -s -X POST --max-time ${CURL_TIMEOUT_SECONDS}`,

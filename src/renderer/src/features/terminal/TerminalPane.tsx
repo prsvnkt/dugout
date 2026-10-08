@@ -7,6 +7,7 @@ import {
   toPaneActivity,
   type PaneActivity,
 } from '@renderer/features/workspace/paneActivity'
+import type { Subagent } from '@renderer/features/agents/subagents'
 import { ActivityIndicator } from './ActivityIndicator'
 import { useDoneSeen } from './useDoneSeen'
 import { useTerminal, type TerminalStatus } from './useTerminal'
@@ -34,6 +35,7 @@ interface TerminalPaneProps {
   onFocus(): void
   onClose(): void
   onActivity(activity: PaneActivity, detail: string | null): void
+  onSubagents(subagents: readonly Subagent[]): void
   onTerminalId(terminalId: string | null): void
   onSessionId(sessionId: string): void
   /** `isFresh` when resuming failed (Claude exited before it was ready). */
@@ -55,9 +57,9 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 export function TerminalPane(props: TerminalPaneProps) {
   const { index, kind, projectId, cwd, branch, projectColor, shouldFocus, isFocused } = props
   const { resumeSessionId, initialPrompt, task } = props
-  const { onFocus, onClose, onActivity, onTerminalId, onSessionId, onRestart } = props
+  const { onFocus, onClose, onActivity, onSubagents, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
-  const { status, agentStatus, agentDetail, terminalId, sessionId, focus } = useTerminal(
+  const { status, agentStatus, agentDetail, terminalId, sessionId, subagents, focus } = useTerminal(
     containerRef,
     {
       kind,
@@ -79,6 +81,7 @@ export function TerminalPane(props: TerminalPaneProps) {
   }, [shouldFocus, focus])
 
   useEffect(() => onActivity(activity, agentDetail), [activity, agentDetail, onActivity])
+  useEffect(() => onSubagents(subagents), [subagents, onSubagents])
   useEffect(() => onTerminalId(terminalId), [terminalId, onTerminalId])
   useEffect(() => {
     if (sessionId) onSessionId(sessionId)

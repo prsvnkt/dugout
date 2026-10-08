@@ -67,6 +67,8 @@ export function registerTerminalIpc(manager: TerminalManager): void {
         sendTo(owner, IpcChannel.terminalAgentStatus, terminalId, status, detail),
       onAgentSession: (terminalId, sessionId) =>
         sendTo(owner, IpcChannel.terminalAgentSession, terminalId, sessionId),
+      onAgentSubagent: (terminalId, update) =>
+        sendTo(owner, IpcChannel.terminalAgentSubagent, terminalId, update),
     })
     ownership.add(owner, id)
     return id

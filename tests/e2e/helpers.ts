@@ -138,7 +138,8 @@ process.stdout.write('mcp=' + mcpNames.map((key) => key.slice('mcp_servers.'.len
 /**
  * A stand-in for an agent CLI that runs Dugout's hook commands exactly as the real one would,
  * driven by lines typed into the terminal:
- * prompt | ask | tool | notify-idle | stop | stop-later | exit | agent-comment | edit | raw-keys
+ * prompt | ask | tool | notify-idle | stop | stop-later | exit | agent-comment | edit | raw-keys |
+ * subagent-start <id> <type> | subagent-stop <id> <type>
  * (`raw-keys` puts the TTY in raw mode and prints every later input chunk as `keys=<json>`.)
  * It resumes the session it was asked to, or starts a new one, and prints which.
  */
@@ -164,6 +165,14 @@ const actions = {
   'stop-later': () =>
     setTimeout(() => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }), 2500),
   exit: () => process.exit(0),
+  'subagent-start': (id, type) =>
+    fire('SubagentStart', type, { agent_id: id, agent_type: type }),
+  'subagent-stop': (id, type) =>
+    fire('SubagentStop', type, {
+      agent_id: id,
+      agent_type: type,
+      last_assistant_message: 'Report from ' + id,
+    }),
   'raw-keys': () => {
     process.stdin.setRawMode(true)
     isRawKeys = true
@@ -199,7 +208,10 @@ let isRawKeys = false
 process.stdin.setEncoding('utf8')
 process.stdin.on('data', (chunk) => {
   if (isRawKeys) return void process.stdout.write('keys=' + JSON.stringify(chunk) + '\r\n')
-  for (const line of chunk.split(/\r?\n|\r/)) actions[line.trim()]?.()
+  for (const line of chunk.split(/\r?\n|\r/)) {
+    const [name, ...args] = line.trim().split(/\s+/)
+    actions[name]?.(...args)
+  }
 })
 `
 

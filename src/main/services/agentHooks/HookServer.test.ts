@@ -36,12 +36,14 @@ describe('HookServer', () => {
   let server: HookServer
   const onSignal = vi.fn()
   const onRpc = vi.fn()
+  const onSubagent = vi.fn()
 
   beforeEach(async () => {
     socketPath = join(mkdtempSync(join(tmpdir(), 'dugout-hooks-')), 'hooks.sock')
     onSignal.mockReset()
     onRpc.mockReset()
-    server = new HookServer({ socketPath, token: TOKEN, onSignal, onRpc })
+    onSubagent.mockReset()
+    server = new HookServer({ socketPath, token: TOKEN, onSignal, onRpc, onSubagent })
     await server.listen()
   })
 
@@ -52,6 +54,40 @@ describe('HookServer', () => {
   test('delivers a valid signal for a terminal', async () => {
     expect(await post(socketPath, '/hooks/term-1/needs-input')).toBe(204)
     expect(onSignal).toHaveBeenCalledWith('term-1', 'needs-input', {})
+  })
+
+  test('reports a subagent starting and stopping, without a status signal', async () => {
+    const start = { hook_event_name: 'SubagentStart', agent_id: 'a-1', agent_type: 'Explore' }
+    const stop = {
+      hook_event_name: 'SubagentStop',
+      agent_id: 'a-1',
+      agent_type: 'Explore',
+      last_assistant_message: 'Found 3 callers.\nDetails…',
+    }
+
+    expect(await post(socketPath, '/hooks/t/subagent-start', TOKEN, JSON.stringify(start))).toBe(
+      204,
+    )
+    expect(await post(socketPath, '/hooks/t/subagent-stop', TOKEN, JSON.stringify(stop))).toBe(204)
+
+    expect(onSubagent.mock.calls).toEqual([
+      ['t', { id: 'a-1', type: 'Explore', state: 'running' }],
+      ['t', { id: 'a-1', type: 'Explore', state: 'done', detail: 'Found 3 callers.' }],
+    ])
+    expect(onSignal).not.toHaveBeenCalled()
+  })
+
+  test('names an untyped subagent and ignores subagent payloads without a usable id', async () => {
+    const send = (payload: unknown) =>
+      post(socketPath, '/hooks/t/subagent-start', TOKEN, JSON.stringify(payload))
+    expect(await send({ agent_id: 'a-2', agent_type: ' ' })).toBe(204)
+    expect(await send({ agent_type: 'Explore' })).toBe(204)
+    expect(await send({ agent_id: '$(whoami)', agent_type: 'Explore' })).toBe(204)
+    expect(await post(socketPath, '/hooks/t/subagent-start', TOKEN, '{ nope')).toBe(204)
+
+    expect(onSubagent.mock.calls).toEqual([
+      ['t', { id: 'a-2', type: 'subagent', state: 'running' }],
+    ])
   })
 
   test('extracts the session id from a hook payload', async () => {
@@ -131,7 +167,7 @@ describe('HookServer', () => {
     await server.close()
     const { writeFileSync } = await import('node:fs')
     writeFileSync(socketPath, '')
-    server = new HookServer({ socketPath, token: TOKEN, onSignal, onRpc })
+    server = new HookServer({ socketPath, token: TOKEN, onSignal, onRpc, onSubagent })
     await server.listen()
     expect(await post(socketPath, '/hooks/t/ready')).toBe(204)
   })
@@ -145,7 +181,13 @@ describe('HookServer task RPC', () => {
   beforeEach(async () => {
     socketPath = join(mkdtempSync(join(tmpdir(), 'dugout-rpc-')), 'hooks.sock')
     onRpc.mockReset()
-    server = new HookServer({ socketPath, token: TOKEN, onSignal: vi.fn(), onRpc })
+    server = new HookServer({
+      socketPath,
+      token: TOKEN,
+      onSignal: vi.fn(),
+      onRpc,
+      onSubagent: vi.fn(),
+    })
     await server.listen()
   })
 

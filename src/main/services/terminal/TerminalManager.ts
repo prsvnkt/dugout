@@ -1,4 +1,4 @@
-import type { AgentStatus, HookSignal } from '@shared/agentStatus'
+import type { AgentStatus, HookSignal, SubagentUpdate } from '@shared/agentStatus'
 import type { TerminalCreateRequest } from '@shared/ipc/contract'
 import {
   isAgentKind,
@@ -18,6 +18,8 @@ export interface TerminalEvents {
   onAgentStatus?(id: TerminalId, status: AgentStatus, detail?: string): void
   /** The Claude session id, reported when it starts or changes (e.g. after /clear). */
   onAgentSession?(id: TerminalId, sessionId: string): void
+  /** A subagent of this terminal's agent started or stopped. */
+  onAgentSubagent?(id: TerminalId, update: SubagentUpdate): void
 }
 
 export interface TerminalManagerDeps {
@@ -181,6 +183,14 @@ export class TerminalManager {
         ...(details.detail && { detail: details.detail }),
       })
     }
+    return true
+  }
+
+  /** Passes a subagent update on to the renderer; the agent's own status is unchanged. */
+  applySubagent(id: TerminalId, update: SubagentUpdate): boolean {
+    const terminal = this.terminals.get(id)
+    if (!terminal || terminal.agentStatus === null) return false
+    terminal.events.onAgentSubagent?.(id, update)
     return true
   }
 

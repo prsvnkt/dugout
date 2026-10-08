@@ -18,6 +18,7 @@ import {
   type PaneId,
   type ProjectLayout,
 } from './layout'
+import type { Subagent } from '@renderer/features/agents/subagents'
 import { projectAttention, type PaneActivity } from './paneActivity'
 import {
   forgetSession,
@@ -56,6 +57,9 @@ interface WorkspaceState {
   /** What each agent pane is asking or finished, and since when (for the inbox). */
   readonly details: Readonly<Record<PaneId, PaneDetail>>
   setActivity(paneId: PaneId, activity: PaneActivity, detail?: string | null): void
+  /** Each agent pane's subagents, for the Agents list. */
+  readonly subagents: Readonly<Record<PaneId, readonly Subagent[]>>
+  setSubagents(paneId: PaneId, subagents: readonly Subagent[]): void
   removeProject(projectId: ProjectId): void
   /** Where keyboard focus last was per project, so ⌘W closes a tab or a pane accordingly. */
   readonly focusedAreas: Readonly<Record<ProjectId, FocusArea>>
@@ -146,6 +150,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       set((state) => ({
         activities: withoutKeys(state.activities, ids),
         terminalIds: withoutKeys(state.terminalIds, ids),
+        subagents: withoutKeys(state.subagents, ids),
       }))
     },
     terminalIds: {},
@@ -181,6 +186,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       set((state) => ({
         activities: withoutKeys(state.activities, [paneId]),
         terminalIds: withoutKeys(state.terminalIds, [paneId]),
+        subagents: withoutKeys(state.subagents, [paneId]),
       }))
     },
     recentSessions: {},
@@ -223,6 +229,13 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
           details: { ...state.details, [paneId]: { detail, since } },
         }
       }),
+    subagents: {},
+    setSubagents: (paneId, subagents) =>
+      set((state) => {
+        const current = state.subagents[paneId]
+        if (current === subagents || (!current && subagents.length === 0)) return state
+        return { subagents: { ...state.subagents, [paneId]: subagents } }
+      }),
     removeProject: (projectId) =>
       set((state) => {
         const paneIds = state.layouts[projectId]?.panes.map((pane) => pane.id) ?? []
@@ -231,6 +244,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
           recentSessions: withoutKeys(state.recentSessions, [projectId]),
           activities: withoutKeys(state.activities, paneIds),
           terminalIds: withoutKeys(state.terminalIds, paneIds),
+          subagents: withoutKeys(state.subagents, paneIds),
         }
       }),
   }
