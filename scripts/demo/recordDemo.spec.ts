@@ -8,7 +8,7 @@ import { FrameRecorder } from './frameRecorder'
 /**
  * The README demo: three sample projects, scripted agents (demoAgent.mjs) and a fake cursor,
  * played in the real app while FrameRecorder screenshots it. `npm run demo:gif` turns the
- * frames into docs/media/demo.gif.
+ * frames into out/demo/demo.gif.
  */
 
 const FRAMES_DIR = resolve('out/demo/frames')

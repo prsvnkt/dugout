@@ -1,11 +1,12 @@
 #!/bin/sh
-# Turns the frames recorded by recordDemo.spec.ts into docs/media/demo.gif.
+# Turns the frames recorded by recordDemo.spec.ts into out/demo/demo.gif: raw footage for the
+# edited README demo (docs/media/demo.gif), which this does not overwrite.
 # Needs ffmpeg and gifski (brew install ffmpeg gifski).
 set -eu
 
 FRAMES_DIR="out/demo/frames"
 VIDEO_FRAMES_DIR="out/demo/video-frames"
-OUTPUT="docs/media/demo.gif"
+OUTPUT="out/demo/demo.gif"
 FPS=12
 # The capture's full Retina width (a 1440-point window at 2x), so text stays sharp. Flat UI
 # compresses well: about 2 MB for 30 seconds.
