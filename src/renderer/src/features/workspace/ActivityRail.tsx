@@ -1,10 +1,12 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { Files, GitBranch, ListChecks, Plus, type LucideIcon } from 'lucide-react'
+import { AGENT_LIST, NEW_AGENT_SHORTCUT, NEW_WORKTREE_AGENT_SHORTCUT } from '@shared/agents'
 import type { Project } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
+import { useDefaultAgent } from '@renderer/features/start/defaultAgentStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { Icon } from '@renderer/lib/Icon'
 import { useDismiss } from '@renderer/lib/useDismiss'
@@ -43,7 +45,7 @@ function RailButton({ icon, label, title, isActive, badge, onClick }: RailButton
 
 function MenuItem(props: {
   label: string
-  shortcut: string
+  shortcut?: string | undefined
   disabled?: boolean
   onSelect(): void
 }): ReactNode {
@@ -54,12 +56,12 @@ function MenuItem(props: {
       disabled={props.disabled}
       onClick={props.onSelect}
     >
-      {props.label} <kbd>{props.shortcut}</kbd>
+      {props.label} {props.shortcut && <kbd>{props.shortcut}</kbd>}
     </button>
   )
 }
 
-/** "+" in the rail: start Claude, Codex, worktree or shell panes, or open agent settings. */
+/** "+" in the rail: start any agent, an agent in a worktree or a shell, or open agent settings. */
 function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: TerminalKind): void }) {
   const [isOpen, setIsOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -68,6 +70,7 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
   const canAddPane = useProjectLayout(project.id).panes.length < MAX_PANES_PER_PROJECT
   const startWorktreeSession = useWorktreeStore((state) => state.startSession)
   const openAgentSettings = useEditorStore((state) => state.openAgentSettings)
+  const defaultAgent = useDefaultAgent()
   const choose = (action: () => void) => () => {
     close()
     action()
@@ -84,24 +87,28 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
       />
       {isOpen && (
         <div className={styles.menu} role="menu" aria-label="New agent">
-          <MenuItem
-            label="New Claude agent"
-            shortcut="⌘T"
-            disabled={!canAddPane}
-            onSelect={choose(() => onAdd('claude'))}
-          />
-          <MenuItem
-            label="New Codex agent"
-            shortcut="⌥⇧⌘T"
-            disabled={!canAddPane}
-            onSelect={choose(() => onAdd('codex'))}
-          />
-          <MenuItem
-            label="New Claude agent in worktree"
-            shortcut="⌥⌘T"
-            disabled={!canAddPane}
-            onSelect={choose(() => void startWorktreeSession(project.id))}
-          />
+          {AGENT_LIST.map((agent) => (
+            <MenuItem
+              key={agent.kind}
+              label={`New ${agent.label} agent`}
+              shortcut={agent.kind === defaultAgent ? NEW_AGENT_SHORTCUT.symbols : undefined}
+              disabled={!canAddPane}
+              onSelect={choose(() => onAdd(agent.kind))}
+            />
+          ))}
+          <hr className={styles.divider} />
+          {AGENT_LIST.map((agent) => (
+            <MenuItem
+              key={agent.kind}
+              label={`New ${agent.label} agent in worktree`}
+              shortcut={
+                agent.kind === defaultAgent ? NEW_WORKTREE_AGENT_SHORTCUT.symbols : undefined
+              }
+              disabled={!canAddPane}
+              onSelect={choose(() => void startWorktreeSession(project.id, agent.kind))}
+            />
+          ))}
+          <hr className={styles.divider} />
           <MenuItem
             label="New shell"
             shortcut="⇧⌘T"

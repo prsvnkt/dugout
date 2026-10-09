@@ -7,6 +7,7 @@ import { checkoutOf, fileKeyOf } from '@renderer/features/editor/fileKey'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
 import { useInboxStore } from '@renderer/features/inbox/inboxStore'
+import { loadedDefaultAgent } from '@renderer/features/start/defaultAgentStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { useWorkspaceStore } from './workspaceStore'
 
@@ -29,8 +30,15 @@ export function useAppCommands(onAddProject: () => void, onCloneProject: () => v
         case 'pane.new':
           if (selectedId) workspace.addPane(selectedId, command.kind)
           return
+        case 'pane.newDefaultAgent':
+          if (!selectedId) return
+          void loadedDefaultAgent().then((agent) => workspace.addPane(selectedId, agent))
+          return
         case 'pane.newWorktree':
-          if (selectedId) void useWorktreeStore.getState().startSession(selectedId)
+          if (!selectedId) return
+          void loadedDefaultAgent().then((agent) =>
+            useWorktreeStore.getState().startSession(selectedId, agent),
+          )
           return
         case 'pane.close': {
           if (!selectedId) return

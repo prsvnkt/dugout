@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { AgentKind } from '@shared/agents'
 import type { ProjectId } from '@shared/project'
 import type { Worktree } from '@shared/worktree'
 import { dugout } from '@renderer/lib/dugout'
@@ -8,8 +9,8 @@ interface WorktreeState {
   readonly byProject: Readonly<Record<ProjectId, readonly Worktree[]>>
   readonly errors: Readonly<Record<ProjectId, string | null>>
   load(projectId: ProjectId): Promise<void>
-  /** Creates a worktree on a new dugout/* branch and opens a Claude pane in it. */
-  startSession(projectId: ProjectId): Promise<void>
+  /** Creates a worktree on a new dugout/* branch and opens an agent in it. */
+  startSession(projectId: ProjectId, agent: AgentKind): Promise<void>
   /** Removes the worktree, then closes its panes. Fails (keeping both) if it has uncommitted work. */
   remove(projectId: ProjectId, path: string): Promise<void>
   dismissError(projectId: ProjectId): void
@@ -31,11 +32,11 @@ export const useWorktreeStore = create<WorktreeState>()((set, get) => {
       set((state) => ({ byProject: { ...state.byProject, [projectId]: result.data } }))
     },
 
-    async startSession(projectId) {
+    async startSession(projectId, agent) {
       setError(projectId, null)
       const result = await dugout.worktrees.create(projectId)
       if (!result.ok) return setError(projectId, result.error)
-      useWorkspaceStore.getState().addPane(projectId, 'claude', result.data)
+      useWorkspaceStore.getState().addPane(projectId, agent, result.data)
       await get().load(projectId)
     },
 

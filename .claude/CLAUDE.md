@@ -1,13 +1,13 @@
 # Dugout
 
-A macOS desktop app for running and supervising many coding agents (Claude Code, Codex) across
-projects, in one window. Electron + React + TypeScript, with real terminals (node-pty + xterm.js).
+A macOS desktop app for running and supervising many coding agents (Claude Code, Codex,
+OpenCode) across projects, in one window. Electron + React + TypeScript, with real terminals (node-pty + xterm.js).
 
 ## Product principles
 
-- **Wrap the agent CLIs, never reinvent them.** Sessions run the real `claude` or `codex` CLI in
-  a real PTY, with the user's own config, auth and slash commands. No Agent SDK, no custom chat
-  UI. More agents may follow, so UI text never assumes Claude (e.g. the start screen's prompt box
+- **Wrap the agent CLIs, never reinvent them.** Sessions run the real agent CLI (`claude`,
+  `codex`, `opencode`) in a real PTY, with the user's own config, auth and slash commands. No
+  Agent SDK, no custom chat UI. More agents may follow, so UI text never assumes Claude (e.g. the start screen's prompt box
   goes to the user's default agent).
 - **Organisation and supervision are the product:** projects, colours, split terminals,
   status, and a git panel for reviewing what agents changed.
@@ -41,8 +41,9 @@ src/
   main/       Electron main process (Node). Owns PTYs, git, filesystem, dialogs.
     ipc/        One register*Ipc.ts per domain. Validates every payload with zod.
     services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
-                git/ (review panel, PR URLs), agentHooks/ (Claude + Codex status, pending approvals,
-                subagents, session ids),
+                git/ (review panel, PR URLs), agents/ (one adapter per agent CLI: launch line,
+                hooks, MCP; registry.ts lists them), agentHooks/ (hook server, status signals,
+                pending approvals, subagents, session ids),
                 worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API),
                 settings/ (app preferences: default agent, clone folder, last "Open in…" app),
@@ -54,6 +55,7 @@ src/
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
+              `agents.ts` is the agent registry the UI reads (labels, capabilities).
   renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.
               Layout: project tabs (title bar) / Explorer over Agents | editor over terminals |
               Git panel; side panels collapse via workspace/SidePanel.tsx, and the Agents list
@@ -79,8 +81,13 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 
 ## Gotchas
 
-- **Words on screen:** Claude/Codex terminals are **agents**, plain terminals are **shells**, and
-  repos are **projects**. "Pane" is only a code name (`Pane`, `addPane`); never show it in the UI.
+- **Words on screen:** terminals running an agent CLI (Claude, Codex, OpenCode, …) are **agents**, plain
+  terminals are **shells**, and repos are **projects**. Agent names come from `shared/agents.ts`
+  (`label` "Claude", `productName` "Claude Code", `cliName`); never hard-code them in the UI.
+  "Pane" is only a code name (`Pane`, `addPane`); never show it in the UI.
+- **Agents are adapters** (decision 037): add one as `main/services/agents/<kind>/` plus entries in
+  `agents/registry.ts` and `shared/agents.ts`. Outside those, never branch on an agent's kind;
+  read its `capabilities` instead.
 - **Dev app name and data:** `postinstall` renames `node_modules/electron/dist/Electron.app` to
   "Dugout Dev" (and re-signs it ad hoc), and unpackaged runs keep their data in "Dugout Dev", so
   `npm run dev` is never confused with the installed app. If the Dock says "Electron" again after
@@ -99,8 +106,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   xterm fit to 2 columns and garbles the Claude TUI. `useTerminal` also skips fitting when hidden.
 - **Request-response IPC returns `Result<T>`** (`handleRequest` in main, `unwrap` in renderer)
   so errors reach the UI as readable messages.
-- **Agent status comes only from hooks** (see decision 008). E2E tests use the fake `claude`
-  from `tests/e2e/helpers.ts` via `DUGOUT_CLAUDE_COMMAND`; never scrape terminal output.
+- **Agent status comes only from hooks** (see decision 008), or an agent's plugin (OpenCode,
+  decision 037). E2E tests use the fake `claude` / `codex` / `opencode` from
+  `tests/e2e/helpers.ts` via `DUGOUT_<AGENT>_COMMAND`; never scrape terminal output.
 - **All git commands go through `GitService`/`runGit`** so they inherit the no-lock, no-prompt,
   literal-pathspec environment (decision 009). Never call `git` from elsewhere.
 - **Shell command lines use only plain `"$VAR"` expansions** (decision 013). `${VAR:+…}` splits

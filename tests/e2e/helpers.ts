@@ -89,11 +89,25 @@ export async function clickMenuItem(
   )
 }
 
+/** Claude Code and Codex run the hook commands from their config for each event. */
+const RUN_HOOK_COMMANDS = String.raw`
+function fire(event, matchValue, extra = {}) {
+  for (const group of hooks[event] ?? []) {
+    if (group.matcher && !group.matcher.split('|').includes(matchValue)) continue
+    for (const hook of group.hooks) {
+      const input = JSON.stringify({ hook_event_name: event, session_id: sessionId, ...extra })
+      spawnSync('bash', ['-c', hook.command], { input, stdio: ['pipe', 'ignore', 'ignore'] })
+    }
+  }
+}
+`
+
 /**
  * How the fake `claude` reads its arguments: hooks from the `--settings` file, the MCP server from
  * `--mcp-config`, the session from `--resume`.
  */
-const CLAUDE_ARGS_SOURCE = String.raw`
+const CLAUDE_ARGS_SOURCE =
+  String.raw`
 const argValue = (flag) => {
   const index = process.argv.indexOf(flag)
   return index === -1 ? undefined : process.argv[index + 1]
@@ -106,13 +120,14 @@ const firstPrompt = process.argv
 const { hooks } = JSON.parse(readFileSync(argValue('--settings'), 'utf8'))
 const resumed = argValue('--resume')
 const dugoutServer = () => JSON.parse(readFileSync(argValue('--mcp-config'), 'utf8')).mcpServers.dugout
-`
+` + RUN_HOOK_COMMANDS
 
 /**
  * How the fake `codex` reads its arguments: `codex [prompt] -c key=value…` or
  * `codex resume <id> -c key=value…`, with hooks and MCP servers as TOML config overrides.
  */
-const CODEX_ARGS_SOURCE = String.raw`
+const CODEX_ARGS_SOURCE =
+  String.raw`
 const { parse } = require(PROJECT_ROOT + '/node_modules/smol-toml/dist/index.cjs')
 const args = process.argv.slice(2)
 const overrides = {}
@@ -133,6 +148,71 @@ const hooks = Object.fromEntries(
 const dugoutServer = () => overrides['mcp_servers.dugout']
 const mcpNames = Object.keys(overrides).filter((key) => key.startsWith('mcp_servers.'))
 process.stdout.write('mcp=' + mcpNames.map((key) => key.slice('mcp_servers.'.length)).join(',') + '\r\n')
+` + RUN_HOOK_COMMANDS
+
+/**
+ * How the fake `opencode` reads its arguments (`--session <id>`, `--prompt <text>`) and its inline
+ * config, then loads Dugout's status plugin the way OpenCode does. Each Claude Code hook event
+ * the fake fires becomes the OpenCode event or plugin hook that means the same thing.
+ */
+const OPENCODE_ARGS_SOURCE = String.raw`
+const args = process.argv.slice(2)
+const argValue = (flag) => {
+  const index = args.indexOf(flag)
+  return index === -1 ? undefined : args[index + 1]
+}
+const resumed = argValue('--session')
+const firstPrompt = argValue('--prompt')
+const config = JSON.parse(process.env.OPENCODE_CONFIG_CONTENT ?? '{}')
+const dugoutServer = () => {
+  const { command, environment } = config.mcp.dugout
+  return { command: command[0], args: command.slice(1), env: environment }
+}
+process.stdout.write('mcp=' + Object.keys(config.mcp ?? {}).join(',') + '\r\n')
+
+// OpenCode runs on Bun, whose fetch can POST to a Unix socket; Node's cannot, so stand in for it.
+globalThis.fetch = (url, init = {}) =>
+  new Promise((resolve, reject) => {
+    const request = require('node:http').request(
+      { socketPath: init.unix, path: new URL(url).pathname, method: init.method, headers: init.headers },
+      (response) => response.resume().on('end', () => resolve({ status: response.statusCode })),
+    )
+    request.on('error', reject)
+    request.end(init.body)
+  })
+const plugins = Promise.all(
+  (config.plugin ?? []).map(async (spec) =>
+    Promise.all(Object.values(await import(spec)).map((plugin) => plugin({}))),
+  ),
+).then((lists) => lists.flat())
+const callHook = (name, ...input) =>
+  plugins.then((list) => Promise.all(list.map((hooks) => hooks[name]?.(...input))))
+const emit = (type, properties) => callHook('event', { event: { type, properties } })
+
+let requestCount = 0
+function fire(event, matchValue, extra = {}) {
+  const sessionID = sessionId
+  switch (event) {
+    case 'UserPromptSubmit':
+      return void emit('session.status', { sessionID, status: { type: 'busy' } })
+    case 'PermissionRequest':
+      return void emit('permission.asked', {
+        id: 'per_' + ++requestCount,
+        sessionID,
+        permission: extra.tool_name.toLowerCase(),
+        patterns: [],
+        metadata: extra.tool_input,
+      })
+    case 'PostToolUse':
+      return void callHook(
+        'tool.execute.after',
+        { tool: extra.tool_name.toLowerCase(), sessionID, callID: extra.tool_use_id, args: extra.tool_input },
+        { title: '', output: '', metadata: {} },
+      )
+    case 'Stop':
+      return void emit('session.status', { sessionID, status: { type: 'idle' } })
+  }
+}
 `
 
 /**
@@ -150,15 +230,6 @@ const sessionId = resumed ?? 'fake-session-' + process.pid
 let toolCount = 0
 const bash = (words) => ({ command: words.length > 0 ? words.join(' ') : 'npm install' })
 
-function fire(event, matchValue, extra = {}) {
-  for (const group of hooks[event] ?? []) {
-    if (group.matcher && !group.matcher.split('|').includes(matchValue)) continue
-    for (const hook of group.hooks) {
-      const input = JSON.stringify({ hook_event_name: event, session_id: sessionId, ...extra })
-      spawnSync('bash', ['-c', hook.command], { input, stdio: ['pipe', 'ignore', 'ignore'] })
-    }
-  }
-}
 
 const actions = {
   prompt: () => fire('UserPromptSubmit'),
@@ -230,7 +301,7 @@ process.stdin.on('data', (chunk) => {
 })
 `
 
-function writeFakeAgent(name: 'claude' | 'codex', argsSource: string): string {
+function writeFakeAgent(name: 'claude' | 'codex' | 'opencode', argsSource: string): string {
   const path = join(makeTempDir(`dugout-fake-${name}-`), name)
   const header = [
     `#!${process.execPath}`,
@@ -249,6 +320,11 @@ export function makeFakeClaude(): string {
 
 export function makeFakeCodex(): string {
   return writeFakeAgent('codex', CODEX_ARGS_SOURCE)
+}
+
+/** A fake `opencode` (for `DUGOUT_OPENCODE_COMMAND`) that runs Dugout's real status plugin. */
+export function makeFakeOpenCode(): string {
+  return writeFakeAgent('opencode', OPENCODE_ARGS_SOURCE)
 }
 
 /**
@@ -287,5 +363,5 @@ export async function openAddProjectFromTabs(page: Page): Promise<void> {
 /** Picks an action (e.g. "New shell") from the activity rail's "+" menu. */
 export async function chooseNewAgentAction(scope: Page | Locator, action: string): Promise<void> {
   await scope.getByRole('button', { name: 'New agent' }).click()
-  await scope.getByRole('menuitem', { name: action }).click()
+  await scope.getByRole('menuitem', { name: action, exact: true }).click()
 }

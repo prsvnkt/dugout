@@ -1,23 +1,8 @@
-import type { AgentKind } from '@shared/terminal'
+import { AGENT_LIST, type AgentInfo } from '@shared/agents'
 import type { AgentCliStatus } from '@shared/welcome'
 import start from '@renderer/features/start/StartScreen.module.css'
 import { useAgentCheck } from './useWelcomeData'
 import styles from './Welcome.module.css'
-
-interface AgentInfo {
-  readonly kind: AgentKind
-  readonly name: string
-  readonly installCommand: string
-}
-
-const AGENTS: readonly AgentInfo[] = [
-  {
-    kind: 'claude',
-    name: 'Claude Code',
-    installCommand: 'npm install -g @anthropic-ai/claude-code',
-  },
-  { kind: 'codex', name: 'Codex CLI', installCommand: 'npm install -g @openai/codex' },
-]
 
 /** Status in words as well as colour. */
 const STATE_LABEL: Readonly<Record<AgentCliStatus['state'], string>> = {
@@ -45,18 +30,19 @@ function Detail({ agent, status }: { agent: AgentInfo; status: AgentCliStatus | 
 /** Whether each agent CLI is installed, so a missing one is found before the first agent fails. */
 export function AgentCheckList() {
   const { check, recheck } = useAgentCheck()
-  const needsAttention = check !== null && AGENTS.some((a) => check[a.kind].state !== 'installed')
+  const needsAttention =
+    check !== null && AGENT_LIST.some((a) => check[a.kind].state !== 'installed')
 
   return (
     <section className={start.section} aria-label="Agents">
       <h2 className={start.sectionHeading}>Agents</h2>
       <ul className={start.list}>
-        {AGENTS.map((agent) => {
+        {AGENT_LIST.map((agent) => {
           const status = check?.[agent.kind] ?? null
           return (
             <li key={agent.kind} className={styles.agentRow}>
               <span className={start.rowText}>
-                <span className={start.rowTitle}>{agent.name}</span>
+                <span className={start.rowTitle}>{agent.cliName}</span>
                 <span className={start.rowMeta}>
                   <Detail agent={agent} status={status} />
                 </span>

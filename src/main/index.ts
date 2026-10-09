@@ -37,11 +37,8 @@ import { FileService } from './services/files/FileService'
 import { resolveRepoRoot } from './services/git/resolveRepoRoot'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
-import {
-  DEFAULT_CLAUDE_COMMAND,
-  DEFAULT_CODEX_COMMAND,
-  TerminalManager,
-} from './services/terminal/TerminalManager'
+import { TerminalManager } from './services/terminal/TerminalManager'
+import { agentCommands } from './services/agents/registry'
 import { loginShellRunner } from './services/welcome/checkAgentClis'
 import { SettingsStore } from './services/settings/SettingsStore'
 import { registerSettingsIpc } from './ipc/registerSettingsIpc'
@@ -160,8 +157,7 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
   try {
     return await setupAgentHooks({
       dataDir,
-      claudeCommand: process.env.DUGOUT_CLAUDE_COMMAND,
-      codexCommand: process.env.DUGOUT_CODEX_COMMAND,
+      commands: agentCommands(process.env),
       onSignal: (terminalId, signal, details) =>
         terminalManager?.applyHookSignal(terminalId, signal, details),
       onSubagent: (terminalId, update) => terminalManager?.applySubagent(terminalId, update),
@@ -306,10 +302,7 @@ async function start(): Promise<void> {
     // Tests point this at a temp folder so they never search the real home folder.
     homeDir: process.env.DUGOUT_HOME_DIR ?? homedir(),
     runInLoginShell: loginShellRunner(process.env),
-    agentCommands: {
-      claude: process.env.DUGOUT_CLAUDE_COMMAND ?? DEFAULT_CLAUDE_COMMAND,
-      codex: process.env.DUGOUT_CODEX_COMMAND ?? DEFAULT_CODEX_COMMAND,
-    },
+    agentCommands: agentCommands(process.env),
   })
   registerWorkspaceIpc(new LayoutStore({ filePath: join(dataDir, WORKSPACE_FILE) }), projectStore)
   registerDialogIpc()

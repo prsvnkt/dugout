@@ -1,15 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
-import type { AgentKind } from '@shared/terminal'
+import { AGENT_LIST, type AgentKind } from '@shared/agents'
 import { Icon } from '@renderer/lib/Icon'
 import { useDismiss } from '@renderer/lib/useDismiss'
+import { taskStartOptions } from './taskStartOptions'
 import styles from './TaskDetailView.module.css'
 
-const START_OPTIONS: readonly { label: string; agents: readonly AgentKind[] }[] = [
-  { label: 'Claude', agents: ['claude'] },
-  { label: 'Codex', agents: ['codex'] },
-  { label: 'Claude + Codex (compare)', agents: ['claude', 'codex'] },
-]
+const START_OPTIONS = taskStartOptions(AGENT_LIST)
 
 interface StartAgentMenuProps {
   readonly label: string

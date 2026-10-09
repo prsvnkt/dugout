@@ -1,4 +1,5 @@
-import { HOOK_BINDINGS, signalCommand, type AnySignal } from './hookSettings'
+import { HOOK_BINDINGS, signalCommand, type AnySignal } from '../../agentHooks/hookSettings'
+import type { McpServerEntry } from '../dugoutMcp'
 
 /** The Codex events Dugout listens to; same names and meaning as Claude Code's. */
 const CODEX_EVENTS = [
@@ -10,12 +11,6 @@ const CODEX_EVENTS = [
   'SubagentStart',
   'SubagentStop',
 ] as const
-
-export interface McpServerEntry {
-  readonly command: string
-  readonly args: readonly string[]
-  readonly env: Readonly<Record<string, string>>
-}
 
 export type TomlValue =
   string | number | boolean | readonly TomlValue[] | { readonly [key: string]: TomlValue }

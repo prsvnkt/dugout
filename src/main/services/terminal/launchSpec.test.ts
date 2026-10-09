@@ -13,77 +13,15 @@ describe('resolveShell', () => {
 })
 
 describe('buildLaunchSpec', () => {
-  test('runs claude through an interactive login shell so the user PATH applies', () => {
-    expect(buildLaunchSpec('claude', '/bin/zsh')).toEqual({
+  test("runs an agent's command line through an interactive login shell so the user PATH applies", () => {
+    expect(buildLaunchSpec('/bin/zsh', 'claude')).toEqual({
       file: '/bin/zsh',
       args: ['-l', '-i', '-c', 'claude'],
     })
   })
 
-  test('passes the generated hook settings to claude when hooks are enabled', () => {
-    expect(buildLaunchSpec('claude', '/bin/zsh', { hasAgentHooks: true }).args).toEqual([
-      '-l',
-      '-i',
-      '-c',
-      '"$DUGOUT_CLAUDE_COMMAND" --settings "$DUGOUT_CLAUDE_SETTINGS"',
-    ])
-  })
-
-  test('adds --resume as separate arguments when resuming', () => {
-    const args = buildLaunchSpec('claude', '/bin/zsh', { hasAgentHooks: true, isResuming: true })
-    expect(args.args.at(-1)).toBe(
-      '"$DUGOUT_CLAUDE_COMMAND" --settings "$DUGOUT_CLAUDE_SETTINGS" --resume "$DUGOUT_RESUME_SESSION"',
-    )
-  })
-
-  test('puts the first prompt before options and the MCP config last', () => {
-    const line = buildLaunchSpec('claude', '/bin/zsh', {
-      hasAgentHooks: true,
-      hasInitialPrompt: true,
-      hasMcpConfig: true,
-    }).args.at(-1)
-    expect(line).toBe(
-      '"$DUGOUT_CLAUDE_COMMAND" "$DUGOUT_INITIAL_PROMPT" --settings "$DUGOUT_CLAUDE_SETTINGS"' +
-        ' --mcp-config "$DUGOUT_MCP_CONFIG"',
-    )
-  })
-
-  test('starts Codex with its config overrides and first prompt', () => {
-    const line = buildLaunchSpec('codex', '/bin/zsh', {
-      hasAgentHooks: true,
-      hasInitialPrompt: true,
-      codexOverrideCount: 2,
-    }).args.at(-1)
-    expect(line).toBe(
-      '"$DUGOUT_CODEX_COMMAND" "$DUGOUT_INITIAL_PROMPT" -c "$DUGOUT_CODEX_C0" -c "$DUGOUT_CODEX_C1"',
-    )
-  })
-
-  test('resumes Codex with its resume subcommand', () => {
-    const line = buildLaunchSpec('codex', '/bin/zsh', {
-      hasAgentHooks: true,
-      isResuming: true,
-      codexOverrideCount: 1,
-    }).args.at(-1)
-    expect(line).toBe(
-      '"$DUGOUT_CODEX_COMMAND" resume "$DUGOUT_RESUME_SESSION" -c "$DUGOUT_CODEX_C0"',
-    )
-  })
-
-  test('runs plain codex without hooks', () => {
-    expect(buildLaunchSpec('codex', '/bin/zsh').args).toEqual(['-l', '-i', '-c', 'codex'])
-  })
-
-  test('uses only plain "$VAR" expansions, which bash, zsh and fish all treat the same', () => {
-    const line = buildLaunchSpec('claude', '/bin/zsh', {
-      hasAgentHooks: true,
-      isResuming: true,
-    }).args.at(-1)
-    expect(line).not.toMatch(/\$\{/)
-  })
-
   test('starts a plain login shell', () => {
-    expect(buildLaunchSpec('shell', '/bin/zsh')).toEqual({ file: '/bin/zsh', args: ['-l'] })
+    expect(buildLaunchSpec('/bin/zsh')).toEqual({ file: '/bin/zsh', args: ['-l'] })
   })
 })
 
@@ -110,9 +48,11 @@ describe('buildTerminalEnv', () => {
       CLAUDE_PLUGIN_DATA: '/tmp',
       AI_AGENT: 'claude',
       CODEX_COMPANION_SESSION_ID: 'x',
+      OPENCODE: '1',
+      OPENCODE_PID: '456',
     })
     expect(env).toEqual(expect.objectContaining({ HOME: '/Users/me' }))
-    expect(Object.keys(env).filter((key) => /CLAUDE|AI_AGENT|CODEX/.test(key))).toEqual([])
+    expect(Object.keys(env).filter((key) => /CLAUDE|AI_AGENT|CODEX|OPENCODE/.test(key))).toEqual([])
   })
 
   test('does not inherit Dugout variables from the environment that launched the app', () => {

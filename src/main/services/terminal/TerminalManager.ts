@@ -12,6 +12,9 @@ import { NO_APPROVALS, trackApprovals, type PendingApproval } from '../agentHook
 import type { AgentHooksConfig } from '../agentHooks/setupAgentHooks'
 import type { AgentStatusChange } from '../notifications/AgentNotifier'
 import type { TerminalBackend, TerminalProcess } from './TerminalBackend'
+import type { AgentAdapter, AgentLaunch } from '../agents/AgentAdapter'
+import { dugoutMcpServer } from '../agents/dugoutMcp'
+import { agentAdapter } from '../agents/registry'
 import { buildLaunchSpec, buildTerminalEnv, resolveShell, type Env } from './launchSpec'
 
 export interface TerminalEvents {
@@ -24,7 +27,7 @@ export interface TerminalEvents {
     detail: string | undefined,
     approvals: readonly ToolCallPreview[],
   ): void
-  /** The Claude session id, reported when it starts or changes (e.g. after /clear). */
+  /** The agent's session id, reported when it starts or changes (e.g. after /clear). */
   onAgentSession?(id: TerminalId, sessionId: string): void
   /** A subagent of this terminal's agent started or stopped. */
   onAgentSubagent?(id: TerminalId, update: SubagentUpdate): void
@@ -45,7 +48,7 @@ interface ManagedTerminal {
   readonly projectId: string
   readonly events: TerminalEvents
   readonly agentStatus: AgentStatus | null
-  /** Current Claude session, from SessionStart. */
+  /** Current agent session, from its hooks. */
   readonly sessionId: string | null
   /** True once the session has had a prompt; empty sessions cannot be resumed. */
   readonly hasConversation: boolean
@@ -57,8 +60,6 @@ interface ManagedTerminal {
   readonly approvals: readonly PendingApproval[]
 }
 
-export const DEFAULT_CLAUDE_COMMAND = 'claude'
-export const DEFAULT_CODEX_COMMAND = 'codex'
 const CONVERSATION_STATUSES: ReadonlySet<AgentStatus> = new Set(['working', 'needs-input', 'done'])
 
 const SIGNAL_STATUS: Readonly<Record<HookSignal, AgentStatus>> = {
@@ -81,33 +82,14 @@ export class TerminalManager {
 
   create(request: TerminalCreateRequest, events: TerminalEvents): TerminalId {
     const id = this.deps.createId()
-    const hooks = isAgentKind(request.kind) ? this.deps.agentHooks : undefined
-    const isCodex = request.kind === 'codex'
-    const isResuming = hooks !== undefined && request.resumeSessionId !== undefined
-    const initialPrompt = hooks && !isResuming ? request.initialPrompt : undefined
-    const mcpConfigPath = isCodex ? undefined : hooks?.writeMcpConfig?.(id)
-    const codexOverrides = isCodex ? (hooks?.codexOverrides?.(id, request.cwd) ?? []) : []
-    const launch = buildLaunchSpec(request.kind, resolveShell(this.deps.env), {
-      hasAgentHooks: hooks !== undefined,
-      isResuming,
-      hasInitialPrompt: initialPrompt !== undefined,
-      hasMcpConfig: mcpConfigPath !== undefined,
-      codexOverrideCount: codexOverrides.length,
-    })
+    const adapter = isAgentKind(request.kind) ? agentAdapter(request.kind) : null
+    const hooks = adapter ? this.deps.agentHooks : undefined
+    const launch = adapter && hooks ? this.launchAgent(id, adapter, hooks, request) : null
+    const commandLine = adapter ? (launch?.commandLine ?? adapter.defaultCommand) : undefined
     const process = this.deps.backend.spawn({
-      ...launch,
+      ...buildLaunchSpec(resolveShell(this.deps.env), commandLine),
       cwd: request.cwd,
-      env: {
-        ...buildTerminalEnv(this.deps.env),
-        ...(hooks && hookEnv(id, hooks, isCodex)),
-        ...Object.fromEntries(
-          codexOverrides.map((value, index) => [`DUGOUT_CODEX_C${index}`, value]),
-        ),
-        ...(isResuming &&
-          request.resumeSessionId && { DUGOUT_RESUME_SESSION: request.resumeSessionId }),
-        ...(initialPrompt && { DUGOUT_INITIAL_PROMPT: initialPrompt }),
-        ...(mcpConfigPath && { DUGOUT_MCP_CONFIG: mcpConfigPath }),
-      },
+      env: { ...buildTerminalEnv(this.deps.env), ...launch?.env },
       cols: request.cols,
       rows: request.rows,
     })
@@ -116,7 +98,7 @@ export class TerminalManager {
     process.onExit((exit) => {
       const wasAgent = this.terminals.get(id)?.agentStatus != null
       this.terminals.delete(id)
-      if (mcpConfigPath) hooks?.removeMcpConfig?.(id)
+      launch?.dispose?.()
       events.onExit(id, exit)
       if (wasAgent) {
         this.deps.onAgentStatusChange?.({
@@ -126,12 +108,13 @@ export class TerminalManager {
         })
       }
     })
+    const hasStatus = launch !== null && adapter?.info.capabilities.hasStatus === true
     this.terminals.set(id, {
       process,
       kind: request.kind,
       projectId: request.projectId,
       events,
-      agentStatus: hooks ? 'starting' : null,
+      agentStatus: hasStatus ? 'starting' : null,
       sessionId: null,
       hasConversation: request.resumeSessionId !== undefined,
       reportedSessionId: request.resumeSessionId ?? null,
@@ -139,6 +122,45 @@ export class TerminalManager {
       approvals: NO_APPROVALS,
     })
     return id
+  }
+
+  /** The adapter's launch plus the variables every agent gets: hooks, resume id, first prompt. */
+  private launchAgent(
+    id: TerminalId,
+    adapter: AgentAdapter,
+    hooks: AgentHooksConfig,
+    request: TerminalCreateRequest,
+  ): AgentLaunch {
+    const resumeSessionId = adapter.info.capabilities.canResume
+      ? request.resumeSessionId
+      : undefined
+    const initialPrompt = resumeSessionId === undefined ? request.initialPrompt : undefined
+    const mcp = adapter.info.capabilities.hasMcp ? hooks.mcp : undefined
+    const launch = adapter.launch({
+      terminalId: id,
+      cwd: request.cwd,
+      dataDir: hooks.dataDir,
+      command: hooks.commands?.[adapter.info.kind] ?? adapter.defaultCommand,
+      isResuming: resumeSessionId !== undefined,
+      hasInitialPrompt: initialPrompt !== undefined,
+      ...(mcp && {
+        mcp: {
+          server: dugoutMcpServer(mcp.server, hooks.socketPath, hooks.token, id),
+          files: mcp.files,
+        },
+      }),
+    })
+    return {
+      ...launch,
+      env: {
+        DUGOUT_TERMINAL_ID: id,
+        DUGOUT_HOOK_SOCKET: hooks.socketPath,
+        DUGOUT_HOOK_TOKEN: hooks.token,
+        ...launch.env,
+        ...(resumeSessionId && { DUGOUT_RESUME_SESSION: resumeSessionId }),
+        ...(initialPrompt && { DUGOUT_INITIAL_PROMPT: initialPrompt }),
+      },
+    }
   }
 
   write(id: TerminalId, data: string): boolean {
@@ -171,7 +193,7 @@ export class TerminalManager {
     return [...this.terminals.values()].filter((t) => t.agentStatus === status).length
   }
 
-  /** Applies a hook signal to a Claude terminal. Returns false if it is not one. */
+  /** Applies a hook signal to an agent terminal with status. Returns false if it is not one. */
   applyHookSignal(id: TerminalId, signal: HookSignal, details: HookDetails = {}): boolean {
     const terminal = this.terminals.get(id)
     if (!terminal || terminal.agentStatus === null) return false
@@ -246,23 +268,4 @@ function nextAgentState(
     hasConversation,
     reportedSessionId: shouldReport ? sessionId : terminal.reportedSessionId,
   }
-}
-
-function hookEnv(
-  id: TerminalId,
-  hooks: AgentHooksConfig,
-  isCodex: boolean,
-): Record<string, string> {
-  const shared = {
-    DUGOUT_TERMINAL_ID: id,
-    DUGOUT_HOOK_SOCKET: hooks.socketPath,
-    DUGOUT_HOOK_TOKEN: hooks.token,
-  }
-  return isCodex
-    ? { ...shared, DUGOUT_CODEX_COMMAND: hooks.codexCommand ?? DEFAULT_CODEX_COMMAND }
-    : {
-        ...shared,
-        DUGOUT_CLAUDE_SETTINGS: hooks.settingsPath,
-        DUGOUT_CLAUDE_COMMAND: hooks.claudeCommand ?? DEFAULT_CLAUDE_COMMAND,
-      }
 }

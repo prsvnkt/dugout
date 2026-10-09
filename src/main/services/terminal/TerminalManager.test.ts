@@ -79,10 +79,10 @@ function setupWithHooks() {
     createId: () => 'agent-1',
     env: { SHELL: '/bin/zsh' },
     agentHooks: {
-      settingsPath: '/data/claude-hooks.json',
+      dataDir: '/data',
       socketPath: '/data/hooks.sock',
       token: 'tok',
-      claudeCommand: '/opt/fake/claude',
+      commands: { claude: '/opt/fake/claude' },
     },
     onAgentStatusChange,
   })
@@ -95,6 +95,9 @@ function setupWithHooks() {
   }
   return { manager, spawned, events, onAgentStatusChange }
 }
+
+/** Dugout's task server, as `setupAgentHooks` passes it. */
+const MCP_SERVER = { command: '/Apps/Dugout', script: '/out/main/mcp.js' }
 
 const request = { kind: 'claude', projectId: 'proj-1', cwd: '/repo', cols: 100, rows: 30 } as const
 
@@ -287,7 +290,7 @@ describe('TerminalManager sessions', () => {
       },
       createId: () => 't',
       env: {},
-      agentHooks: { settingsPath: '/s.json', socketPath: '/h.sock', token: 'x' },
+      agentHooks: { dataDir: '/data', socketPath: '/h.sock', token: 'x' },
     })
     manager.create(request, { onData: vi.fn(), onExit: vi.fn() })
     expect(spawned[0]?.options.env.DUGOUT_CLAUDE_COMMAND).toBe('claude')
@@ -344,14 +347,19 @@ describe('TerminalManager task sessions', () => {
       createId: () => 'agent-9',
       env: {},
       agentHooks: {
-        settingsPath: '/s.json',
+        dataDir: '/data',
         socketPath: '/h.sock',
         token: 'tok',
-        writeMcpConfig: (id) => {
-          written.push(id)
-          return `/mcp/${id}.json`
+        mcp: {
+          server: MCP_SERVER,
+          files: {
+            write: (id) => {
+              written.push(id)
+              return `/mcp/${id}.json`
+            },
+            remove: (id) => removed.push(id),
+          },
         },
-        removeMcpConfig: (id) => removed.push(id),
       },
     })
     return { manager, spawned, written, removed }
@@ -521,14 +529,19 @@ describe('TerminalManager codex terminals', () => {
       createId: () => 'cx-1',
       env: {},
       agentHooks: {
-        settingsPath: '/s.json',
+        dataDir: '/data',
         socketPath: '/h.sock',
         token: 'tok',
-        writeMcpConfig: (id) => {
-          written.push(id)
-          return `/mcp/${id}.json`
+        mcp: {
+          server: MCP_SERVER,
+          files: {
+            write: (id) => {
+              written.push(id)
+              return `/mcp/${id}.json`
+            },
+            remove: () => undefined,
+          },
         },
-        codexOverrides: (id) => [`hooks.Stop=[]`, `mcp_servers.dugout={id="${id}"}`],
       },
     })
     const events = { onData: vi.fn(), onExit: vi.fn(), onAgentStatus: vi.fn() }
@@ -540,14 +553,34 @@ describe('TerminalManager codex terminals', () => {
     const id = manager.create({ ...request, kind: 'codex' }, events)
 
     const env = spawned[0]?.options.env
+    const overrides = Object.keys(env ?? {}).filter((key) => /^DUGOUT_CODEX_C\d+$/.test(key))
     expect(env?.DUGOUT_CODEX_COMMAND).toBe('codex')
-    expect(env?.DUGOUT_CODEX_C0).toBe('hooks.Stop=[]')
-    expect(env?.DUGOUT_CODEX_C1).toBe('mcp_servers.dugout={id="cx-1"}')
+    expect(env?.DUGOUT_CODEX_C0).toMatch(/^hooks\.SessionStart=/)
+    expect(env?.[`DUGOUT_CODEX_C${overrides.length - 1}`]).toMatch(/^mcp_servers\.dugout=.*"cx-1"/)
     expect(env).not.toHaveProperty('DUGOUT_CLAUDE_SETTINGS')
     expect(written).toEqual([])
 
     expect(manager.agentStatus(id)).toBe('starting')
     manager.applyHookSignal(id, 'needs-input')
     expect(events.onAgentStatus).toHaveBeenCalledWith(id, 'needs-input', undefined, [])
+  })
+})
+
+describe('TerminalManager OpenCode terminals', () => {
+  test('get the shared hook variables, their inline config, and status like any agent', () => {
+    const { manager, spawned, events } = setupWithHooks()
+    const id = manager.create({ ...request, kind: 'opencode' }, events)
+
+    const env = spawned[0]?.options.env
+    expect(spawned[0]?.options.args.at(-1)).toBe('"$DUGOUT_OPENCODE_COMMAND"')
+    expect(env).toMatchObject({
+      DUGOUT_TERMINAL_ID: 'agent-1',
+      DUGOUT_HOOK_TOKEN: 'tok',
+      DUGOUT_OPENCODE_COMMAND: 'opencode',
+    })
+    expect(JSON.parse(env?.OPENCODE_CONFIG_CONTENT ?? '{}').plugin).toHaveLength(1)
+    expect(manager.agentStatus(id)).toBe('starting')
+    manager.applyHookSignal(id, 'ready')
+    expect(manager.agentStatus(id)).toBe('idle')
   })
 })

@@ -1,4 +1,5 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron'
+import { AGENT_LIST, NEW_AGENT_SHORTCUT, NEW_WORKTREE_AGENT_SHORTCUT } from '@shared/agents'
 import type { AppCommand } from '@shared/commands'
 
 const PROJECT_SHORTCUT_COUNT = 9
@@ -9,6 +10,29 @@ function projectShortcuts(send: (command: AppCommand) => void): MenuItemConstruc
     accelerator: `CmdOrCtrl+${index + 1}`,
     click: () => send({ type: 'project.select', index }),
   }))
+}
+
+/**
+ * ⌘T starts the default agent (chosen on the start screen); every agent also has its own item.
+ * Per-agent shortcuts would run out of keys as agents are added (decision 037).
+ */
+function newAgentItems(send: (command: AppCommand) => void): MenuItemConstructorOptions[] {
+  return [
+    {
+      label: 'New Agent',
+      accelerator: NEW_AGENT_SHORTCUT.accelerator,
+      click: () => send({ type: 'pane.newDefaultAgent' }),
+    },
+    ...AGENT_LIST.map((agent) => ({
+      label: `New ${agent.label} Agent`,
+      click: () => send({ type: 'pane.new', kind: agent.kind }),
+    })),
+    {
+      label: 'New Agent in Worktree',
+      accelerator: NEW_WORKTREE_AGENT_SHORTCUT.accelerator,
+      click: () => send({ type: 'pane.newWorktree' }),
+    },
+  ]
 }
 
 /**
@@ -24,21 +48,7 @@ export function buildMenuTemplate(
     {
       label: 'File',
       submenu: [
-        {
-          label: 'New Claude Agent',
-          accelerator: 'CmdOrCtrl+T',
-          click: () => send({ type: 'pane.new', kind: 'claude' }),
-        },
-        {
-          label: 'New Codex Agent',
-          accelerator: 'Alt+Shift+CmdOrCtrl+T',
-          click: () => send({ type: 'pane.new', kind: 'codex' }),
-        },
-        {
-          label: 'New Claude Agent in Worktree',
-          accelerator: 'Alt+CmdOrCtrl+T',
-          click: () => send({ type: 'pane.newWorktree' }),
-        },
+        ...newAgentItems(send),
         {
           label: 'New Shell',
           accelerator: 'CmdOrCtrl+Shift+T',
