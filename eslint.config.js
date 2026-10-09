@@ -30,7 +30,11 @@ export default tseslint.config(
     files: ['src/renderer/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
     plugins: { 'react-hooks': reactHooks },
-    rules: reactHooks.configs.recommended.rules,
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      // Check useRequest's deps like an effect's.
+      'react-hooks/exhaustive-deps': ['warn', { additionalHooks: '^useRequest$' }],
+    },
   },
   {
     // The shared layer must stay runtime-agnostic: no Node, Electron or DOM imports.
