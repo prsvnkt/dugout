@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import type { Task, TaskStatus } from '@shared/tasks'
-import { DONE_SHOWN, filterTasks, groupTasks, priorityOf, visibleLabels } from './taskList'
+import { DONE_SHOWN, filterTasks, groupTasks, visibleLabels } from './taskList'
 
-function task(number: number, status: TaskStatus, title = `Task ${number}`): Task {
+function task(
+  number: number,
+  status: TaskStatus,
+  title = `Task ${number}`,
+  key = `#${number}`,
+): Task {
   return {
     number,
+    key,
     title,
     body: '',
     status,
     url: `https://github.com/o/r/issues/${number}`,
     author: 'octocat',
     labels: [],
+    priority: null,
     commentCount: 0,
     updatedAt: '2026-10-01T00:00:00Z',
   }
@@ -30,6 +37,11 @@ describe('filterTasks', () => {
   it('matches a number with or without "#"', () => {
     expect(filterTasks(tasks, '#12').map((t) => t.number)).toEqual([12])
     expect(filterTasks(tasks, '1').map((t) => t.number)).toEqual([1])
+  })
+
+  it('matches a Linear identifier in any case', () => {
+    const linear = [task(7, 'todo', 'Dark mode', 'ENG-7'), task(8, 'todo', 'Login', 'ENG-8')]
+    expect(filterTasks(linear, 'eng-7').map((t) => t.number)).toEqual([7])
   })
 })
 
@@ -54,10 +66,5 @@ describe('labels', () => {
       'bug',
       'ui',
     ])
-  })
-
-  it('reads the priority label', () => {
-    expect(priorityOf(['bug', 'dugout:priority-medium'])).toBe('medium')
-    expect(priorityOf(['bug'])).toBeNull()
   })
 })

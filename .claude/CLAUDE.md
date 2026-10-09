@@ -50,7 +50,8 @@ src/
                 preview/ (dev server ports, which links may open),
                 settings/ (app preferences: default agent, clone folder, last "Open in…" app),
                 openIn/ (open a checkout in VS Code, Cursor, Zed or Finder),
-                tasks/ (GitHub Issues as tasks),
+                tasks/ (TaskService: a project's tasks from its source, GitHub Issues or
+                Linear, decision 051), linear/ (Linear GraphQL API, encrypted API key),
                 agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions),
                 welcome/ (first-run repo search, agent CLI check),
                 checks/ (Verify on Stop: the project's check command after each Done).
@@ -67,6 +68,8 @@ src/
               tab (kind `task`), rendered with tasks/markdown/ (safe markdown, no raw HTML).
               The Git panel's Preview block (preview/) shows the branch's preview deployment
               and runs the project's dev command in a shell with an assigned PORT.
+              Its "Task source" form picks GitHub Issues or a Linear team (linear/ holds the
+              connection store).
               A project with no agents open shows start/StartScreen.tsx (prompt box, sessions to
               resume, open tasks); with no projects at all, welcome/WelcomeScreen.tsx (repos to
               add, agent check).
@@ -126,8 +129,11 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   through `editorBridge`; never import `monaco-editor` outside that folder.
 - **All file access goes through `FileService`**, which realpaths every path and refuses
   anything outside the checkout (symlinks included).
-- **The GitHub token never leaves main** (decision 015). Renderer-facing types must not carry it;
-  e2e tests assert this. Network git commands go through `GitService.runNetwork`.
+- **The GitHub token and the Linear API key never leave main** (decisions 015, 051).
+  Renderer-facing types must not carry them; e2e tests assert this. Network git commands go
+  through `GitService.runNetwork`.
+- **Tasks are numbered per source:** `Task.number` is the GitHub issue number or the number in a
+  Linear identifier (ENG-123 → 123); show `task.key` ("#123" / "ENG-123"), never `#${number}`.
 - **Agents reach Dugout only through the MCP server → hook socket RPC**, scoped to their
   terminal's project. Never put tokens in MCP configs or tool results.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` and `DUGOUT_HOME_DIR` (the

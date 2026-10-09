@@ -3,6 +3,7 @@ import { MAX_COMPARED_WORKTREES } from '../compare'
 import { MAX_OPEN_FILE_BYTES } from '../files'
 import {
   DUGOUT_LABEL_PREFIX,
+  LINEAR_TEAM_KEY_PATTERN,
   MAX_RELATED_TASKS,
   MAX_TASK_BATCH,
   MAX_TASK_BODY_LENGTH,
@@ -18,6 +19,7 @@ import {
   MAX_COMMIT_MESSAGE_LENGTH,
   MAX_GIT_PATHS_PER_REQUEST,
 } from '../git'
+import { MAX_LINEAR_API_KEY_LENGTH } from '../linear'
 import { EXTERNAL_APP_IDS } from '../openIn'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
 import {
@@ -115,6 +117,12 @@ export const projectSetCheckCommandRequestSchema = z.object({
   command: checkCommand.nullable(),
 })
 
+export const taskSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('github') }),
+  z.object({ kind: z.literal('linear'), teamKey: z.string().regex(LINEAR_TEAM_KEY_PATTERN) }),
+])
+
+/** An optional field, so projects.json files from before decision 051 still load. */
 export const projectSchema = z.object({
   id: projectId,
   name: projectName,
@@ -123,6 +131,16 @@ export const projectSchema = z.object({
   createdAt: z.iso.datetime(),
   devCommand: devCommand.min(1).optional(),
   checkCommand: checkCommand.optional(),
+  taskSource: taskSourceSchema.optional(),
+})
+
+export const projectSetTaskSourceRequestSchema = z.object({
+  projectId,
+  source: taskSourceSchema,
+})
+
+export const linearConnectRequestSchema = z.object({
+  apiKey: z.string().trim().min(1).max(MAX_LINEAR_API_KEY_LENGTH),
 })
 
 /** On-disk format of projects.json. Bump `version` and migrate when it changes. */
@@ -221,6 +239,8 @@ const MAX_PANE_TITLE_LENGTH = 256
 const paneTitle = z.string().min(1).max(MAX_PANE_TITLE_LENGTH)
 const paneTaskSchema = z.object({
   number: z.number().int().positive(),
+  /** "#12" or "ENG-12"; missing in layouts saved before Linear tasks. */
+  key: z.string().min(1).max(32).optional(),
   title: z.string().max(MAX_PANE_TITLE_LENGTH),
 })
 

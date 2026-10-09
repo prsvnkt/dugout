@@ -23,6 +23,8 @@ export interface GitIpcDeps {
   readonly openExternal: (url: string) => Promise<void>
   /** Called after a PR is opened from a task branch (dugout/<number>-…). */
   readonly onTaskPullRequest?: (projectId: ProjectId, taskNumber: number) => void
+  /** How the project's task source writes a task number, for "Closes …" ("#12", "ENG-12"). */
+  readonly taskKey?: (projectId: ProjectId, taskNumber: number) => string
 }
 
 export function findProject(projects: ProjectStore, projectId: ProjectId): Project {
@@ -75,7 +77,11 @@ export function registerGitIpc(deps: GitIpcDeps): void {
   )
   handleRequest(IpcChannel.gitOpenPullRequest, gitProjectRequestSchema, async (request) => {
     const root = await rootOf(request)
-    const url = await git.pullRequestUrl(root)
+    const { taskKey } = deps
+    const url = await git.pullRequestUrl(
+      root,
+      taskKey && ((taskNumber) => taskKey(request.projectId, taskNumber)),
+    )
     if (!PULL_REQUEST_HOSTS.some((host) => url.startsWith(host))) {
       throw new Error('Refusing to open an unexpected URL.')
     }

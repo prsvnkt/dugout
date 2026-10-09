@@ -11,5 +11,5 @@ export interface TaskAgentSession {
 export interface TaskSession {
   readonly sessions: readonly TaskAgentSession[]
   readonly prompt: string
-  readonly task: { readonly number: number; readonly title: string }
+  readonly task: { readonly number: number; readonly key: string; readonly title: string }
 }

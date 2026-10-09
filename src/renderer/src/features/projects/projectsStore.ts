@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ProjectAddRequest } from '@shared/ipc/contract'
 import type { Project, ProjectId } from '@shared/project'
+import type { TaskSource } from '@shared/tasks'
 import { unwrap } from '@shared/result'
 import { dugout } from '@renderer/lib/dugout'
 
@@ -17,6 +18,8 @@ interface ProjectsState {
   setDevCommand(id: ProjectId, command: string | null): Promise<void>
   /** Saves Verify on Stop's command (null or blank turns it off). Throws a user-facing message. */
   setCheckCommand(id: ProjectId, command: string | null): Promise<void>
+  /** Where the project's tasks live. Throws with a user-facing message on failure. */
+  setTaskSource(id: ProjectId, source: TaskSource): Promise<void>
   select(id: ProjectId): void
   selectIndex(index: number): void
 }
@@ -62,6 +65,11 @@ export const useProjectsStore = create<ProjectsState>()((set, get) => ({
 
   async setCheckCommand(id, command) {
     const updated = unwrap(await dugout.projects.setCheckCommand(id, command))
+    set((state) => ({ projects: replaceProject(state.projects, updated) }))
+  },
+
+  async setTaskSource(id, source) {
+    const updated = unwrap(await dugout.projects.setTaskSource(id, source))
     set((state) => ({ projects: replaceProject(state.projects, updated) }))
   },
 

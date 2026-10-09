@@ -338,6 +338,10 @@ describe('GitService pull requests', () => {
     expect(await service.pullRequestUrl(repo)).toBe(
       'https://github.com/acme/app/compare/main...dugout/42-fix-login?expand=1&body=Closes+%2342',
     )
+    // Linear's GitHub integration closes "ENG-42" the same way.
+    expect(await service.pullRequestUrl(repo, (number) => `ENG-${number}`)).toBe(
+      'https://github.com/acme/app/compare/main...dugout/42-fix-login?expand=1&body=Closes+ENG-42',
+    )
   })
 
   test('refuses to open a pull request from the base branch itself', async () => {

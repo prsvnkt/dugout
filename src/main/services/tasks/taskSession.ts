@@ -21,6 +21,7 @@ export function taskNumberFromBranch(branch: string | null): number | null {
 /** First message for an agent started on a task. */
 export function taskPrompt(task: {
   number: number
+  key: string
   title: string
   body: string
   url: string
@@ -28,16 +29,17 @@ export function taskPrompt(task: {
   const body = task.body.trim()
   const trimmed =
     body.length > MAX_BODY_IN_PROMPT
-      ? `${body.slice(0, MAX_BODY_IN_PROMPT)}\n…(truncated; see the issue)`
+      ? `${body.slice(0, MAX_BODY_IN_PROMPT)}\n…(truncated; see the task)`
       : body
   return [
-    `You are working on GitHub issue #${task.number}: ${task.title}`,
+    `You are working on task ${task.key}: ${task.title}`,
     task.url,
     '',
     trimmed || '(No description.)',
     '',
-    'You are in a dedicated git worktree on its own branch. Use the dugout task tools to read',
-    'the issue and its comments, post short progress notes on it, and create follow-up tasks if',
-    'needed. When you are done, summarise what you changed and how you verified it.',
+    'You are in a dedicated git worktree on its own branch. Use the dugout task tools (task',
+    `number ${task.number}) to read the task and its comments, post short progress notes on it,`,
+    'and create follow-up tasks if needed. When you are done, summarise what you changed and',
+    'how you verified it.',
   ].join('\n')
 }

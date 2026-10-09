@@ -1,39 +1,19 @@
-import {
-  TASK_PRIORITIES,
-  type Task,
-  type TaskDetail,
-  type TaskPriority,
-  type TaskStatus,
-} from '@shared/tasks'
+import { TASK_PRIORITIES, type Task, type TaskDetail } from '@shared/tasks'
 import { githubJson, githubRequest } from '../github/GitHubApi'
 import type { GitHubRepoRef } from './githubRepo'
 import { withRelated } from './relatedTasks'
-import { labelsForPriority, PRIORITY_LABEL_COLORS, PRIORITY_LABELS } from './taskPriority'
+import {
+  labelsForPriority,
+  PRIORITY_LABEL_COLORS,
+  PRIORITY_LABELS,
+  priorityOf,
+} from './taskPriority'
 import { labelsForStatus, STATUS_LABEL_COLORS, STATUS_LABELS, statusOf } from './taskStatus'
+import { MAX_LISTED_TASKS, type TaskInput, type TaskPatch } from './taskTypes'
 
 export interface GitHubIssuesDeps {
   readonly fetch: typeof globalThis.fetch
   readonly apiBaseUrl: string
-}
-
-export interface TaskInput {
-  readonly title: string
-  readonly body: string
-  readonly labels?: readonly string[] | undefined
-  readonly priority?: TaskPriority | undefined
-  /** Task numbers written as "Related: #n" lines at the end of the description. */
-  readonly related?: readonly number[] | undefined
-}
-
-export interface TaskPatch {
-  readonly title?: string | undefined
-  readonly body?: string | undefined
-  readonly status?: TaskStatus | undefined
-  /** `null` removes the priority. */
-  readonly priority?: TaskPriority | null | undefined
-  readonly addLabels?: readonly string[] | undefined
-  readonly removeLabels?: readonly string[] | undefined
-  readonly related?: readonly number[] | undefined
 }
 
 interface IssueResponse {
@@ -64,9 +44,7 @@ interface IssueWrite {
 }
 
 const PAGE_SIZE = 100
-const MAX_PAGES = 3
-/** `list` returns at most this many tasks: the most recently updated ones. */
-export const MAX_LISTED_TASKS = PAGE_SIZE * MAX_PAGES
+const MAX_PAGES = MAX_LISTED_TASKS / PAGE_SIZE
 const NOT_FOUND = 404
 
 /** Dugout's own labels, created in these colours the first time they are used. */
@@ -88,12 +66,14 @@ function toTask(issue: IssueResponse): Task {
   const labels = labelNames(issue)
   return {
     number: issue.number,
+    key: `#${issue.number}`,
     title: issue.title,
     body: issue.body ?? '',
     status: statusOf(issue.state, labels),
     url: issue.html_url,
     author: issue.user?.login ?? 'unknown',
     labels,
+    priority: priorityOf(labels),
     commentCount: issue.comments,
     updatedAt: issue.updated_at,
   }

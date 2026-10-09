@@ -18,6 +18,7 @@ describe('task sessions', () => {
   test('the first prompt carries the issue and how to report back', () => {
     const prompt = taskPrompt({
       number: 42,
+      key: '#42',
       title: 'Fix login',
       body: 'Times out after 5s',
       url: 'https://x/42',
@@ -27,8 +28,27 @@ describe('task sessions', () => {
     expect(prompt).toContain('dugout task tools')
   })
 
+  test('a Linear task is named by its identifier, with the number the tools take', () => {
+    const prompt = taskPrompt({
+      number: 7,
+      key: 'ENG-7',
+      title: 'Dark mode',
+      body: '',
+      url: 'https://linear.app/acme/issue/ENG-7',
+    })
+    expect(prompt).toContain('task ENG-7: Dark mode')
+    expect(prompt).toContain('number 7')
+    expect(prompt).not.toContain('GitHub')
+  })
+
   test('very long issue bodies are trimmed', () => {
-    const prompt = taskPrompt({ number: 1, title: 't', body: 'x'.repeat(50_000), url: 'u' })
+    const prompt = taskPrompt({
+      number: 1,
+      key: '#1',
+      title: 't',
+      body: 'x'.repeat(50_000),
+      url: 'u',
+    })
     expect(prompt.length).toBeLessThan(9_000)
   })
 })

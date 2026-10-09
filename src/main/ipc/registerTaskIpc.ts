@@ -19,17 +19,10 @@ export interface TaskIpcDeps {
   readonly tasks: TaskService
   readonly projects: ProjectStore
   readonly worktrees: WorktreeManager
-  readonly webBaseUrl: string
   readonly openExternal: (url: string) => Promise<void>
 }
 
-export function registerTaskIpc({
-  tasks,
-  projects,
-  worktrees,
-  webBaseUrl,
-  openExternal,
-}: TaskIpcDeps): void {
+export function registerTaskIpc({ tasks, projects, worktrees, openExternal }: TaskIpcDeps): void {
   handleRequest(IpcChannel.tasksList, taskListRequestSchema, ({ projectId }) =>
     tasks.list(projectId),
   )
@@ -48,12 +41,9 @@ export function registerTaskIpc({
     tasks.comment(projectId, number, body),
   )
 
-  // Opens the issue's own page, and only on the GitHub host.
+  // Opens the task's own page, and only on its source's host (GitHub or Linear).
   handleRequest(IpcChannel.tasksOpen, taskNumberRequestSchema, async ({ projectId, number }) => {
-    const task = await tasks.get(projectId, number)
-    if (new URL(task.url).origin !== new URL(webBaseUrl).origin)
-      throw new Error('Unexpected issue URL.')
-    await openExternal(task.url)
+    await openExternal(await tasks.webUrl(projectId, number))
   })
 
   /** Start agent: a worktree named after the task, marked in progress, with its first prompt. */
@@ -76,7 +66,7 @@ export function registerTaskIpc({
       return {
         sessions,
         prompt: taskPrompt(task),
-        task: { number: task.number, title: task.title },
+        task: { number: task.number, key: task.key, title: task.title },
       }
     },
   )

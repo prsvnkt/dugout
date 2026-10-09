@@ -15,8 +15,9 @@ export interface EditorTab {
   readonly isPreview: boolean
   /** Compare tabs: the worktrees being compared. */
   readonly compare?: CompareTarget
-  /** Task tabs: the task (GitHub issue) number. */
+  /** Task tabs: the task's number, and how its source writes it ("#12", "ENG-12"). */
   readonly taskNumber?: number
+  readonly taskKey?: string
 }
 
 /** One tab per task, so opening a task again focuses its tab. */

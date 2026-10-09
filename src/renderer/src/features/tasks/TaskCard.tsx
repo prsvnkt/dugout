@@ -9,7 +9,7 @@ import { CheckBadge } from '@renderer/features/checks/CheckBadge'
 import { checkLabel } from '@renderer/features/checks/checks'
 import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
 import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
-import { priorityOf, visibleLabels } from './taskList'
+import { visibleLabels } from './taskList'
 import type { TaskAgents } from './useTaskAgents'
 import styles from './TaskCard.module.css'
 
@@ -47,7 +47,7 @@ function AgentsOnTask({ agents }: { agents: TaskAgents }) {
 /** One task in the Tasks list: title, when it changed, labels and the agents on it. */
 export function TaskCard({ task, agents, overlaps, isCurrent, onOpen }: TaskCardProps) {
   const labels = visibleLabels(task.labels)
-  const priority = priorityOf(task.labels)
+  const { priority } = task
   const age = formatAge(task.updatedAt)
   const hasFooter = labels.length > 0 || agents !== undefined || overlaps.length > 0
   return (
@@ -57,7 +57,7 @@ export function TaskCard({ task, agents, overlaps, isCurrent, onOpen }: TaskCard
         data-status={task.status}
         data-task-card
         aria-current={isCurrent ? 'page' : undefined}
-        aria-label={`#${task.number} ${task.title}`}
+        aria-label={`${task.key} ${task.title}`}
         aria-description={`${TASK_STATUS_LABEL[task.status]}${age ? `, updated ${age}` : ''}${agents?.check ? `, ${checkLabel(agents.check)}` : ''}`}
         title={task.title}
         onClick={() => onOpen(true)}
@@ -65,9 +65,9 @@ export function TaskCard({ task, agents, overlaps, isCurrent, onOpen }: TaskCard
       >
         <span className={styles.title}>{task.title}</span>
         <span className={styles.meta}>
-          <span className={styles.number}>#{task.number}</span>
+          <span className={styles.number}>{task.key}</span>
           {age && <span>{age}</span>}
-          {task.commentCount > 0 && (
+          {task.commentCount !== null && task.commentCount > 0 && (
             <span className={styles.comments}>
               <Icon icon={MessageSquare} />
               {task.commentCount}

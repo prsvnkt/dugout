@@ -1,7 +1,8 @@
 import type { WorktreeChanges } from '@shared/compare'
+import { displayTaskKey } from '@shared/tasks'
 import { AGENT_LABEL, isAgentKind } from '@shared/terminal'
 import type { Worktree } from '@shared/worktree'
-import type { Pane } from '@renderer/features/workspace/layout'
+import type { Pane, PaneTask } from '@renderer/features/workspace/layout'
 import type { TrackedWorktree } from './overlaps'
 
 /**
@@ -20,8 +21,8 @@ export function liveWorktreePaths(
 }
 
 /** The task the agents in this worktree were started for, if any. */
-function taskOf(worktreePath: string, panes: readonly Pane[]): number | undefined {
-  return panes.find((pane) => pane.worktree?.path === worktreePath && pane.task)?.task?.number
+function taskOf(worktreePath: string, panes: readonly Pane[]): PaneTask | undefined {
+  return panes.find((pane) => pane.worktree?.path === worktreePath && pane.task)?.task
 }
 
 /** Changed files per worktree, with the task each worktree's agents work on. */
@@ -32,7 +33,7 @@ export function trackWorktrees(
   return changes.map(({ worktreePath, changes: files }) => ({
     worktreePath,
     files: files.map((file) => file.path),
-    taskNumber: taskOf(worktreePath, panes),
+    taskNumber: taskOf(worktreePath, panes)?.number,
   }))
 }
 
@@ -46,7 +47,7 @@ export function worktreeLabel(
   worktrees: readonly Worktree[],
 ): string {
   const task = taskOf(worktreePath, panes)
-  if (task !== undefined) return `#${task}`
+  if (task !== undefined) return displayTaskKey(task)
   const agent = panes.find((pane) => pane.worktree?.path === worktreePath && isAgentKind(pane.kind))
   const name =
     agent?.worktree?.name ??

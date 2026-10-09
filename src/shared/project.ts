@@ -1,3 +1,5 @@
+import type { TaskSource } from './tasks'
+
 export const PROJECT_COLORS = [
   'blue',
   'orange',
@@ -24,6 +26,8 @@ export interface Project {
   readonly devCommand?: string
   /** What Verify on Stop runs when an agent finishes, e.g. `npm run check`. Off when unset. */
   readonly checkCommand?: string
+  /** Where the project's tasks live; GitHub Issues when missing. */
+  readonly taskSource?: TaskSource | undefined
 }
 
 export const MAX_PROJECT_NAME_LENGTH = 60

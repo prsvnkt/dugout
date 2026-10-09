@@ -799,6 +799,55 @@ worktree on a free port, or hunting for the deploy preview (issue #28).
   reported or `http://localhost:<port>/` — never an arbitrary URL from the renderer. The GitHub
   link channel (`git:open-url`) is unchanged.
 
+## 051 — Linear as a task source, chosen per project (2026-10-09)
+
+**Context.** Tasks were GitHub Issues only (decision 018); many teams that run agents track work
+in Linear (issue #27).
+
+**Decision.**
+
+- **Per project.** A project has an optional `taskSource` in `projects.json`: absent means GitHub
+  Issues (so existing projects are unchanged), or `{ kind: "linear", teamKey: "ENG" }`. The Tasks
+  panel's "Task source" button (and "Use Linear instead" when not signed in to GitHub) picks GitHub
+  Issues or Linear and a team. `TaskService` resolves the project's source into a `TaskProvider`
+  (`tasks/taskTypes.ts`); callers (IPC, the agent RPC, "Start agent", "Closes …") never branch on it.
+- **Task ids.** Tasks stay numbered: `number` is the GitHub issue number, or the number in a
+  Linear identifier, scoped to the project's team (ENG-123 → 123). Each task also carries `key`,
+  how its source writes it ("#123" or "ENG-123"), shown on cards, tabs, agent headers, the inbox
+  and overlap warnings; panes remember it (older layouts fall back to "#n"). This kept branch
+  names (`dugout/<n>-slug`), tab ids, the MCP tools' `number` argument and every store keyed by
+  number unchanged. Linear looks issues up by identifier (`issue(id: "ENG-123")`). An issue moved
+  to another team gets a new identifier and drops out of the list, which is accepted.
+- **Auth.** A Linear personal API key, sent as the bare `Authorization` header (Linear's GraphQL
+  API at `api.linear.app/graphql`, checked against linear.app/developers, Oct 2026). Connecting
+  checks the key with a `viewer` query before saving it, so a typo never replaces a working key.
+  It is stored like the GitHub token (decision 015): `safeStorage`-encrypted in
+  `<userData>/linear-key.bin` (0600), never sent to the renderer (which sees only the account
+  name and organisation) or to agents; unit and e2e tests assert it. One key for the app, so one
+  Linear workspace. OAuth is out of scope: it needs a registered app and a redirect flow, while
+  personal keys are what Linear's docs offer for scripts and local tools.
+- **Statuses** map by workflow state _type_, which every team has, rather than by name:
+  completed, canceled and duplicate → Done; started → In progress, or In review when the state's
+  name contains "review" (any case) or the issue has the `dugout:in-review` label; triage,
+  backlog and unstarted → To do. Writing a status moves the issue to the first state (by
+  position) of the matching type: To do → unstarted (else backlog), In progress → the first
+  started state not named like review, Done → completed. In review → a started state named like
+  review if the team has one; otherwise the first started state plus the `dugout:in-review` label
+  (created in the team on first use), removed again on any other status. An issue that already
+  reads as the requested status is not moved, so custom states such as "QA" are kept.
+- **Priority** is Linear's own: urgent (1) and high (2) read as high, medium (3), low (4), none
+  (0); Dugout writes high as 2. `Task.priority` is now a field for both sources (GitHub still
+  stores it as a `dugout:priority-*` label, decision 034).
+- **Labels** resolve by name to the team's or workspace's labels; missing ones are created in the
+  team. Related tasks are "Related: ENG-n" lines, which Linear links like GitHub links "#n".
+- **"Closes …"** in a PR from a task branch uses the key, so Linear's GitHub integration closes
+  ENG-123 on merge as GitHub closes #123. "Start agent" and the agent's first prompt ("You are
+  working on task ENG-123 …", with the number the tools take) work the same for both.
+- **MCP tools** stay provider-agnostic: descriptions no longer say GitHub, results add `key`.
+- **Cost.** Lists ask for 100 issues per page (up to 300) with up to 20 labels each, well under
+  Linear's 10,000-point query limit; comment counts are not fetched for lists (cards show them
+  only for GitHub), since they would multiply the complexity of every 30-second refresh.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -832,4 +881,5 @@ worktree on a free port, or hunting for the deploy preview (issue #28).
 18. **Done since:** PR review comments and failing CI handed to the agent from the Pull request
     block ✅.
 19. **Done since:** Verify on Stop: the project's check runs when an agent finishes ✅.
-20. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+20. **Done since:** Linear as a task source, chosen per project ✅.
+21. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

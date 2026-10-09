@@ -1,15 +1,19 @@
 import { taskRpcSchemas } from '@shared/ipc/contract'
 import type { ProjectId } from '@shared/project'
 import { DUGOUT_LABEL_PREFIX, type Task, type TaskPriority, type TaskStatus } from '@shared/tasks'
-import { MAX_LISTED_TASKS } from './GitHubIssues'
-import { priorityOf, priorityRank } from './taskPriority'
+import { priorityRank } from './taskPriority'
 import type { TaskService } from './TaskService'
+import { MAX_LISTED_TASKS } from './taskTypes'
 
 export type TaskRpcTasks = Pick<TaskService, 'list' | 'get' | 'create' | 'update' | 'comment'>
 
-/** What `list` returns per task: enough to pick one; `get` has the description. */
+/**
+ * What `list` returns per task: enough to pick one; `get` has the description. Tools take the
+ * `number`; `key` is how the task is written in its source ("#12", or "ENG-12" in Linear).
+ */
 export interface TaskSummary {
   readonly number: number
+  readonly key: string
   readonly title: string
   readonly status: TaskStatus
   readonly priority: TaskPriority | null
@@ -21,6 +25,7 @@ export interface TaskSummary {
 /** What a write returns: the agent already knows what it wrote. */
 export interface TaskRef {
   readonly number: number
+  readonly key: string
   readonly url: string
   readonly status: TaskStatus
 }
@@ -32,21 +37,27 @@ export interface TaskList {
 }
 
 export const LIST_COVERAGE =
-  `Open and closed issues (every status: todo, in-progress, in-review, done), ` +
+  `Open and closed tasks (every status: todo, in-progress, in-review, done), ` +
   `the ${MAX_LISTED_TASKS} most recently updated; pull requests are not included.`
 
 function summary(task: Task): TaskSummary {
   return {
     number: task.number,
+    key: task.key,
     title: task.title,
     status: task.status,
-    priority: priorityOf(task.labels),
+    priority: task.priority,
     labels: task.labels.filter((label) => !label.startsWith(DUGOUT_LABEL_PREFIX)),
     updatedAt: task.updatedAt,
   }
 }
 
-const ref = (task: Task): TaskRef => ({ number: task.number, url: task.url, status: task.status })
+const ref = (task: Task): TaskRef => ({
+  number: task.number,
+  key: task.key,
+  url: task.url,
+  status: task.status,
+})
 
 /** Every word of `search` appears in the title or description (case-insensitive). */
 function matches(task: Task, search: string): boolean {
@@ -91,7 +102,7 @@ async function createMany(
       created.push(ref(await tasks.create(projectId, input)))
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
-      const done = created.map((task) => `#${task.number}`).join(', ') || 'none'
+      const done = created.map((task) => task.key).join(', ') || 'none'
       throw new Error(
         `Task ${index + 1} ("${input.title}") failed: ${reason} Already created: ${done}.`,
         { cause: error },
