@@ -26,7 +26,7 @@ const CLONE_TIMEOUT_MS = 30 * 60_000
 /**
  * Network commands name git's default pack command themselves: one set in `.git/config` runs
  * locally (for local and file:// remotes) with the token in its env. `--no-verify` backs up the
- * disabled hooks, since pre-push would see the token too (decision 052).
+ * disabled hooks, since pre-push would see the token too (decision 054).
  */
 const PUSH_ARGS = [
   'push',
@@ -406,7 +406,7 @@ export class GitService {
   /**
    * Like `run`, with the configured credentials (e.g. GitHub token) for remote access. The token
    * must reach only Dugout's credential helper, so this never runs repository hooks
-   * (decision 052); callers also name the pack command so `.git/config` cannot.
+   * (decision 054); callers also name the pack command so `.git/config` cannot.
    */
   private async runNetwork(
     root: string,

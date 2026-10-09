@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 
 /**
  * Whether git may run the repository's hooks. Only a user action whose hooks the user expects
- * (a commit from the Git panel) asks for `repo`; everything else gets `none` (decision 052).
+ * (a commit from the Git panel) asks for `repo`; everything else gets `none` (decision 054).
  */
 export type GitHooks = 'none' | 'repo'
 
@@ -47,7 +47,7 @@ function readableError(stderr: string, stdout: string, args: readonly string[]):
 
 /**
  * Overrides for every git Dugout runs, so a repository's own `.git/config` cannot make Dugout
- * run a command (decision 052). `-c` beats repo config, and child gits inherit it.
+ * run a command (decision 054). `-c` beats repo config, and child gits inherit it.
  */
 const HARDENED_CONFIG: readonly string[] = [
   ...['-c', 'core.quotePath=false'],

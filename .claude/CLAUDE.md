@@ -139,7 +139,7 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   `tests/e2e/helpers.ts` via `DUGOUT_<AGENT>_COMMAND`; never scrape terminal output.
 - **All git commands go through `GitService`/`runGit`** so they inherit the no-lock, no-prompt,
   literal-pathspec environment (decision 009) and never run the repo's hooks, fsmonitor or other
-  commands its `.git/config` names (decision 052). Never call `git` from elsewhere, and never
+  commands its `.git/config` names (decision 054). Never call `git` from elsewhere, and never
   pass `hooks: 'repo'` to a command that carries the GitHub token.
 - **Shell command lines use only plain `"$VAR"` expansions** (decision 013). `${VAR:+…}` splits
   differently in zsh and bash and does not exist in fish.
@@ -156,8 +156,13 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   Linear identifier (ENG-123 → 123); show `task.key` ("#123" / "ENG-123"), never `#${number}`.
 - **Agents reach Dugout only through the MCP server → hook socket RPC**, scoped to their
   terminal's project. Never put tokens in MCP configs or tool results.
+- **Every "dugout" MCP tool is declared in `mcp/toolAccess.ts`** as read, propose or write; that
+  decides what agents may call without asking (decision 053). Writes are never pre-approved.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` and `DUGOUT_HOME_DIR` (the
   welcome screen searches the home folder for repos); the e2e helpers set both. Tests that click
   "Open in…" set `DUGOUT_OPEN_COMMAND` to a fake `open`, so no real app launches.
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.
+- **Renderer packages are devDependencies on purpose:** Vite bundles them; only main-process
+  runtime packages (node-pty, zod, MCP SDK) belong in `dependencies`, or electron-builder ships
+  them twice (decision 052).
