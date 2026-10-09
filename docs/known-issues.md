@@ -237,6 +237,19 @@ still shows it.
 **Likely fix:** a small concurrency limit with a "Queued" state; run the worktree setup command
 before the first check; keep a failed check in the inbox until it is opened.
 
+## Terminals: WebGL cap within one project, flow control counts characters
+
+- **Area:** `src/renderer/src/features/terminal/` (decision 052)
+- **Found:** 2026-10-09, while gating WebGL on visibility (#79, #80)
+
+**What happens:** only the visible project's panes hold a WebGL context, so a single project with
+more than ~16 panes would still have Chromium drop the oldest context (that pane then uses the
+DOM renderer until its project is hidden and shown again). Flow control counts UTF-16 characters
+rather than bytes, so its 1 MB / 256 KB marks are approximate for non-ASCII output.
+
+**Likely fix:** an LRU cap on contexts if projects with that many panes become common; encode
+lengths if the approximation ever matters.
+
 ## Linear tasks: one workspace, no comment counts on cards
 
 - **Area:** Linear task source (`src/main/services/linear/`, decision 051)
