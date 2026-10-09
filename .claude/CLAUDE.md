@@ -58,6 +58,8 @@ src/
               Layout: project tabs (title bar) / Explorer over Agents | editor over terminals |
               Git panel; side panels collapse via workspace/SidePanel.tsx, and the Agents list
               (agents/) minimises down to its header (workspace/LeftSidebar.tsx).
+              The right panel's Tasks view (tasks/) lists task cards; a task opens as an editor
+              tab (kind `task`), rendered with tasks/markdown/ (safe markdown, no raw HTML).
               A project with no agents open shows start/StartScreen.tsx (prompt box, sessions to
               resume, open tasks); with no projects at all, welcome/WelcomeScreen.tsx (repos to
               add, agent check).

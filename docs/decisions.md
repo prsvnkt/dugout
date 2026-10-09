@@ -556,6 +556,39 @@ worktree) and in the header of every worktree agent.
   a variable needs it set before Claude starts; `${VAR:-}` was not used because Codex cannot
   translate it.
 
+## 043 — Task cards, and tasks open in an editor tab (2026-10-09)
+
+**Context.** The Tasks panel listed tasks as one-line rows (`#n` and a cut-off title), showed
+issue bodies and comments as raw markdown, and opened a task by replacing the list inside the
+narrow side panel, so long tasks were cramped and you lost your place (issue #36).
+
+**Decision.**
+
+- **Cards.** Each task is a card (`TaskCard.tsx`): the title on up to two lines (full title in a
+  tooltip), a muted line with `#n`, when it was updated (`formatAge`), the comment count and its
+  priority (`dugout:priority-*`, as a small "High/Medium/Low" word), and a footer with its labels
+  (Dugout's own `dugout:*` labels hidden) and the agents on it (kind + live status). A status-
+  coloured left edge (the `--status-*` tokens) repeats the group it sits in, which says the status
+  in words. Cards lift on hover; the card's accessible name stays `#n title`.
+- **Groups** collapse, with counts; which are open is remembered in the renderer's local storage
+  (a view preference only, validated on load). Done starts collapsed and still shows the ten
+  most recent. ↑/↓ move between group headings and cards (↓ from the search box enters the list);
+  Enter opens a card.
+- **Task detail opens in the center, as an editor tab** (kind `task`, id `task:<n>`), the way
+  Compare and Agent settings do, rather than a wider panel: the tab model already holds non-file
+  tabs, so this needed one tab kind and no new layout, and the list stays in the panel with the
+  open task marked. A click opens a preview tab (replaced by the next preview, as for files); a
+  double-click, or acting on the task (status, comment, start agent), keeps it. The page has a
+  readable width; the panel no longer has a detail view. Open task tabs register with the task
+  store, so refreshes reload their details.
+- **Markdown** (descriptions, comments, and a Write/Preview toggle on the new-task and comment
+  boxes): `react-markdown` + `remark-gfm` (pinned exact), the smallest renderer that covers GFM
+  task lists and tables, and builds React elements instead of HTML strings. No `rehype-raw`, so
+  raw HTML (including `<script>`) is dropped. Links render only for `https:` URLs and open in the
+  browser through main's window-open handler (which allows only `https:`); others, like
+  `javascript:`, become plain text. Images become links, so a task never loads remote content.
+  Task-list checkboxes are read-only.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -580,3 +613,4 @@ worktree) and in the header of every worktree agent.
     with approvals tracked per tool call ✅.
 11. **Done since:** "Open in…" VS Code, Cursor, Zed or Finder for projects and worktrees ✅.
 12. **Done since:** one-click MCP server presets in Agent settings ✅.
+13. **Done since:** task cards with markdown, and tasks open in an editor tab ✅.

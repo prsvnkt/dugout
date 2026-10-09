@@ -10,23 +10,30 @@ import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 export interface ProjectTasks {
   readonly tasks: readonly Task[] | null
   readonly error: string | null
-  readonly selected: number | null
-  readonly detail: TaskDetail | null
+  /** Tasks shown in a task tab right now; refreshes reload their details. */
+  readonly viewing: readonly number[]
+  /** Last loaded details, kept so switching tabs shows a task at once. */
+  readonly details: Readonly<Record<number, TaskDetail>>
+  /** Why a task's details failed to load. */
+  readonly detailErrors: Readonly<Record<number, string>>
   readonly isBusy: boolean
 }
 
 const EMPTY: ProjectTasks = {
   tasks: null,
   error: null,
-  selected: null,
-  detail: null,
+  viewing: [],
+  details: {},
+  detailErrors: {},
   isBusy: false,
 }
 
 interface TaskState {
   readonly byProject: Readonly<Record<ProjectId, ProjectTasks>>
   refresh(projectId: ProjectId): Promise<void>
-  select(projectId: ProjectId, number: number | null): Promise<void>
+  /** A task tab shows the task: load its details and keep them fresh until `unview`. */
+  view(projectId: ProjectId, number: number): Promise<void>
+  unview(projectId: ProjectId, number: number): void
   /** Each action throws with a user-facing message; the panel shows it. */
   create(request: TaskCreateRequest): Promise<Task>
   update(request: TaskUpdateRequest): Promise<void>
@@ -49,8 +56,16 @@ export const useTaskStore = create<TaskState>()((set, get) => {
 
   const loadDetail = async (projectId: ProjectId, number: number) => {
     const result = await dugout.tasks.get(projectId, number)
-    if (current(projectId).selected !== number) return
-    patch(projectId, result.ok ? { detail: result.data } : { error: result.error })
+    const { details, detailErrors } = current(projectId)
+    const otherErrors = Object.fromEntries(
+      Object.entries(detailErrors).filter(([key]) => Number(key) !== number),
+    )
+    patch(
+      projectId,
+      result.ok
+        ? { details: { ...details, [number]: result.data }, detailErrors: otherErrors }
+        : { detailErrors: { ...otherErrors, [number]: result.error } },
+    )
   }
 
   /** Runs a change, then refreshes the list (and the open task). */
@@ -73,16 +88,27 @@ export const useTaskStore = create<TaskState>()((set, get) => {
       try {
         const result = await dugout.tasks.list(projectId)
         patch(projectId, result.ok ? { tasks: result.data, error: null } : { error: result.error })
-        const { selected } = current(projectId)
-        if (result.ok && selected !== null) await loadDetail(projectId, selected)
+        if (result.ok) {
+          await Promise.all(
+            current(projectId).viewing.map((number) => loadDetail(projectId, number)),
+          )
+        }
       } finally {
         refreshing.delete(projectId)
       }
     },
 
-    async select(projectId, number) {
-      patch(projectId, { selected: number, detail: null })
-      if (number !== null) await loadDetail(projectId, number)
+    async view(projectId, number) {
+      const { viewing } = current(projectId)
+      if (!viewing.includes(number)) patch(projectId, { viewing: [...viewing, number] })
+      await loadDetail(projectId, number)
+    },
+
+    unview(projectId, number) {
+      const { viewing } = current(projectId)
+      if (viewing.includes(number)) {
+        patch(projectId, { viewing: viewing.filter((candidate) => candidate !== number) })
+      }
     },
 
     create: (request) =>

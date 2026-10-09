@@ -12,6 +12,7 @@ import {
   EMPTY_TABS,
   openTab,
   pinTab,
+  taskTabId,
   type EditorTab,
   type TabsState,
 } from './tabs'
@@ -59,6 +60,8 @@ interface EditorState {
   openCompare(projectId: ProjectId, key: string, target: CompareTarget): void
   /** Opens (or focuses) the project's Agent settings tab. */
   openAgentSettings(projectId: ProjectId): void
+  /** Opens (or focuses) a task's tab; as a preview, it replaces the previous preview tab. */
+  openTask(projectId: ProjectId, number: number, title: string, isPreview: boolean): void
   activate(projectId: ProjectId, tabId: string): void
   pin(projectId: ProjectId, tabId: string): void
   /** Closes a tab, or asks first when its file has unsaved changes. */
@@ -227,6 +230,19 @@ export const useEditorStore = create<EditorState>()((set, get) => {
         worktreePath: null,
       }
       setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
+    },
+
+    openTask(projectId, number, title, isPreview) {
+      const tab = {
+        id: taskTabId(number),
+        kind: 'task' as const,
+        path: `#${number} ${title}`,
+        staged: false,
+        worktreePath: null,
+        taskNumber: number,
+      }
+      setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview }))
+      releaseUnused()
     },
 
     activate: (projectId, tabId) => setTabs(projectId, (tabs) => activateTab(tabs, tabId)),

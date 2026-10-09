@@ -1,6 +1,6 @@
 import type { CompareTarget } from '@shared/compare'
 
-export type EditorTabKind = 'file' | 'diff' | 'compare' | 'agent-settings'
+export type EditorTabKind = 'file' | 'diff' | 'compare' | 'agent-settings' | 'task'
 
 export interface EditorTab {
   readonly id: string
@@ -15,7 +15,12 @@ export interface EditorTab {
   readonly isPreview: boolean
   /** Compare tabs: the worktrees being compared. */
   readonly compare?: CompareTarget
+  /** Task tabs: the task (GitHub issue) number. */
+  readonly taskNumber?: number
 }
+
+/** One tab per task, so opening a task again focuses its tab. */
+export const taskTabId = (number: number): string => `task:${number}`
 
 export interface TabsState {
   readonly tabs: readonly EditorTab[]

@@ -44,7 +44,7 @@ test.beforeEach(async () => {
       {
         number: 1,
         title: 'Fix login',
-        body: 'Times out after 5s',
+        body: '## Steps\n\n- Open the app\n- [x] Sign in\n\nTimes out after `5s`. <script>window.hacked = true</script>',
         state: 'open',
         labels: [],
         comments: [],
@@ -75,6 +75,8 @@ test.afterEach(async () => {
 })
 
 const tasks = () => page.getByRole('complementary', { name: 'Tasks' })
+/** The task's editor tab, which opens in the center when a task card is clicked. */
+const detail = () => page.getByRole('region', { name: 'Task #1' })
 
 test('shows the GitHub issues as tasks and creates new ones', async () => {
   await expect(tasks().getByRole('region', { name: 'To do' })).toContainText('Fix login')
@@ -87,13 +89,39 @@ test('shows the GitHub issues as tasks and creates new ones', async () => {
   expect(stub.issues.map((issue) => issue.title)).toContain('Add dark mode')
 })
 
+test('opens a task in an editor tab with its description rendered as markdown', async () => {
+  await tasks().getByRole('button', { name: '#1 Fix login' }).click()
+
+  await expect(page.getByRole('tab', { name: '#1 Fix login' })).toBeVisible()
+  const description = detail().getByRole('article', { name: 'Description' })
+  await expect(description.getByRole('heading', { name: 'Steps' })).toBeVisible()
+  await expect(description.getByRole('listitem').first()).toHaveText('Open the app')
+  await expect(description.getByRole('checkbox')).toBeChecked()
+  await expect(description.locator('code')).toHaveText('5s')
+  await expect(description).not.toContainText('##')
+  expect(await page.evaluate(() => 'hacked' in globalThis)).toBe(false)
+
+  // The list stays in the panel, marking the open task; Enter opens it from the keyboard
+  await expect(tasks().getByRole('button', { name: '#1 Fix login' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await page.getByRole('button', { name: 'Close #1 Fix login' }).click()
+  await expect(detail()).toBeHidden()
+  await tasks().getByLabel('Search tasks').focus()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect(detail().getByRole('heading', { name: 'Steps' })).toBeVisible()
+})
+
 test('starts an agent on a task, which the agent then updates through its tools', async () => {
   const output = await recordTerminalOutput(page)
 
   // Start agent from the task
   await tasks().getByRole('button', { name: '#1 Fix login' }).click()
-  await tasks().getByRole('button', { name: 'Start agent' }).click()
-  await tasks().getByRole('menuitem', { name: 'Claude', exact: true }).click()
+  await detail().getByRole('button', { name: 'Start agent' }).click()
+  await detail().getByRole('menuitem', { name: 'Claude', exact: true }).click()
 
   // A Claude pane for #1 in its own worktree, with the issue as its first prompt
   const pane = page.locator('[data-active="true"]').getByRole('region', { name: /terminal$/ })
@@ -102,7 +130,8 @@ test('starts an agent on a task, which the agent then updates through its tools'
   await expect.poll(output).toContain('prompt=You are working on GitHub issue #1: Fix login')
 
   // The task moved to In progress (on GitHub too)
-  await expect(tasks().getByLabel('Status')).toHaveValue('in-progress')
+  await expect(detail().getByLabel('Status')).toHaveValue('in-progress')
+  await expect(tasks().getByRole('region', { name: 'In progress' })).toContainText('Claude')
   expect(stub.issues[0]?.labels).toContain('dugout:in-progress')
 
   // The agent comments on the task through Dugout's MCP tools
@@ -116,19 +145,20 @@ test('starts an agent on a task, which the agent then updates through its tools'
 
 test('a comment and a status change from the panel reach GitHub', async () => {
   await tasks().getByRole('button', { name: '#1 Fix login' }).click()
-  await tasks().getByLabel('Add a comment').fill('Looking into it')
-  await tasks().getByRole('button', { name: 'Comment' }).click()
-  await expect(tasks().getByRole('list', { name: 'Comments' })).toContainText('Looking into it')
+  await detail().getByLabel('Add a comment').fill('Looking into **it**')
+  await detail().getByRole('button', { name: 'Comment' }).click()
+  const comments = detail().getByRole('list', { name: 'Comments' })
+  await expect(comments.locator('strong', { hasText: 'it' })).toBeVisible()
 
-  await tasks().getByLabel('Status').selectOption('done')
+  await detail().getByLabel('Status').selectOption('done')
   await expect.poll(() => stub.issues[0]?.state).toBe('closed')
 })
 
 test('runs Claude and Codex on one task and compares what each changed', async () => {
   const output = await recordTerminalOutput(page)
   await tasks().getByRole('button', { name: '#1 Fix login' }).click()
-  await tasks().getByRole('button', { name: 'Start agent' }).click()
-  await tasks().getByRole('menuitem', { name: 'Claude + Codex (compare)' }).click()
+  await detail().getByRole('button', { name: 'Start agent' }).click()
+  await detail().getByRole('menuitem', { name: 'Claude + Codex (compare)' }).click()
 
   // Two panes, each in its own worktree, both given the issue
   const panes = page.locator('[data-active="true"]').getByRole('region', { name: /terminal$/ })
@@ -146,7 +176,7 @@ test('runs Claude and Codex on one task and compares what each changed', async (
   await expect.poll(() => output().then((text) => text.split('edited').length - 1)).toBe(2)
 
   // Compare lists each agent's files and diffs the shared one
-  await tasks().getByRole('button', { name: 'Compare', exact: true }).click()
+  await detail().getByRole('button', { name: 'Compare', exact: true }).click()
   const compare = page.getByRole('region', { name: 'Compare Claude and Codex' })
   await expect(compare.getByRole('button', { name: 'fake-claude.txt, Claude only' })).toBeVisible()
   await expect(compare.getByRole('button', { name: 'fake-codex.txt, Codex only' })).toBeVisible()

@@ -1,11 +1,12 @@
 import { lazy, Suspense } from 'react'
-import { X } from 'lucide-react'
+import { CircleDot, X } from 'lucide-react'
 import type { ProjectId } from '@shared/project'
 import { splitPath } from '@renderer/features/git/changeKind'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { AgentSettingsView } from '@renderer/features/agentConfig/AgentSettingsView'
 import { CompareView } from '@renderer/features/compare/CompareView'
 import { FileTypeIcon } from '@renderer/features/explorer/FileTypeIcon'
+import { TaskDetailView } from '@renderer/features/tasks/TaskDetailView'
 import { Icon } from '@renderer/lib/Icon'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
 import { checkoutOf, fileKeyOf } from './fileKey'
@@ -13,9 +14,16 @@ import type { EditorTab } from './tabs'
 import styles from './EditorArea.module.css'
 
 const EditorSurface = lazy(() => import('./monaco/EditorSurface'))
+/** Task tabs are named "#n title"; long titles are cut (the tooltip has the full one). */
+const MAX_TASK_TAB_LABEL = 40
 
 function tabLabel(tab: EditorTab): string {
-  if (tab.kind === 'compare' || tab.kind === 'agent-settings') return tab.path
+  if (tab.kind === 'task' && tab.path.length > MAX_TASK_TAB_LABEL) {
+    return `${tab.path.slice(0, MAX_TASK_TAB_LABEL - 1).trimEnd()}…`
+  }
+  if (tab.kind === 'compare' || tab.kind === 'agent-settings' || tab.kind === 'task') {
+    return tab.path
+  }
   const { name } = splitPath(tab.path)
   if (tab.kind === 'file') return name
   return `${name} (${tab.staged ? 'staged' : 'changes'})`
@@ -84,10 +92,12 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
   if (!active) return null
   const isCompare = active.kind === 'compare'
   const isAgentSettings = active.kind === 'agent-settings'
+  const isTask = active.kind === 'task'
   const fileKey = fileKeyOf(checkoutOf(projectId, active.worktreePath), active.path)
   const buffer = buffers[fileKey]
   const pendingTab = tabs.find((tab) => tab.id === pendingClose)
-  const needsBuffer = !isCompare && !isAgentSettings && (active.kind === 'file' || !active.staged)
+  const needsBuffer =
+    !isCompare && !isAgentSettings && !isTask && (active.kind === 'file' || !active.staged)
   const isEditable = buffer && !buffer.error && !buffer.isBinary && !buffer.isTooLarge
 
   return (
@@ -119,6 +129,7 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
                 {(tab.kind === 'file' || tab.kind === 'diff') && (
                   <FileTypeIcon name={splitPath(tab.path).name} />
                 )}
+                {tab.kind === 'task' && <Icon icon={CircleDot} />}
                 {tab.kind === 'diff' && (
                   <span className={styles.diffMark} aria-hidden>
                     Δ
@@ -147,6 +158,8 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
       {buffer && needsBuffer && <DiskBanner buffer={buffer} />}
       {isAgentSettings ? (
         <AgentSettingsView projectId={projectId} />
+      ) : isTask && active.taskNumber !== undefined ? (
+        <TaskDetailView key={active.id} projectId={projectId} number={active.taskNumber} />
       ) : isCompare && active.compare ? (
         <CompareView projectId={projectId} tabId={active.id} target={active.compare} />
       ) : needsBuffer && !isEditable ? (
