@@ -15,8 +15,10 @@ import {
   openTab,
   pinTab,
   taskTabId,
+  timelineTabId,
   type EditorTab,
   type TabsState,
+  type TimelineTarget,
 } from './tabs'
 
 export type DiskState = 'in-sync' | 'changed-on-disk' | 'deleted'
@@ -66,6 +68,8 @@ interface EditorState {
   openUsage(projectId: ProjectId): void
   /** Opens (or focuses) the project's Context tab. */
   openContext(projectId: ProjectId): void
+  /** Opens (or focuses) an agent session's timeline; `title` names its tab. */
+  openTimeline(projectId: ProjectId, target: TimelineTarget, title: string): void
   /** Opens (or focuses) a task's tab; as a preview, it replaces the previous preview tab. */
   openTask(
     projectId: ProjectId,
@@ -260,6 +264,18 @@ export const useEditorStore = create<EditorState>()((set, get) => {
         path: 'Token usage',
         staged: false,
         worktreePath: null,
+      }
+      setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
+    },
+
+    openTimeline(projectId, target, title) {
+      const tab = {
+        id: timelineTabId(target.sessionId),
+        kind: 'timeline' as const,
+        path: title,
+        staged: false,
+        worktreePath: null,
+        timeline: target,
       }
       setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
     },

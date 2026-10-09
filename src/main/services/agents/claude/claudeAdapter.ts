@@ -1,7 +1,9 @@
 import { join } from 'node:path'
 import { AGENTS } from '@shared/agents'
 import { buildHookSettings } from '../../agentHooks/hookSettings'
+import { readClaudeTimeline } from '../../transcripts/claudeTimeline'
 import { readClaudeTranscript } from '../../transcripts/claudeTranscript'
+import { findClaudeTranscript } from '../../transcripts/transcriptFiles'
 import { writeFileAtomic } from '../../projects/atomicWrite'
 import type { AgentAdapter, AgentLaunchContext } from '../AgentAdapter'
 
@@ -61,4 +63,5 @@ export const claudeAdapter: AgentAdapter = {
       env: { DUGOUT_CLAUDE_COMMAND: command },
     }
   },
+  timeline: { find: findClaudeTranscript, read: readClaudeTimeline },
 }

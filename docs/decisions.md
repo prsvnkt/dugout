@@ -851,6 +851,58 @@ project, task, worktree and agent a session belongs to. Claude Code deletes tran
 Import of earlier sessions: not now; usage counts from when an agent ran in Dugout (a resumed
 older session's earlier replies are counted on their own days). Budgets and alerts: not now.
 
+## 048 — Session timeline from agent transcripts (2026-10-09)
+
+**Context.** Review showed what an agent changed but not how: which tools ran, in what order,
+what failed, and what it said between steps (issue #22). The transcripts that token usage reads
+(decision 046) already hold all of it.
+
+**Decision.**
+
+- **Read on request, in main, read-only.** `timeline:session` takes an agent kind and a session
+  id (zod: a plain id, so it can never name a path). `TimelineService` finds the transcript by
+  that id under the agent's own folder (Claude: `projects/*/<id>.jsonl`; Codex: the
+  `sessions/` tree, newest dates first, for a file ending `<id>.jsonl`) and reads it only if
+  `allowedPath` (moved from the usage service into `transcripts/transcriptFiles.ts`) says its
+  real path is inside that folder. Nothing is cached or written; the transcript is the record.
+  Finding by id, rather than remembering paths from hooks, also covers closed and resumed
+  sessions after a restart.
+- **The parsers sit with the usage parsers** in `services/transcripts/`, reusing their line
+  helpers. Each format (`claudeTimeline.ts`, `codexTimeline.ts`) turns entries into steps;
+  `buildTimeline` does the rest for both: tool results give each call its outcome (ok, failed,
+  or no result yet), repeated lines (streamed, resumed) count once, and the final message is
+  Codex's own `task_complete` record or else the agent's last text. Unknown entry types,
+  thinking/reasoning and malformed lines are skipped.
+  - Claude: prompts (slash commands as typed; meta lines skipped), assistant text, `tool_use`
+    with its main argument (command, file, pattern, URL…), `tool_result.is_error`, and Agent
+    (or older Task) calls as subagents with their type. Subagents' own sidechain lines are left
+    out: the call stands for them. Files: Edit/MultiEdit/Write/NotebookEdit edit, Read reads.
+  - Codex: prompts from `user_message` events or `item_completed` UserMessage items (response
+    items with role user carry injected context, so they are not used), assistant messages,
+    function / custom tool / local shell calls, outputs failing on a non-zero exit code,
+    `apply_patch` files from the patch headers, and `spawn_agent` as subagents.
+- **Adapters say whether they can** (decision 037): a `timeline` reader (find + read) on the
+  adapter, present exactly when `capabilities.hasTimeline`, and only with a `usage` reader whose
+  folder it searches. Claude and Codex have one; OpenCode does not (no transcript file), so the
+  UI hides its timeline buttons.
+- **Caps.** A transcript over 16 MB is read from its last 16 MB (its latest steps); at most
+  1,500 events (the latest) and 300 files are kept; prompts and messages are cut at 2,000
+  characters, the final message at 8,000, tool arguments at 240 on one line. The view says when
+  anything was left out.
+- **UI.** An editor tab (kind `timeline`, one per session) like Usage and Compare: a summary
+  (prompts, tool calls and failures, subagents, files edited), the final message, files touched
+  (edited, then read; paths relative to the session's folder), and the steps in order with time,
+  icon and outcome in words. It opens from the agent header's timeline icon button (once the
+  conversation has started) and from a task tab's "Claude timeline" buttons (the task's open
+  agents, then closed sessions the project still remembers); tabs are named "Timeline · Claude ·
+  ENG-12". It reloads when the project's usage changes (the same hook events), so a working
+  agent's timeline grows, and has a Refresh button.
+- **Tokens and cost stay in Token usage** (decision 046): the timeline only links to it.
+
+**Open questions, answered.** Live updates: reload on the usage-changed event rather than
+watching files. Subagent internals: not shown step by step for now (the call and its outcome
+are). History for a task: its open agents plus the 5 closed sessions each project remembers.
+
 ## 049 — Preview URLs and dev servers per worktree (2026-10-09)
 
 **Context.** Checking UI changes an agent made meant starting a dev server by hand in the right
@@ -1024,4 +1076,5 @@ in Linear (issue #27).
 22. **Done since:** token usage per agent, task and project, with context-window use ✅.
 23. **Done since:** project context agents read over MCP, with agent-proposed notes you approve
     and a headless codemap ✅.
-24. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+24. **Done since:** session timelines from Claude and Codex transcripts ✅.
+25. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

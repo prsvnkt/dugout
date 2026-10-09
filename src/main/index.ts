@@ -23,6 +23,8 @@ import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { registerWelcomeIpc } from './ipc/registerWelcomeIpc'
 import { registerOpenInIpc } from './ipc/registerOpenInIpc'
 import { registerUsageIpc } from './ipc/registerUsageIpc'
+import { registerTimelineIpc } from './ipc/registerTimelineIpc'
+import { setupTimeline } from './services/timeline/setupTimeline'
 import { OpenInService } from './services/openIn/OpenInService'
 import { DEFAULT_OPEN_COMMAND, execFileRunner } from './services/openIn/runOpen'
 import { installMenu } from './menu'
@@ -296,6 +298,7 @@ async function start(): Promise<void> {
   }
 
   registerUsageIpc(usageService)
+  registerTimelineIpc(setupTimeline({ homeDir, env: process.env }))
   registerProjectIpc(projectStore)
   const github = gitHubConfig(process.env)
   const githubApi = new GitHubApi({ fetch, apiBaseUrl: github.apiBaseUrl })

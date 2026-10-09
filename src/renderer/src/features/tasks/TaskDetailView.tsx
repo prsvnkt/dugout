@@ -17,6 +17,7 @@ import { visibleLabels } from './taskList'
 import { useProjectTasks, useTaskStore } from './taskStore'
 import { useTaskAgents } from './useTaskAgents'
 import { useTaskSource } from './useTaskSource'
+import { TaskTimelines } from '@renderer/features/timeline/TaskTimelines'
 import { UsageFigure, useTaskUsage } from '@renderer/features/usage/UsageFigure'
 import styles from './TaskDetailView.module.css'
 
@@ -142,6 +143,12 @@ export function TaskDetailView({ projectId, number, taskKey }: TaskDetailViewPro
               Compare
             </button>
           )}
+          <TaskTimelines
+            projectId={projectId}
+            taskNumber={number}
+            taskKey={task.key}
+            className={styles.button}
+          />
           <button
             className={styles.button}
             onClick={() => void run(dugout.tasks.openInBrowser(projectId, number))}

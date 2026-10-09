@@ -16,6 +16,7 @@ import type { GitBranch, GitStatus } from './git'
 import type { PreviewDeployment } from './preview'
 import type { FailingCheck, PullRequestStatus, PullReviewThread } from './pullRequest'
 import type { ToolCallPreview } from './toolCall'
+import type { SessionTimeline } from './timeline'
 import type { AgentUsage, ProjectUsage } from './usage'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
@@ -258,6 +259,10 @@ export interface DugoutApi {
     buildCodemap(projectId: ProjectId, agent: AgentKind): Promise<Result<ContextEntry>>
     /** A project's context changed outside the UI (e.g. an agent proposed a note). */
     onChange(listener: (projectId: ProjectId) => void): Unsubscribe
+  }
+  /** Session timelines from agent transcripts, for agents with `hasTimeline` (decision 048). */
+  readonly timeline: {
+    session(agent: AgentKind, sessionId: string): Promise<Result<SessionTimeline>>
   }
   /** Saved panes per project, restored on launch. */
   readonly workspace: {

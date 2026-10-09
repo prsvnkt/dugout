@@ -1,4 +1,5 @@
 import type { AgentInfo } from '@shared/agents'
+import type { TimelineStep } from '../transcripts/timelineSteps'
 import type { TranscriptCarry, TranscriptUsage } from '../transcripts/types'
 import type { McpServerEntry } from './dugoutMcp'
 
@@ -49,6 +50,16 @@ export interface AgentUsageReader {
 }
 
 /**
+ * Timeline: finding a session's transcript by its id and reading its steps (decision 048). It
+ * reads from the same folder as `usage`, so an adapter with a timeline has usage too.
+ */
+export interface AgentTimelineReader {
+  /** The session's transcript under `root` (the usage reader's folder), or null if none. */
+  find(root: string, sessionId: string): Promise<string | null>
+  read(lines: readonly string[]): readonly TimelineStep[]
+}
+
+/**
  * One agent CLI. Adapters only translate (command lines, config, hook formats); status rules,
  * the inbox, worktrees, tasks and resume stay shared, so agents cannot drift apart.
  */
@@ -69,4 +80,6 @@ export interface AgentAdapter {
    * Dugout's tools (e.g. `claude -p`). Only agents with `canRunHeadless` have one.
    */
   headless?(command: string): AgentLaunch
+  /** Present exactly when the agent has `hasTimeline`. */
+  readonly timeline?: AgentTimelineReader
 }

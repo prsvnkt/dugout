@@ -152,6 +152,41 @@ function writeUsage(input, output) {
   // Streamed replies repeat their line; Dugout must count it once.
   require('node:fs').appendFileSync(path, (JSON.stringify(line) + '\n').repeat(2))
 }
+// A short piece of work, as Claude Code records it: a prompt, text, tool calls (one fails),
+// an edit, a subagent and a final message.
+function writeTimeline() {
+  const path = transcriptPath()
+  require('node:fs').mkdirSync(require('node:path').dirname(path), { recursive: true })
+  const cwd = process.cwd()
+  const base = { isSidechain: false, sessionId, cwd }
+  const usage = { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
+  const at = () => new Date().toISOString()
+  const reply = (content) => ({
+    ...base,
+    type: 'assistant',
+    timestamp: at(),
+    message: { id: 'msg_' + process.pid + '_' + ++replyCount, model: 'claude-opus-5-5', role: 'assistant', content, usage },
+  })
+  const tool = (id, name, input) => reply([{ type: 'tool_use', id, name, input }])
+  const result = (id, isError) => ({
+    ...base,
+    type: 'user',
+    timestamp: at(),
+    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, is_error: isError, content: '' }] },
+  })
+  const lines = [
+    { ...base, type: 'user', timestamp: at(), message: { role: 'user', content: 'Fix the login bug' } },
+    reply([{ type: 'text', text: 'Running the tests first.' }]),
+    tool('toolu_w1', 'Bash', { command: 'npm test' }),
+    result('toolu_w1', true),
+    tool('toolu_w2', 'Edit', { file_path: require('node:path').join(cwd, 'src', 'login.ts') }),
+    result('toolu_w2', false),
+    tool('toolu_w3', 'Agent', { description: 'Review the fix', subagent_type: 'code-reviewer' }),
+    result('toolu_w3', false),
+    reply([{ type: 'text', text: 'Fixed the login bug.' }]),
+  ]
+  require('node:fs').appendFileSync(path, lines.map((line) => JSON.stringify(line) + '\n').join(''))
+}
 ` + RUN_HOOK_COMMANDS
 
 /**
@@ -206,6 +241,24 @@ function writeUsage(input, output) {
   lines.push({ timestamp: at, type: 'event_msg', payload: { type: 'token_count', info } })
   fs.appendFileSync(path, lines.map((line) => JSON.stringify(line) + '\n').join(''))
 }
+// The same piece of work as Codex logs it, after a token count (which starts the log).
+function writeTimeline() {
+  writeUsage(10, 5)
+  const at = new Date().toISOString()
+  const item = (payload) => ({ timestamp: at, type: 'response_item', payload })
+  const lines = [
+    { timestamp: at, type: 'event_msg', payload: { type: 'user_message', message: 'Fix the login bug' } },
+    item({ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Running the tests first.' }] }),
+    item({ type: 'function_call', name: 'shell', arguments: JSON.stringify({ command: ['npm', 'test'] }), call_id: 'c1' }),
+    item({ type: 'function_call_output', call_id: 'c1', output: 'Process exited with code 1' }),
+    item({ type: 'custom_tool_call', name: 'apply_patch', call_id: 'c2', input: '*** Begin Patch\n*** Update File: src/login.ts\n*** End Patch' }),
+    item({ type: 'custom_tool_call_output', call_id: 'c2', output: 'Success' }),
+    item({ type: 'function_call', name: 'spawn_agent', arguments: JSON.stringify({ task_name: 'review_fix' }), call_id: 'c3' }),
+    item({ type: 'function_call_output', call_id: 'c3', output: '{}' }),
+    { timestamp: at, type: 'event_msg', payload: { type: 'task_complete', last_agent_message: 'Fixed the login bug.' } },
+  ]
+  require('node:fs').appendFileSync(transcriptPath(), lines.map((line) => JSON.stringify(line) + '\n').join(''))
+}
 ` + RUN_HOOK_COMMANDS
 
 /**
@@ -230,6 +283,7 @@ process.stdout.write('mcp=' + Object.keys(config.mcp ?? {}).join(',') + '\r\n')
 // OpenCode has no usage reader in Dugout yet.
 const transcriptPath = () => undefined
 const writeUsage = () => {}
+const writeTimeline = () => {}
 
 // OpenCode runs on Bun, whose fetch can POST to a Unix socket; Node's cannot, so stand in for it.
 globalThis.fetch = (url, init = {}) =>
@@ -282,7 +336,8 @@ function fire(event, matchValue, extra = {}) {
  * prompt | ask [command…] | ask-edit [file] | tool [command…] | notify-idle | stop | stop-later |
  * exit | agent-comment | agent-note | agent-context | edit | raw-keys | subagent-start <id> <type> |
  * subagent-stop <id> <type> | usage <input> <output> (writes a reply with that usage to the
- * transcript, then stops)
+ * transcript, then stops) |
+ * work (writes prompts, tool calls, an edit, a subagent and a final message, then stops)
  * (`ask` requests approval for a Bash command, `npm install` by default; like the real CLIs it
  * sends no tool id. `tool` finishes a Bash call with a fresh tool id, as PostToolUse does.)
  * (`raw-keys` puts the TTY in raw mode and prints every later input chunk as `keys=<json>`.)
@@ -312,6 +367,11 @@ const actions = {
   'notify-idle': () => fire('Notification', 'idle_prompt'),
   stop: () => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }),
   // A reply that used tokens, written to the transcript, then the turn ends.
+  // A short piece of work written to the transcript (see writeTimeline), then the turn ends.
+  work: () => {
+    writeTimeline()
+    fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' })
+  },
   usage: (input = '1000', output = '100') => {
     writeUsage(Number(input), Number(output))
     fire('Stop', undefined, { last_assistant_message: 'Used some tokens.' })

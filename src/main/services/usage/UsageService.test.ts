@@ -13,7 +13,7 @@ import type { AgentAdapter, AgentUsageReader } from '../agents/AgentAdapter'
 import { claudeAdapter } from '../agents/claude/claudeAdapter'
 import { codexAdapter } from '../agents/codex/codexAdapter'
 import { UsageFiles } from './usageFiles'
-import { UsageService, allowedPath } from './UsageService'
+import { UsageService } from './UsageService'
 import type { Attribution } from './usageState'
 
 const FIXTURES = join(import.meta.dirname, '..', 'transcripts', 'fixtures')
@@ -206,18 +206,5 @@ describe('UsageService', () => {
     const restarted = setup(dataDir)
     await restarted.service.load()
     expect(restarted.service.sessionUsage('s-1')?.context?.tokens).toBe(32503)
-  })
-})
-
-describe('allowedPath', () => {
-  test('accepts only .jsonl files that really are inside the root', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'dugout-root-'))
-    const inside = join(root, 'a.jsonl')
-    writeFileSync(inside, '')
-    expect(await allowedPath(inside, root)).toMatch(/a\.jsonl$/)
-    expect(await allowedPath(join(root, '..', 'x.jsonl'), root)).toBeNull()
-    expect(await allowedPath(join(root, 'missing.jsonl'), root)).toBeNull()
-    expect(await allowedPath('relative.jsonl', root)).toBeNull()
-    expect(await allowedPath(join(root, 'a.txt'), root)).toBeNull()
   })
 })

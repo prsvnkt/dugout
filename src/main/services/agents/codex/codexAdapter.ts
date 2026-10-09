@@ -1,6 +1,8 @@
 import { join } from 'node:path'
 import { AGENTS } from '@shared/agents'
+import { readCodexTimeline } from '../../transcripts/codexTimeline'
 import { readCodexTranscript } from '../../transcripts/codexTranscript'
+import { findCodexTranscript } from '../../transcripts/transcriptFiles'
 import type { AgentAdapter, AgentLaunchContext } from '../AgentAdapter'
 import { codexConfigOverrides } from './codexConfig'
 import { codexProjectServerOverrides } from './projectServers'
@@ -47,4 +49,6 @@ export const codexAdapter: AgentAdapter = {
     transcriptRoot: (homeDir, env) => env.CODEX_HOME || join(homeDir, '.codex'),
     read: readCodexTranscript,
   },
+
+  timeline: { find: findCodexTranscript, read: readCodexTimeline },
 }

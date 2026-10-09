@@ -58,6 +58,8 @@ test.beforeEach(async () => {
     ...gitHubTestEnv(stub.baseUrl),
     DUGOUT_CLAUDE_COMMAND: makeFakeClaude(),
     DUGOUT_CODEX_COMMAND: makeFakeCodex(),
+    // Where the fake Claude writes its transcripts (a stand-in for ~/.claude).
+    CLAUDE_CONFIG_DIR: makeTempDir('dugout-claude-'),
   })
   page = await app.firstWindow()
   await page.getByRole('banner').getByRole('button', { name: 'Sign in to GitHub' }).click()
@@ -183,6 +185,27 @@ test('runs Claude and Codex on one task and compares what each changed', async (
   await expect(compare.getByRole('button', { name: 'fake-codex.txt, Codex only' })).toBeVisible()
   await compare.getByRole('button', { name: 'shared.txt, both' }).click()
   await expect(compare.locator('.monaco-diff-editor')).toContainText('shared by fake-codex')
+})
+
+test("a task tab opens the timeline of each agent's session on it", async () => {
+  // Arrange: a Claude agent on the task does some work
+  await tasks().getByRole('button', { name: '#1 Fix login' }).click()
+  await detail().getByRole('button', { name: 'Start agent' }).click()
+  await detail().getByRole('menuitem', { name: 'Claude', exact: true }).click()
+  const pane = page.locator('[data-active="true"]').getByRole('region', { name: /terminal$/ })
+  await expect(pane).toContainText('Ready')
+  await pane.getByTestId('terminal').click()
+  await page.keyboard.type('work\n')
+
+  // Act
+  await detail().getByRole('button', { name: 'Claude timeline' }).click()
+
+  // Assert: a timeline tab named after the agent and the task
+  await expect(page.getByRole('tab', { name: 'Timeline · Claude · #1' })).toBeVisible()
+  const steps = page.getByRole('region', { name: 'Session timeline' }).getByRole('list', {
+    name: 'Steps',
+  })
+  await expect(steps).toContainText('Fix the login bug')
 })
 
 /** The setup starts a login shell of its own before the agent's, so allow for both. */

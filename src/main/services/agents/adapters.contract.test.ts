@@ -100,3 +100,18 @@ describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter usage', (_kind, adapte
     expect(usage?.context).toBeNull()
   })
 })
+
+describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter timeline', (_kind, adapter) => {
+  test('reads timelines exactly when it says it has them, from its usage folder', () => {
+    expect(adapter.timeline !== undefined).toBe(adapter.info.capabilities.hasTimeline)
+    if (adapter.timeline) expect(adapter.usage).toBeDefined()
+  })
+
+  test.runIf(adapter.timeline)('finds no steps in lines it does not understand', () => {
+    expect(adapter.timeline?.read(['', 'not json', '{"type":"unknown"}'])).toEqual([])
+  })
+
+  test.runIf(adapter.timeline)('never looks up a session id that is not a plain id', async () => {
+    expect(await adapter.timeline?.find('/nonexistent', '../../etc/passwd')).toBeNull()
+  })
+})

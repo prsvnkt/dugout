@@ -26,7 +26,8 @@ paths:
   bypass Codex hook trust. Every adapter
   passes `agents/adapters.contract.test.ts`. An adapter has a `usage` reader exactly when it has
   `hasUsage`: where its transcripts live and a parser from `services/transcripts/`; token usage
-  comes from the transcript its hooks name, never from terminal output.
+  comes from the transcript its hooks name, never from terminal output. It has a `timeline`
+  reader exactly when it has `hasTimeline` (and then also `usage`, whose folder it searches).
   To react to a new hook event, add a `HOOK_BINDINGS` entry and a unit test.
 - Hook commands must stay async, time-limited, silent and `|| true`; they run inside the user's
   Claude session and must never slow or break it.

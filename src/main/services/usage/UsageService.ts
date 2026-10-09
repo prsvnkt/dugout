@@ -1,9 +1,8 @@
-import { realpath } from 'node:fs/promises'
-import { isAbsolute, sep } from 'node:path'
 import type { AgentKind } from '@shared/agents'
 import type { AgentUsage, ProjectUsage } from '@shared/usage'
 import type { AgentUsageReader } from '../agents/AgentAdapter'
 import { readLinesFrom } from '../transcripts/jsonlTail'
+import { allowedPath } from '../transcripts/transcriptFiles'
 import type { ContextReading } from '../transcripts/types'
 import { contextWindowOf } from './prices'
 import { daysBefore, projectUsage } from './projectUsage'
@@ -22,7 +21,6 @@ import {
 
 /** Dedupe ids, sessions and read positions untouched for this long are forgotten. */
 const RETENTION_DAYS = 120
-const TRANSCRIPT_EXTENSION = '.jsonl'
 
 export interface UsageReaderSource {
   readonly reader: AgentUsageReader
@@ -129,18 +127,4 @@ export class UsageService {
       })
     })
   }
-}
-
-/**
- * The transcript's real path if it is a `.jsonl` file inside `root` (symlinks resolved), else
- * null. Hook payloads come from the agent, so a path is never read just because it was sent.
- */
-export async function allowedPath(path: string, root: string): Promise<string | null> {
-  if (!isAbsolute(path) || !path.endsWith(TRANSCRIPT_EXTENSION)) return null
-  const [real, realRoot] = await Promise.all([
-    realpath(path).catch(() => null),
-    realpath(root).catch(() => null),
-  ])
-  if (!real || !realRoot || !real.endsWith(TRANSCRIPT_EXTENSION)) return null
-  return real.startsWith(realRoot + sep) ? real : null
 }

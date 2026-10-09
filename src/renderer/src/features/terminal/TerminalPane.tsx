@@ -18,6 +18,7 @@ import { CheckIndicator } from '@renderer/features/checks/CheckIndicator'
 import { OpenInMenu } from '@renderer/features/openIn/OpenInMenu'
 import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
 import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
+import { TimelineButton } from '@renderer/features/timeline/TimelineButton'
 import { UsageBadge } from '@renderer/features/usage/UsageBadge'
 import { ActivityIndicator } from './ActivityIndicator'
 import { useDoneSeen } from './useDoneSeen'
@@ -149,6 +150,15 @@ export function TerminalPane(props: TerminalPaneProps) {
           className={styles.status}
         />
         <CheckIndicator terminalId={terminalId} />
+        {isAgent && (
+          <TimelineButton
+            projectId={projectId}
+            agent={kind}
+            sessionId={sessionId}
+            taskKey={task && displayTaskKey(task)}
+            className={styles.iconButton}
+          />
+        )}
         {worktreePath && <OpenInMenu checkout={{ projectId, worktreePath }} target="worktree" />}
         {canRestart && (
           <button

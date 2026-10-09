@@ -47,6 +47,21 @@ ids are forgotten; resuming such an old session would count its copied replies a
 cost); an "Import earlier sessions" action that reads a project's transcript folders once and
 labels them; per-call Codex usage from `last_token_usage`.
 
+## Session timelines: subagent steps, older task sessions, OpenCode
+
+- **Area:** `src/main/services/transcripts/`, `src/renderer/src/features/timeline/`
+- **Found:** 2026-10-09, while adding session timelines (decision 048)
+
+**What happens:** a subagent shows as one step (its task, type and outcome), not the tools it
+ran; Claude keeps those in sidechain lines or `subagents/agent-*.jsonl`. A task tab offers
+timelines only for its open agents and the last 5 closed sessions its project remembers.
+OpenCode agents have no timeline (no transcript file). Codex's scripted `exec` tool is shown by
+the first line of its script, and Codex subagents have no type. Very long sessions show only
+their latest 1,500 steps.
+
+**Likely fix:** expand a subagent step into its own transcript; list a task's sessions from the
+usage ledger (it records session and task); an OpenCode reader on its plugin's message events.
+
 ## E2E tests can time out when the machine is busy
 
 - **Area:** `tests/e2e/` (Playwright, one Electron instance per worker)

@@ -53,8 +53,10 @@ src/
                 tasks/ (TaskService: a project's tasks from its source, GitHub Issues or
                 Linear, decision 051), linear/ (Linear GraphQL API, encrypted API key),
                 agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions),
-                transcripts/ (incremental Claude / Codex transcript parsers, reusable),
+                transcripts/ (Claude / Codex transcript parsers for usage and timelines,
+                finding transcripts and their path checks),
                 usage/ (token ledger in app data, rollups, price table: decision 046),
+                timeline/ (a session's timeline from its transcript, on request: decision 048),
                 welcome/ (first-run repo search, agent CLI check),
                 checks/ (Verify on Stop: the project's check command after each Done),
                 context/ (project context for agents: .dugout/context/ entries, private notes,
@@ -88,6 +90,8 @@ src/
               failure back to its agent (decision 042); the command is set in Agent settings.
               usage/ shows token usage: agent headers, task cards, project tab tooltips and a
               Usage view (editor tab kind `usage`), from main's ledger (decision 046).
+              timeline/ shows a session's steps (editor tab kind `timeline`), opened from an
+              agent header or a task tab (decision 048).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.
@@ -107,9 +111,10 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 - **Agents are adapters** (decision 037): add one as `main/services/agents/<kind>/` plus entries in
   `agents/registry.ts` and `shared/agents.ts`. Outside those, never branch on an agent's kind;
   read its `capabilities` instead.
-- **Token usage reads only transcripts that hooks name** (`transcript_path`), and only inside the
-  agent's own folder (`~/.claude`, `~/.codex`, or `CLAUDE_CONFIG_DIR` / `CODEX_HOME`); e2e tests
-  point those variables at temp folders. Prices live in `usage/prices.ts` with a date: update both.
+- **Transcripts are read only inside the agent's own folder** (`~/.claude`, `~/.codex`, or
+  `CLAUDE_CONFIG_DIR` / `CODEX_HOME`, checked by `transcripts/transcriptFiles.allowedPath`): usage
+  reads the ones hooks name, timelines find one by session id. E2E tests point those variables at
+  temp folders. Prices live in `usage/prices.ts` with a date: update both.
 - **Dev app name and data:** `postinstall` renames `node_modules/electron/dist/Electron.app` to
   "Dugout Dev" (and re-signs it ad hoc), and unpackaged runs keep their data in "Dugout Dev", so
   `npm run dev` is never confused with the installed app. If the Dock says "Electron" again after
