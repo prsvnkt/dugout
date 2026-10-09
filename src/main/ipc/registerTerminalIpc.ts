@@ -93,7 +93,13 @@ export function registerTerminalIpc(
       onAgentSubagent: (terminalId, update) =>
         sendTo(owner, IpcChannel.terminalAgentSubagent, terminalId, update),
     }
-    const id = manager.create(request, events, setup ?? undefined)
+    let id: TerminalId
+    try {
+      id = manager.create(request, events, setup ?? undefined)
+    } catch (error) {
+      setup?.finish(false) // Keep it for the next agent, as the setup never ran.
+      throw error
+    }
     ownership.add(owner, id)
     checks.track(id, { projectId: request.projectId, cwd: request.cwd }, (status) =>
       sendTo(owner, IpcChannel.terminalCheckStatus, id, status),
