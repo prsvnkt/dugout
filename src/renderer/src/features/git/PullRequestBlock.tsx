@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { PullRequestStatus, ReviewState } from '@shared/pullRequest'
+import type { GitCheckout } from '@shared/worktree'
 import { dugout } from '@renderer/lib/dugout'
+import { PullRequestActions } from './PullRequestActions'
 import styles from './PullRequestBlock.module.css'
 
 const STATE_LABEL = { open: 'Open', draft: 'Draft', merged: 'Merged', closed: 'Closed' } as const
@@ -20,8 +22,17 @@ function checksLabel(pr: PullRequestStatus): string {
   return `Checks ${passed}/${total}${suffix}`
 }
 
-/** The branch's pull request: state, review decision and CI checks, with links to GitHub. */
-export function PullRequestBlock({ pullRequest }: { pullRequest: PullRequestStatus }) {
+interface PullRequestBlockProps {
+  readonly checkout: GitCheckout
+  readonly pullRequest: PullRequestStatus
+}
+
+/**
+ * The branch's pull request: state, review decision and CI checks, with links to GitHub, and
+ * (while it is open) buttons that hand review comments or failing CI to the agent.
+ */
+export function PullRequestBlock({ checkout, pullRequest }: PullRequestBlockProps) {
+  const isOpen = pullRequest.state === 'open' || pullRequest.state === 'draft'
   const [isExpanded, setIsExpanded] = useState(false)
   const open = (url: string) => void dugout.git.openUrl(url)
   const review = REVIEW_LABEL[pullRequest.review]
@@ -66,6 +77,13 @@ export function PullRequestBlock({ pullRequest }: { pullRequest: PullRequestStat
             </li>
           ))}
         </ul>
+      )}
+      {isOpen && (
+        <PullRequestActions
+          key={`${checkout.worktreePath ?? ''}#${pullRequest.number}`}
+          checkout={checkout}
+          pullRequest={pullRequest}
+        />
       )}
     </section>
   )

@@ -137,6 +137,11 @@ export const gitProjectRequestSchema = z.object({
   worktreePath: absolutePath.optional(),
 })
 
+/** A pull request of the checkout's GitHub repo, by number. */
+export const gitPullRequestRequestSchema = gitProjectRequestSchema.extend({
+  number: z.number().int().positive(),
+})
+
 export const gitPathsRequestSchema = z.object({
   projectId,
   worktreePath: absolutePath.optional(),

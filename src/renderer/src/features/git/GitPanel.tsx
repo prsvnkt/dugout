@@ -142,7 +142,7 @@ export function GitPanel({ project }: GitPanelProps) {
         </BranchPicker>
         <FetchButton checkout={checkout} isBusy={git.isBusy} />
       </div>
-      {pullRequest && <PullRequestBlock pullRequest={pullRequest} />}
+      {pullRequest && <PullRequestBlock checkout={checkout} pullRequest={pullRequest} />}
       <PreviewBlock project={project} checkout={checkout} status={git.status} />
       <CommitBox
         stagedCount={staged.length}
