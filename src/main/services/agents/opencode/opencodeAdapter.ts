@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AGENTS } from '@shared/agents'
+import { PRE_APPROVED_TOOLS } from '../../../mcp/toolAccess'
 import { writeFileAtomic } from '../../projects/atomicWrite'
 import type { AgentAdapter, AgentLaunchContext } from '../AgentAdapter'
 import type { McpServerEntry } from '../dugoutMcp'
@@ -19,6 +20,17 @@ function localMcpServer(server: McpServerEntry) {
 }
 
 /**
+ * OpenCode names MCP tools `<server>_<tool>` and applies the last matching permission rule, so
+ * every dugout tool asks first and then the read and propose ones are allowed (decision 052).
+ */
+function dugoutPermissions(): Record<string, 'ask' | 'allow'> {
+  return {
+    'dugout_*': 'ask',
+    ...Object.fromEntries(PRE_APPROVED_TOOLS.map((tool) => [`dugout_${tool}`, 'allow'])),
+  }
+}
+
+/**
  * Inline config OpenCode merges over the user's own (`OPENCODE_CONFIG_CONTENT`): plugin lists are
  * concatenated and MCP servers added by name, so nothing of theirs is replaced or rewritten.
  */
@@ -26,7 +38,10 @@ function inlineConfig(context: AgentLaunchContext): string {
   const pluginUrl = pathToFileURL(join(context.dataDir, OPENCODE_PLUGIN_FILE)).href
   return JSON.stringify({
     plugin: [pluginUrl],
-    ...(context.mcp && { mcp: { dugout: localMcpServer(context.mcp.server) } }),
+    ...(context.mcp && {
+      mcp: { dugout: localMcpServer(context.mcp.server) },
+      permission: dugoutPermissions(),
+    }),
   })
 }
 

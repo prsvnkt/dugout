@@ -17,6 +17,22 @@ progress for its up to 10 minutes, and an interactive shell banner would end up 
 once their stdout is checked to be the answer alone; refresh the tab with the existing change
 polling; stream the build's output into the tab.
 
+## Task descriptions reach agents; only task writes are gated
+
+- **Area:** `src/main/mcp/toolAccess.ts`, `src/main/services/tasks/taskSession.ts`, agent adapters
+- **Found:** 2026-10-09, in a security audit (decision 052)
+
+**What happens:** Task writes now ask first, but a task's description (and, through `get_task`,
+its comments) is still text from anyone who can file an issue, and it reaches the agent. The
+delimiters around it only discourage an agent from obeying it. Whatever else the user has
+pre-approved in their own agent config (shell commands, other MCP servers, Codex
+`approval_policy = "never"` or a bypass flag) is outside Dugout's rules. Codex's gate relies on
+its default `auto` approval mode reading the tools' annotations, and OpenCode's on a version that
+accepts per-tool permission keys; older versions may run the writes without asking.
+
+**Likely fix:** let a project mark task sources as trusted or not, and for untrusted ones start
+queued agents only after a person has read the task; show the task's author on its card.
+
 ## OpenCode agents do not get the project's .mcp.json servers
 
 - **Area:** `src/main/services/agents/opencode/`

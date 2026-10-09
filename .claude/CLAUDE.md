@@ -154,6 +154,8 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   Linear identifier (ENG-123 → 123); show `task.key` ("#123" / "ENG-123"), never `#${number}`.
 - **Agents reach Dugout only through the MCP server → hook socket RPC**, scoped to their
   terminal's project. Never put tokens in MCP configs or tool results.
+- **Every "dugout" MCP tool is declared in `mcp/toolAccess.ts`** as read, propose or write; that
+  decides what agents may call without asking (decision 052). Writes are never pre-approved.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` and `DUGOUT_HOME_DIR` (the
   welcome screen searches the home folder for repos); the e2e helpers set both. Tests that click
   "Open in…" set `DUGOUT_OPEN_COMMAND` to a fake `open`, so no real app launches.

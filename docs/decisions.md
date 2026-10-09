@@ -167,6 +167,9 @@ terminal's project and calls GitHub with the user's token — the agent never se
 `mcp__dugout`. The first prompt is placed before `--mcp-config`, which takes a list. Providers
 are behind `TaskService`, so Jira or local storage can be added later.
 
+_Superseded in part by 052: the hook settings no longer pre-approve the whole `mcp__dugout`
+server, only its read and propose tools; task writes ask first._
+
 ## 019 — "Needs you" inbox across projects (2026-10-06)
 
 Hooks for ready, needs-input and done forward their payload, and the hook server extracts a
@@ -1077,6 +1080,37 @@ in Linear (issue #27).
   Linear's 10,000-point query limit; comment counts are not fetched for lists (cards show them
   only for GitHub), since they would multiply the complexity of every 30-second refresh.
 
+## 052 — Agents get read-only Dugout tools pre-approved; writes prompt (2026-10-09)
+
+**Context.** Claude's hook settings allowed `mcp__dugout`, the whole server (decision 018), so
+`create_task`, `create_tasks`, `update_task` and `comment_on_task` ran without a prompt. Those
+post to GitHub Issues or Linear with the user's account, while a task's description, written by
+anyone who can open an issue on a public repo, is the agent's first prompt, and the task queue
+(decision 047) starts such agents unattended. Instructions planted in an issue could make an
+agent read a secret and post it as a comment, with nobody asked.
+
+**Decision.**
+
+- **One source of truth.** `src/main/mcp/toolAccess.ts` declares every "dugout" tool as `read`
+  (list/get tasks, list/get/search context), `propose` (`add_note`, which only creates a proposal
+  a person approves, decision 050) or `write` (the four task writes). A unit test fails if the
+  server offers a tool that is not declared there, so a new tool cannot be pre-approved by
+  accident; `write` is never pre-approved.
+- **Claude:** `permissions.allow` lists each read and propose tool as `mcp__dugout__<tool>`; writes
+  go through Claude Code's normal permission prompt (and Dugout's Needs you / inbox).
+- **Codex** had no pre-approval: Dugout sets no approval mode for the server, and Codex's default
+  (`auto`) asks for any MCP tool not marked read-only. The tools now carry MCP annotations from the
+  same declaration (`readOnlyHint` for reads; `add_note` is not destructive and stays inside
+  Dugout; writes reach outside it), so Codex runs reads and `add_note` without asking and still
+  asks before writes. No new `-c` keys: older Codex versions reject unknown MCP config fields.
+- **OpenCode** allowed every tool by default. Its inline config now adds permission rules
+  `"dugout_*": "ask"`, then `"allow"` for each read and propose tool (OpenCode names MCP tools
+  `<server>_<tool>` and the last matching rule wins), checked against OpenCode's source (Oct 2026).
+- **The first prompt** wraps the description in `<task-description>` … `</task-description>`,
+  after one sentence saying it was written by whoever filed the task and is data, not
+  instructions. A closing tag inside the description is defused so it cannot end the block early.
+  This lowers the odds an agent follows planted text; the permission prompt is what enforces it.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1117,4 +1151,6 @@ in Linear (issue #27).
     and a headless codemap ✅.
 24. **Done since:** session timelines from Claude and Codex transcripts ✅.
 25. **Done since:** a task queue that starts the next task when an agent slot frees up ✅.
-26. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+26. **Done since:** agents ask before writing to tasks; only read and propose tools are
+    pre-approved ✅.
+27. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
