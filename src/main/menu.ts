@@ -1,4 +1,5 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron'
+import { AGENT_LABEL, AGENT_LIST, WORKTREE_AGENT } from '@shared/agents'
 import type { AppCommand } from '@shared/commands'
 
 const PROJECT_SHORTCUT_COUNT = 9
@@ -8,6 +9,15 @@ function projectShortcuts(send: (command: AppCommand) => void): MenuItemConstruc
     label: `Project ${index + 1}`,
     accelerator: `CmdOrCtrl+${index + 1}`,
     click: () => send({ type: 'project.select', index }),
+  }))
+}
+
+/** "New <Agent> Agent" for every registered agent. */
+function newAgentItems(send: (command: AppCommand) => void): MenuItemConstructorOptions[] {
+  return AGENT_LIST.map((agent) => ({
+    label: `New ${agent.label} Agent`,
+    ...(agent.shortcut && { accelerator: agent.shortcut.accelerator }),
+    click: () => send({ type: 'pane.new', kind: agent.kind }),
   }))
 }
 
@@ -24,20 +34,11 @@ export function buildMenuTemplate(
     {
       label: 'File',
       submenu: [
+        ...newAgentItems(send),
         {
-          label: 'New Claude Agent',
-          accelerator: 'CmdOrCtrl+T',
-          click: () => send({ type: 'pane.new', kind: 'claude' }),
-        },
-        {
-          label: 'New Codex Agent',
-          accelerator: 'Alt+Shift+CmdOrCtrl+T',
-          click: () => send({ type: 'pane.new', kind: 'codex' }),
-        },
-        {
-          label: 'New Claude Agent in Worktree',
+          label: `New ${AGENT_LABEL[WORKTREE_AGENT]} Agent in Worktree`,
           accelerator: 'Alt+CmdOrCtrl+T',
-          click: () => send({ type: 'pane.newWorktree' }),
+          click: () => send({ type: 'pane.newWorktree', agent: WORKTREE_AGENT }),
         },
         {
           label: 'New Shell',

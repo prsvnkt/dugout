@@ -1,3 +1,4 @@
+import { AGENT_LIST } from '@shared/agents'
 import type { Project } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
 import { OpenTaskList } from './OpenTaskList'
@@ -21,12 +22,11 @@ export function StartScreen({ project, isActive, onAdd }: StartScreenProps) {
         <OpenTaskList project={project} isActive={isActive} />
         <div className={styles.quickActions}>
           <span>Or start empty:</span>
-          <button onClick={() => onAdd('claude')}>
-            New Claude agent <kbd>⌘T</kbd>
-          </button>
-          <button onClick={() => onAdd('codex')}>
-            New Codex agent <kbd>⌥⇧⌘T</kbd>
-          </button>
+          {AGENT_LIST.map((agent) => (
+            <button key={agent.kind} onClick={() => onAdd(agent.kind)}>
+              New {agent.label} agent {agent.shortcut && <kbd>{agent.shortcut.symbols}</kbd>}
+            </button>
+          ))}
           <button onClick={() => onAdd('shell')}>
             New shell <kbd>⇧⌘T</kbd>
           </button>

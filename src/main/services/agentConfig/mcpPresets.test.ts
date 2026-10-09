@@ -6,7 +6,7 @@ import { literalSecrets, MCP_SERVER_NAME, RESERVED_MCP_SERVER } from '@shared/ag
 import { agentConfigSaveMcpRequestSchema } from '@shared/ipc/contract'
 import { MCP_PRESETS } from '@shared/mcpPresets'
 import { AgentConfigService } from './AgentConfigService'
-import { codexSharing } from './codexMcp'
+import { codexSharing } from '../agents/codex/codexMcp'
 import { parseMcpJson, serializeMcpJson } from './mcpJson'
 
 const VARIABLE = /\$\{([^}]*)\}/g

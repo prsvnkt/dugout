@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { AGENT_KINDS } from '@shared/agents'
 import type { CloneProgress } from '@shared/clone'
 import type { GitHubRepo } from '@shared/github'
 import type { AgentCliCheck, LocalRepo } from '@shared/welcome'
@@ -6,7 +7,9 @@ import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { dugout } from '@renderer/lib/dugout'
 import { mergeLocalRepos } from './repoLists'
 
-const UNKNOWN_CHECK: AgentCliCheck = { claude: { state: 'unknown' }, codex: { state: 'unknown' } }
+const UNKNOWN_CHECK = Object.fromEntries(
+  AGENT_KINDS.map((kind) => [kind, { state: 'unknown' }]),
+) as AgentCliCheck
 
 function messageOf(cause: unknown, fallback: string): string {
   return cause instanceof Error ? cause.message : fallback

@@ -1,17 +1,16 @@
-export const TERMINAL_KINDS = ['claude', 'codex', 'shell'] as const
+import { AGENT_KINDS, type AgentKind } from './agents'
 
-/** `claude` / `codex` run those agent CLIs; `shell` is a plain login shell. */
+export { AGENT_KINDS, AGENT_LABEL, type AgentKind } from './agents'
+
+export const TERMINAL_KINDS = [...AGENT_KINDS, 'shell'] as const
+
+/** An agent CLI (see `./agents`), or `shell`: a plain login shell. */
 export type TerminalKind = (typeof TERMINAL_KINDS)[number]
 
-export const AGENT_KINDS = ['claude', 'codex'] as const
-export type AgentKind = (typeof AGENT_KINDS)[number]
-
-/** Agents get status hooks, task tools, resume and the inbox; shells do not. */
+/** Agents get status, task tools, resume and the inbox, as far as their capabilities go; shells do not. */
 export function isAgentKind(kind: TerminalKind): kind is AgentKind {
   return (AGENT_KINDS as readonly string[]).includes(kind)
 }
-
-export const AGENT_LABEL: Readonly<Record<AgentKind, string>> = { claude: 'Claude', codex: 'Codex' }
 
 export type TerminalId = string
 

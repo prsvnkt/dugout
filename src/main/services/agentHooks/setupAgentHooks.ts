@@ -2,25 +2,23 @@ import { randomBytes } from 'node:crypto'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { AgentKind } from '@shared/agents'
 import type { HookSignal } from '@shared/agentStatus'
 import type { HookDetails, HookServerDeps } from './HookServer'
-import { writeFileAtomic } from '../projects/atomicWrite'
 import { HookServer } from './HookServer'
-import { codexProjectServerOverrides } from '../agentConfig/AgentConfigService'
-import { codexConfigOverrides } from './codexConfig'
-import { buildHookSettings } from './hookSettings'
+import type { TerminalFiles } from '../agents/AgentAdapter'
+import type { McpServerLaunch } from '../agents/dugoutMcp'
+import { AGENT_ADAPTERS } from '../agents/registry'
 
 export interface AgentHooksConfig {
-  readonly settingsPath: string
+  /** App data folder, where adapters keep their static files (hook settings, plugins). */
+  readonly dataDir: string
   readonly socketPath: string
   readonly token: string
-  readonly claudeCommand?: string | undefined
-  /** Writes the terminal's MCP config (Dugout task tools) and returns its path. */
-  readonly writeMcpConfig?: (terminalId: string) => string
-  readonly removeMcpConfig?: (terminalId: string) => void
-  /** Codex `-c` overrides for a terminal: status hooks plus the dugout MCP server. */
-  readonly codexOverrides?: (terminalId: string, cwd: string) => string[]
-  readonly codexCommand?: string | undefined
+  /** The command each agent runs; missing ones use the adapter's default. */
+  readonly commands?: Partial<Readonly<Record<AgentKind, string>>>
+  /** Dugout's task server, given to every agent that supports MCP. */
+  readonly mcp?: { readonly server: McpServerLaunch; readonly files: TerminalFiles }
 }
 
 export interface AgentHooks {
@@ -28,7 +26,6 @@ export interface AgentHooks {
   close(): Promise<void>
 }
 
-const SETTINGS_FILE = 'claude-hooks.json'
 const SOCKET_FILE = 'hooks.sock'
 /** macOS limits Unix socket paths to 104 bytes. */
 const MAX_SOCKET_PATH_LENGTH = 100
@@ -36,51 +33,17 @@ const TOKEN_BYTES = 32
 const MCP_DIR = 'mcp'
 const OWNER_ONLY = 0o600
 
-export interface McpServerLaunch {
-  /** The executable that runs the server (Electron, in Node mode). */
-  readonly command: string
-  readonly script: string
-}
-
-function mcpServerEntry(
-  launch: McpServerLaunch,
-  socketPath: string,
-  token: string,
-  terminalId: string,
-) {
-  return {
-    command: launch.command,
-    args: [launch.script],
-    env: {
-      ELECTRON_RUN_AS_NODE: '1',
-      DUGOUT_HOOK_SOCKET: socketPath,
-      DUGOUT_HOOK_TOKEN: token,
-      DUGOUT_TERMINAL_ID: terminalId,
-    },
-  }
-}
-
-/** One config per terminal: the server needs to know which terminal (and project) it serves. */
-function mcpConfigWriter(
-  dataDir: string,
-  socketPath: string,
-  token: string,
-  launch: McpServerLaunch,
-) {
+/** One MCP config per terminal: the server needs to know which terminal (and project) it serves. */
+function mcpConfigFiles(dataDir: string): TerminalFiles {
   const dir = join(dataDir, MCP_DIR)
   mkdirSync(dir, { recursive: true })
   return {
-    write(terminalId: string): string {
+    write(terminalId, content) {
       const path = join(dir, `${terminalId}.json`)
-      const config = {
-        mcpServers: {
-          dugout: { type: 'stdio', ...mcpServerEntry(launch, socketPath, token, terminalId) },
-        },
-      }
-      writeFileSync(path, JSON.stringify(config, null, 2), { mode: OWNER_ONLY })
+      writeFileSync(path, content, { mode: OWNER_ONLY })
       return path
     },
-    remove(terminalId: string): void {
+    remove(terminalId) {
       rmSync(join(dir, `${terminalId}.json`), { force: true })
     },
   }
@@ -93,21 +56,21 @@ function chooseSocketPath(dataDir: string): string {
     : join(tmpdir(), `dugout-${process.pid}.sock`)
 }
 
-/** Writes the hook settings file and starts the socket server that receives the signals. */
+/** Writes each agent's hook files and starts the socket server that receives the signals. */
 export async function setupAgentHooks(options: {
   readonly dataDir: string
-  readonly claudeCommand?: string | undefined
+  readonly commands?: AgentHooksConfig['commands']
   readonly onSignal: (terminalId: string, signal: HookSignal, details: HookDetails) => void
   readonly onRpc: HookServerDeps['onRpc']
   readonly onSubagent: HookServerDeps['onSubagent']
   readonly mcpServer?: McpServerLaunch | undefined
-  readonly codexCommand?: string | undefined
 }): Promise<AgentHooks> {
-  const settingsPath = join(options.dataDir, SETTINGS_FILE)
   const socketPath = chooseSocketPath(options.dataDir)
   const token = randomBytes(TOKEN_BYTES).toString('hex')
 
-  await writeFileAtomic(settingsPath, `${JSON.stringify(buildHookSettings(), null, 2)}\n`)
+  await Promise.all(
+    Object.values(AGENT_ADAPTERS).map((adapter) => adapter.prepare?.(options.dataDir)),
+  )
   const server = new HookServer({
     socketPath,
     token,
@@ -116,25 +79,15 @@ export async function setupAgentHooks(options: {
     onSubagent: options.onSubagent,
   })
   await server.listen()
-  const mcp = options.mcpServer
-    ? mcpConfigWriter(options.dataDir, socketPath, token, options.mcpServer)
-    : null
 
   return {
     config: {
-      settingsPath,
+      dataDir: options.dataDir,
       socketPath,
       token,
-      claudeCommand: options.claudeCommand,
-      ...(mcp && { writeMcpConfig: mcp.write, removeMcpConfig: mcp.remove }),
-      codexCommand: options.codexCommand,
+      ...(options.commands && { commands: options.commands }),
       ...(options.mcpServer && {
-        codexOverrides: (terminalId: string, cwd: string) => [
-          ...codexConfigOverrides(
-            mcpServerEntry(options.mcpServer as McpServerLaunch, socketPath, token, terminalId),
-          ),
-          ...codexProjectServerOverrides(cwd),
-        ],
+        mcp: { server: options.mcpServer, files: mcpConfigFiles(options.dataDir) },
       }),
     },
     close: () => server.close(),

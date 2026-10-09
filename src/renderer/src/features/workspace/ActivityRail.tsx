@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { Files, GitBranch, ListChecks, Plus, type LucideIcon } from 'lucide-react'
+import { AGENT_LABEL, AGENT_LIST, WORKTREE_AGENT } from '@shared/agents'
 import type { Project } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
@@ -43,7 +44,7 @@ function RailButton({ icon, label, title, isActive, badge, onClick }: RailButton
 
 function MenuItem(props: {
   label: string
-  shortcut: string
+  shortcut?: string | undefined
   disabled?: boolean
   onSelect(): void
 }): ReactNode {
@@ -54,12 +55,12 @@ function MenuItem(props: {
       disabled={props.disabled}
       onClick={props.onSelect}
     >
-      {props.label} <kbd>{props.shortcut}</kbd>
+      {props.label} {props.shortcut && <kbd>{props.shortcut}</kbd>}
     </button>
   )
 }
 
-/** "+" in the rail: start Claude, Codex, worktree or shell panes, or open agent settings. */
+/** "+" in the rail: start any agent, an agent in a worktree or a shell, or open agent settings. */
 function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: TerminalKind): void }) {
   const [isOpen, setIsOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -84,23 +85,20 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
       />
       {isOpen && (
         <div className={styles.menu} role="menu" aria-label="New agent">
+          {AGENT_LIST.map((agent) => (
+            <MenuItem
+              key={agent.kind}
+              label={`New ${agent.label} agent`}
+              shortcut={agent.shortcut?.symbols}
+              disabled={!canAddPane}
+              onSelect={choose(() => onAdd(agent.kind))}
+            />
+          ))}
           <MenuItem
-            label="New Claude agent"
-            shortcut="⌘T"
-            disabled={!canAddPane}
-            onSelect={choose(() => onAdd('claude'))}
-          />
-          <MenuItem
-            label="New Codex agent"
-            shortcut="⌥⇧⌘T"
-            disabled={!canAddPane}
-            onSelect={choose(() => onAdd('codex'))}
-          />
-          <MenuItem
-            label="New Claude agent in worktree"
+            label={`New ${AGENT_LABEL[WORKTREE_AGENT]} agent in worktree`}
             shortcut="⌥⌘T"
             disabled={!canAddPane}
-            onSelect={choose(() => void startWorktreeSession(project.id))}
+            onSelect={choose(() => void startWorktreeSession(project.id, WORKTREE_AGENT))}
           />
           <MenuItem
             label="New shell"

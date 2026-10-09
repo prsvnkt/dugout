@@ -1,7 +1,9 @@
+import type { AgentKind, TerminalKind } from './terminal'
+
 /** Commands the native application menu sends to the renderer. */
 export type AppCommand =
-  | { readonly type: 'pane.new'; readonly kind: 'claude' | 'codex' | 'shell' }
-  | { readonly type: 'pane.newWorktree' }
+  | { readonly type: 'pane.new'; readonly kind: TerminalKind }
+  | { readonly type: 'pane.newWorktree'; readonly agent: AgentKind }
   | { readonly type: 'pane.close' }
   | { readonly type: 'project.add' }
   | { readonly type: 'project.clone' }

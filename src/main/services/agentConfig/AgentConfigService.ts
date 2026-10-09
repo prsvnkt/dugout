@@ -1,16 +1,12 @@
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AgentConfig, InstructionsStatus, McpServer } from '@shared/agentConfig'
 import { MCP_PRESETS } from '@shared/mcpPresets'
-import { tomlInline } from '../agentHooks/codexConfig'
 import { writeFileAtomic } from '../projects/atomicWrite'
-import { codexMcpServer, codexSharing } from './codexMcp'
+import { codexSharing } from '../agents/codex/codexMcp'
 import { AGENTS_MD, CLAUDE_MD_PATHS, importsAgentsMd, linkInstructions } from './instructions'
-import { parseMcpJson, serializeMcpJson } from './mcpJson'
-
-const MCP_JSON = '.mcp.json'
+import { MCP_JSON, parseMcpJson, serializeMcpJson } from './mcpJson'
 
 const PRESET_CODEX = Object.fromEntries(
   MCP_PRESETS.map((preset) => [preset.server.name, codexSharing(preset.server)]),
@@ -93,21 +89,4 @@ export class AgentConfigService {
         claude !== null && claudeMdPath !== null && importsAgentsMd(claude, claudeMdPath),
     }
   }
-}
-
-/**
- * `-c` overrides that give a Codex pane the servers in its checkout's `.mcp.json`, as Claude Code
- * gets them. Read when the pane starts; servers Codex cannot express are left out.
- */
-export function codexProjectServerOverrides(cwd: string): string[] {
-  let servers: McpServer[]
-  try {
-    servers = parseMcpJson(readFileSync(join(cwd, MCP_JSON), 'utf8')).servers
-  } catch {
-    return []
-  }
-  return servers.flatMap((server) => {
-    const result = codexMcpServer(server)
-    return result.ok ? [`mcp_servers.${server.name}=${tomlInline(result.config)}`] : []
-  })
 }

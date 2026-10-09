@@ -500,6 +500,38 @@ Agents list and notification clicks use it too.
 
 Changing the `PostToolUse` hook command means Codex asks once more to trust Dugout's hooks.
 
+## 037 — Agent CLIs behind adapters, with capabilities (2026-10-09)
+
+**Context.** Claude Code and Codex were special-cased in ~20 places (launch switch, hook config,
+MCP wiring, menus, start screen, task menu, welcome check), so a third agent would multiply that.
+
+**Decision.** Each agent CLI is an `AgentAdapter` in `src/main/services/agents/<kind>/`, listed in
+`agents/registry.ts`; Claude and Codex are adapters like any other, with no special path left.
+An adapter only translates: its default command and the `DUGOUT_<NAME>_COMMAND` variable that
+replaces it (tests), an optional `prepare` that writes static files when Dugout starts (Claude's
+hook settings), and `launch`, which turns a context (terminal id, checkout, resume or first
+prompt, Dugout's task server) into a command line of plain `"$VAR"`s (decision 013) plus the
+variables it reads. `TerminalManager` adds what every agent gets (`DUGOUT_TERMINAL_ID`, the hook
+socket and token, `DUGOUT_RESUME_SESSION`, `DUGOUT_INITIAL_PROMPT`) and keeps the status rules,
+pending approvals, resume and the inbox shared, so agents cannot drift apart. The interface was
+pulled out of what Claude and Codex already did; it grows only when an agent needs more.
+
+The renderer reads `src/shared/agents.ts`: each agent's names (`label` for menus and lists,
+`productName` for its terminal header, `cliName` and install command for the welcome check) and
+its capabilities: `hasStatus` (ready / working / needs you / done from hooks or a plugin;
+without it an agent shows only "Running", since status never comes from scraping output,
+decision 008), `hasMcp` (gets the "dugout" task server, so it is offered on tasks), `canResume`
+(restored agents continue their session) and `hasUsage` (reserved for token usage, #35; no agent
+has it yet). Menus, the start screen, the welcome check and "Start agent ▾" are built from the
+registry; "Start agent ▾" offers each agent with `hasMcp` and every pair of them to compare.
+Code outside the adapter folders never branches on an agent's kind. Agent ids (`claude`,
+`codex`) are stored in layouts, settings and task worktree names and never change.
+
+Every adapter passes one contract test (`agents/adapters.contract.test.ts`: plain `"$VAR"`s it
+provides, the command from its variable, resume and prompt only when asked, the task server when
+it has MCP, files cleaned up on exit) plus its own tests. The Codex hook overrides are pinned
+byte for byte, because any change makes Codex ask every user to trust them again (decision 021).
+
 ## 039 — "Open in…" an editor or Finder (2026-10-09)
 
 **Context.** For bigger manual edits people want their own editor, but worktrees live in app
@@ -669,3 +701,4 @@ ranges) and agents in the main checkout are not tracked; see `docs/known-issues.
 14. **Done since:** review comments from the Review and Compare diffs, sent to the agent as one
     prompt ✅.
 15. **Done since:** warnings when parallel agents change the same files ✅.
+16. **Done since:** agent CLIs behind adapters with capabilities ✅.

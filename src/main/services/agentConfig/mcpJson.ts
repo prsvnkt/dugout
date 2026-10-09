@@ -18,6 +18,9 @@ const remoteSchema = z.looseObject({
 
 const fileSchema = z.looseObject({ mcpServers: z.record(z.string(), z.unknown()).optional() })
 
+/** The project's MCP servers file, at the checkout root (shared with Claude Code). */
+export const MCP_JSON = '.mcp.json'
+
 export type McpJsonRaw = z.infer<typeof fileSchema>
 
 /** Fields Dugout writes; on save they are replaced, everything else on a server is kept. */

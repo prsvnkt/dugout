@@ -30,7 +30,7 @@ export function useAppCommands(onAddProject: () => void, onCloneProject: () => v
           if (selectedId) workspace.addPane(selectedId, command.kind)
           return
         case 'pane.newWorktree':
-          if (selectedId) void useWorktreeStore.getState().startSession(selectedId)
+          if (selectedId) void useWorktreeStore.getState().startSession(selectedId, command.agent)
           return
         case 'pane.close': {
           if (!selectedId) return

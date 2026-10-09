@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { WORKTREE_AGENT } from '@shared/agents'
 import type { GitCheckout } from '@shared/worktree'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
@@ -90,7 +91,7 @@ export function BranchPicker({ checkout, currentBranch, children }: BranchPicker
     }
     if (item.kind === 'worktree') {
       close()
-      void startWorktreeSession(checkout.projectId)
+      void startWorktreeSession(checkout.projectId, WORKTREE_AGENT)
       return
     }
     if (item.kind === 'create') return void finish(createBranch(checkout, item.name))

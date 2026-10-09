@@ -6,7 +6,7 @@ import {
   type RemoteMcpServer,
   type StdioMcpServer,
 } from '@shared/agentConfig'
-import type { TomlValue } from '../agentHooks/codexConfig'
+import type { TomlValue } from './codexConfig'
 
 export type CodexMcpResult =
   | { readonly ok: true; readonly config: { readonly [key: string]: TomlValue } }

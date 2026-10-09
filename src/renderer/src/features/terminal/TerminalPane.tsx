@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { X } from 'lucide-react'
 import '@xterm/xterm/css/xterm.css'
+import { AGENTS } from '@shared/agents'
 import { isAgentKind, type TerminalKind } from '@shared/terminal'
 import type { ToolCallPreview } from '@shared/toolCall'
 import { paneNumber } from '@renderer/features/workspace/layout'
@@ -58,10 +59,8 @@ interface TerminalPaneProps {
   onRestart(options: { isFresh: boolean }): void
 }
 
-const KIND_LABEL: Record<TerminalKind, string> = {
-  claude: 'Claude Code',
-  codex: 'Codex',
-  shell: 'Shell',
+function kindLabel(kind: TerminalKind): string {
+  return isAgentKind(kind) ? AGENTS[kind].productName : 'Shell'
 }
 
 function describe(activity: PaneActivity, status: TerminalStatus): string {
@@ -86,7 +85,7 @@ export function TerminalPane(props: TerminalPaneProps) {
   const { status, agentStatus, agentDetail, agentApprovals, terminalId, sessionId } = terminal
   const { subagents, focus } = terminal
   const canRestart = status.state === 'exited' || status.state === 'error'
-  // If Claude never got ready, resuming failed (e.g. the session no longer exists).
+  // If the agent never got ready, resuming failed (e.g. the session no longer exists).
   const isAgent = isAgentKind(kind)
   const neverReady = isAgent && (agentStatus === null || agentStatus === 'starting')
   const isDoneSeen = useDoneSeen(agentStatus, shouldFocus)
@@ -112,13 +111,13 @@ export function TerminalPane(props: TerminalPaneProps) {
       data-focused={isFocused}
       style={{ '--accent': projectColor } as CSSProperties}
       onMouseDown={onFocus}
-      aria-label={`${KIND_LABEL[kind]} terminal`}
+      aria-label={`${kindLabel(kind)} terminal`}
     >
       <header className={styles.header}>
         <span className={styles.number} aria-hidden data-testid="pane-number">
           {paneNumber(index)}
         </span>
-        <span className={styles.kind}>{KIND_LABEL[kind]}</span>
+        <span className={styles.kind}>{kindLabel(kind)}</span>
         {task && (
           <span className={styles.task} title={task.title}>
             #{task.number}
@@ -154,7 +153,7 @@ export function TerminalPane(props: TerminalPaneProps) {
           className={styles.close}
           onClick={onClose}
           onMouseDown={(event) => event.stopPropagation()}
-          aria-label={`Close ${KIND_LABEL[kind]} pane`}
+          aria-label={`Close ${kindLabel(kind)} pane`}
           title="Close pane (⌘W)"
         >
           <Icon icon={X} />

@@ -1,5 +1,3 @@
-import type { TerminalKind } from '@shared/terminal'
-
 export type Env = Readonly<Record<string, string | undefined>>
 
 export interface LaunchSpec {
@@ -42,65 +40,14 @@ export function resolveShell(env: Env): string {
 }
 
 /**
- * Apps launched from Finder/Dock get a minimal PATH. Running through an interactive
- * login shell loads the user's profile, so `claude` behaves exactly as in their terminal.
+ * Apps launched from Finder/Dock get a minimal PATH. Running an agent through an interactive
+ * login shell loads the user's profile, so its CLI behaves exactly as in their terminal.
+ * `agentCommandLine` comes from the agent's adapter; without one this is a plain shell.
  */
-export interface LaunchOptions {
-  readonly hasAgentHooks?: boolean
-  /** Continue the session in `$DUGOUT_RESUME_SESSION`. */
-  readonly isResuming?: boolean
-  /** Start with `$DUGOUT_INITIAL_PROMPT` as the first message. */
-  readonly hasInitialPrompt?: boolean
-  /** Load Dugout's MCP server from `$DUGOUT_MCP_CONFIG`. */
-  readonly hasMcpConfig?: boolean
-  /** Codex: number of `-c` overrides in `$DUGOUT_CODEX_C0…`. */
-  readonly codexOverrideCount?: number
-}
-
-export function buildLaunchSpec(
-  kind: TerminalKind,
-  shell: string,
-  options: LaunchOptions = {},
-): LaunchSpec {
-  switch (kind) {
-    case 'claude':
-      return { file: shell, args: ['-l', '-i', '-c', claudeCommandLine(options)] }
-    case 'codex':
-      return { file: shell, args: ['-l', '-i', '-c', codexCommandLine(options)] }
-    case 'shell':
-      return { file: shell, args: ['-l'] }
-  }
-}
-
-/**
- * Values reach the shell through env vars rather than being spliced into the command, so
- * paths with spaces need no quoting. Only plain "$VAR" expansions are used: conditional forms
- * like ${VAR:+...} split differently in bash and zsh, and fish does not support them at all.
- */
-function claudeCommandLine(options: LaunchOptions): string {
-  if (!options.hasAgentHooks) return 'claude'
-  return [
-    '"$DUGOUT_CLAUDE_COMMAND"',
-    // The prompt comes first: --mcp-config takes a list and would swallow anything after it.
-    ...(options.hasInitialPrompt ? ['"$DUGOUT_INITIAL_PROMPT"'] : []),
-    '--settings "$DUGOUT_CLAUDE_SETTINGS"',
-    ...(options.isResuming ? ['--resume "$DUGOUT_RESUME_SESSION"'] : []),
-    ...(options.hasMcpConfig ? ['--mcp-config "$DUGOUT_MCP_CONFIG"'] : []),
-  ].join(' ')
-}
-
-function codexCommandLine(options: LaunchOptions): string {
-  if (!options.hasAgentHooks) return 'codex'
-  const overrides = Array.from(
-    { length: options.codexOverrideCount ?? 0 },
-    (_, index) => `-c "$DUGOUT_CODEX_C${index}"`,
-  )
-  const start = options.isResuming
-    ? ['resume "$DUGOUT_RESUME_SESSION"']
-    : options.hasInitialPrompt
-      ? ['"$DUGOUT_INITIAL_PROMPT"']
-      : []
-  return ['"$DUGOUT_CODEX_COMMAND"', ...start, ...overrides].join(' ')
+export function buildLaunchSpec(shell: string, agentCommandLine?: string): LaunchSpec {
+  return agentCommandLine === undefined
+    ? { file: shell, args: ['-l'] }
+    : { file: shell, args: ['-l', '-i', '-c', agentCommandLine] }
 }
 
 export function buildTerminalEnv(env: Env): Record<string, string> {
