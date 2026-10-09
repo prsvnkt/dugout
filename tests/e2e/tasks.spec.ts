@@ -185,6 +185,9 @@ test('runs Claude and Codex on one task and compares what each changed', async (
   await expect(compare.locator('.monaco-diff-editor')).toContainText('shared by fake-codex')
 })
 
+/** The setup starts a login shell of its own before the agent's, so allow for both. */
+const SETUP_THEN_AGENT_MS = 30_000
+
 test('Start agent sets up each task worktree before its agent starts', async () => {
   // Arrange: a local file to copy, and a setup that proves it ran in each worktree
   writeFileSync(join(repo, '.env'), 'TOKEN=local\n')
@@ -202,9 +205,9 @@ test('Start agent sets up each task worktree before its agent starts', async () 
   await detail().getByRole('menuitem', { name: 'Claude + Codex (compare)' }).click()
 
   // Assert: both agents start after their setup, each in a worktree that has the files
-  await expect.poll(output).toContain('fake-codex ready')
+  await expect.poll(output, { timeout: SETUP_THEN_AGENT_MS }).toContain('fake-codex ready')
   const panes = page.locator('[data-active="true"]').getByRole('region', { name: /terminal$/ })
-  await expect(panes.nth(0)).toContainText('Ready')
+  await expect(panes.nth(0)).toContainText('Ready', { timeout: SETUP_THEN_AGENT_MS })
   expect((await output()).split('Worktree setup: cp .env').length - 1).toBe(2)
   const worktrees = execFileSync('git', ['worktree', 'list', '--porcelain'], {
     cwd: repo,

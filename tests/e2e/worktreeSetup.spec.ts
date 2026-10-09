@@ -53,6 +53,9 @@ test.afterEach(async () => {
   await app.close()
 })
 
+/** The setup starts a login shell of its own before the agent's, so allow for both. */
+const SETUP_THEN_AGENT_MS = 30_000
+
 const workspace = () => page.locator('[data-active="true"]')
 const setupForm = () => page.getByRole('form', { name: 'Worktree setup' })
 
@@ -74,7 +77,7 @@ test('copies local files and runs the setup before a worktree agent starts', asy
 
   // Assert: the setup showed in the agent's terminal, then the agent started
   const pane = workspace().getByRole('region', { name: /terminal$/ })
-  await expect(pane).toContainText('Ready')
+  await expect(pane).toContainText('Ready', { timeout: SETUP_THEN_AGENT_MS })
   expect(await output()).toContain('Worktree setup: cp .env .env.from-setup')
   const [worktree = ''] = worktreePaths(repo)
   expect(readFileSync(join(worktree, '.env'), 'utf8')).toBe('API_URL=http://localhost\n')
