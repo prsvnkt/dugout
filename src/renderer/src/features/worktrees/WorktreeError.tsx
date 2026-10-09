@@ -1,3 +1,5 @@
+import { X } from 'lucide-react'
+import { Icon } from '@renderer/lib/Icon'
 import { useWorktreeStore } from './worktreeStore'
 import styles from './Worktrees.module.css'
 
@@ -10,7 +12,7 @@ export function WorktreeError({ projectId }: { projectId: string }) {
     <div className={styles.error} role="alert">
       <span>{error}</span>
       <button onClick={() => dismiss(projectId)} aria-label="Dismiss">
-        ×
+        <Icon icon={X} />
       </button>
     </div>
   )

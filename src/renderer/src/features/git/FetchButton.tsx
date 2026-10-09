@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import type { GitCheckout } from '@shared/worktree'
+import { Icon } from '@renderer/lib/Icon'
 import { useGitStore } from './gitStore'
 import styles from './GitPanel.module.css'
 
@@ -32,9 +34,7 @@ export function FetchButton({ checkout, isBusy }: FetchButtonProps) {
       title={isFetching ? 'Fetching…' : 'Fetch from all remotes'}
       aria-label="Fetch from remotes"
     >
-      <span className={styles.fetchGlyph} aria-hidden>
-        ↻
-      </span>
+      <Icon icon={RefreshCw} className={styles.fetchGlyph} />
     </button>
   )
 }

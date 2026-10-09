@@ -1,7 +1,9 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
+import { X } from 'lucide-react'
 import '@xterm/xterm/css/xterm.css'
 import { isAgentKind, type TerminalKind } from '@shared/terminal'
 import { paneNumber } from '@renderer/features/workspace/layout'
+import { Icon } from '@renderer/lib/Icon'
 import {
   ACTIVITY_LABEL,
   toPaneActivity,
@@ -136,7 +138,7 @@ export function TerminalPane(props: TerminalPaneProps) {
           aria-label={`Close ${KIND_LABEL[kind]} pane`}
           title="Close pane (⌘W)"
         >
-          ×
+          <Icon icon={X} />
         </button>
       </header>
       <div ref={containerRef} className={styles.terminal} data-testid="terminal" />

@@ -1,0 +1,9 @@
+/* Never on the text baseline; alone in a button, centred in it. */
+.icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+button > .icon:only-child {
+  margin: auto;
+}

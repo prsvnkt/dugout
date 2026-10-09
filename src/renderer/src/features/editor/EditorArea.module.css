@@ -49,6 +49,8 @@
 
 .tabClose {
   position: relative;
+  display: grid;
+  place-items: center;
   width: 20px;
   height: 20px;
   margin-right: var(--space-1);
@@ -82,7 +84,7 @@
 }
 
 .tabClose[data-dirty='true']:hover .closeGlyph {
-  display: inline;
+  display: block;
 }
 
 .banner {

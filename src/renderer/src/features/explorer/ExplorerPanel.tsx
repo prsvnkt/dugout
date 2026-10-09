@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { ChevronRight, ChevronsDownUp, RefreshCw } from 'lucide-react'
 import type { DirEntry } from '@shared/files'
 import type { GitChangeKind } from '@shared/git'
 import type { Project } from '@shared/project'
@@ -6,28 +7,13 @@ import { useEditorStore, useProjectTabs } from '@renderer/features/editor/editor
 import { CHANGE_LETTER } from '@renderer/features/git/changeKind'
 import { useCheckoutGit } from '@renderer/features/git/gitStore'
 import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore'
+import { Icon } from '@renderer/lib/Icon'
 import { useCheckoutTree, useExplorerStore } from './explorerStore'
 import { FileTypeIcon } from './FileTypeIcon'
 import styles from './ExplorerPanel.module.css'
 
 const INDENT_PX = 12
 const ROW_INSET_PX = 6
-
-/** Points right; CSS turns it down when its folder is expanded. */
-function Chevron() {
-  return (
-    <svg viewBox="0 0 16 16" width="12" height="12">
-      <path
-        d="M6 4l4 4-4 4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
 
 interface GitMarks {
   readonly files: ReadonlyMap<string, GitChangeKind>
@@ -95,7 +81,8 @@ function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
           }
         >
           <span className={styles.chevron} aria-hidden>
-            {entry.kind === 'dir' && <Chevron />}
+            {/* Points right; CSS turns it down when the folder is expanded. */}
+            {entry.kind === 'dir' && <Icon icon={ChevronRight} />}
           </span>
           {entry.kind === 'file' && <FileTypeIcon name={entry.name} />}
           <span className={styles.name}>{entry.name}</span>
@@ -152,14 +139,14 @@ export function ExplorerPanel({ project }: { project: Project }) {
           title="Refresh"
           aria-label="Refresh explorer"
         >
-          ↻
+          <Icon icon={RefreshCw} />
         </button>
         <button
           onClick={() => collapseAll(checkout)}
           title="Collapse all"
           aria-label="Collapse all folders"
         >
-          ⊟
+          <Icon icon={ChevronsDownUp} />
         </button>
       </header>
       {tree.error ? (

@@ -50,10 +50,6 @@
   color: var(--text-primary);
 }
 
-.fetchGlyph {
-  display: inline-block;
-}
-
 .iconButton[data-fetching='true'] .fetchGlyph {
   animation: spin 0.9s linear infinite;
 }
@@ -156,8 +152,6 @@
 .commitMore {
   width: 32px;
   border-left: 1px solid rgb(255 255 255 / 35%);
-  font-size: 14px;
-  line-height: 1;
 }
 
 .commitButton:hover:not(:disabled),
@@ -223,11 +217,7 @@
 }
 
 .sectionChevron {
-  display: inline-block;
-  width: 14px;
   color: var(--text-muted);
-  font-size: 14px;
-  text-align: center;
   transition: transform 120ms ease;
 }
 

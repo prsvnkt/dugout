@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState, type CSSProperties } from 'react'
+import { Plus, X } from 'lucide-react'
+import { Icon } from '@renderer/lib/Icon'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import type { Project } from '@shared/project'
 import { AccountButton } from '@renderer/features/github/AccountButton'
@@ -59,7 +61,7 @@ function NewProjectMenu({ onAddProject, onCloneProject }: ProjectTabsProps) {
         aria-label="New project"
         title="New project"
       >
-        +
+        <Icon icon={Plus} />
       </button>
       {isOpen && (
         <div className={styles.menu} role="menu">
@@ -75,7 +77,7 @@ function NewProjectMenu({ onAddProject, onCloneProject }: ProjectTabsProps) {
   )
 }
 
-/** "×" on a tab: closes the project, asking first when agents or shells would stop. */
+/** The close button on a tab: closes the project, asking first when agents or shells would stop. */
 function CloseProjectButton({ project }: { project: Project }) {
   const openPanes = useOpenPaneCount(project.id)
   const closeProject = useCloseProject()
@@ -113,7 +115,7 @@ function CloseProjectButton({ project }: { project: Project }) {
         aria-label={`Close ${project.name}`}
         title="Close project (the folder stays on disk)"
       >
-        ×
+        <Icon icon={X} />
       </button>
       {confirmAt && (
         <div

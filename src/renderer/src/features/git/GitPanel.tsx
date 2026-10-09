@@ -1,3 +1,4 @@
+import { ChevronsRight, Minus, Plus } from 'lucide-react'
 import type { GitFileChange, GitStatus } from '@shared/git'
 import type { Project } from '@shared/project'
 import { useEditorStore, useProjectTabs } from '@renderer/features/editor/editorStore'
@@ -13,6 +14,7 @@ import { useCheckoutGit, useGitStore } from './gitStore'
 import { PullRequestBlock } from './PullRequestBlock'
 import { usePullRequestStatus } from './usePullRequestStatus'
 import { dugout } from '@renderer/lib/dugout'
+import { Icon } from '@renderer/lib/Icon'
 import styles from './GitPanel.module.css'
 
 interface GitPanelProps {
@@ -74,7 +76,7 @@ export function GitPanel({ project }: GitPanelProps) {
       title="Hide source control (⇧⌘G)"
       aria-label="Hide Git panel"
     >
-      »
+      <Icon icon={ChevronsRight} />
     </button>
   )
 
@@ -170,7 +172,7 @@ export function GitPanel({ project }: GitPanelProps) {
           selection={selection}
           isBusy={git.isBusy}
           bulkLabel="Unstage all"
-          bulkGlyph="−"
+          bulkIcon={Minus}
           onBulk={() =>
             void actions.unstage(
               id,
@@ -187,7 +189,7 @@ export function GitPanel({ project }: GitPanelProps) {
           selection={selection}
           isBusy={git.isBusy}
           bulkLabel="Stage all"
-          bulkGlyph="+"
+          bulkIcon={Plus}
           onBulk={() =>
             void actions.stage(
               id,

@@ -21,8 +21,6 @@
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 16px;
-  line-height: 1;
 }
 
 .button:hover {

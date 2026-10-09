@@ -1,10 +1,12 @@
 import { lazy, Suspense } from 'react'
+import { X } from 'lucide-react'
 import type { ProjectId } from '@shared/project'
 import { splitPath } from '@renderer/features/git/changeKind'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { AgentSettingsView } from '@renderer/features/agentConfig/AgentSettingsView'
 import { CompareView } from '@renderer/features/compare/CompareView'
 import { FileTypeIcon } from '@renderer/features/explorer/FileTypeIcon'
+import { Icon } from '@renderer/lib/Icon'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
 import { checkoutOf, fileKeyOf } from './fileKey'
 import type { EditorTab } from './tabs'
@@ -133,8 +135,8 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
                 <span className={styles.dirtyDot} aria-hidden>
                   ●
                 </span>
-                <span className={styles.closeGlyph} aria-hidden>
-                  ×
+                <span className={styles.closeGlyph}>
+                  <Icon icon={X} />
                 </span>
               </button>
             </div>
