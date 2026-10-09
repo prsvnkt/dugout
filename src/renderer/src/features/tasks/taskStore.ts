@@ -5,6 +5,7 @@ import type { Task, TaskDetail } from '@shared/tasks'
 import type { AgentKind } from '@shared/terminal'
 import { unwrap } from '@shared/result'
 import { dugout } from '@renderer/lib/dugout'
+import { useTaskQueueStore } from '@renderer/features/taskQueue/taskQueueStore'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 
 export interface ProjectTasks {
@@ -138,16 +139,26 @@ export const useTaskStore = create<TaskState>()((set, get) => {
     comment: (projectId, number, body) =>
       mutate(projectId, async () => unwrap(await dugout.tasks.comment(projectId, number, body))),
 
-    startAgent: (projectId, number, agents) =>
-      mutate(projectId, async () => {
-        const started = unwrap(await dugout.tasks.startSession(projectId, number, agents))
-        for (const session of started.sessions) {
-          useWorkspaceStore.getState().addPane(projectId, session.agent, session.worktree, {
-            task: started.task,
-            initialPrompt: started.prompt,
-          })
+    startAgent: (projectId, number, agents) => {
+      // Synchronously, so the queue counts this start before it could start another.
+      const queue = useTaskQueueStore.getState()
+      queue.beginLaunch(projectId, number)
+      return mutate(projectId, async () => {
+        try {
+          const started = unwrap(await dugout.tasks.startSession(projectId, number, agents))
+          for (const session of started.sessions) {
+            useWorkspaceStore.getState().addPane(projectId, session.agent, session.worktree, {
+              task: started.task,
+              initialPrompt: started.prompt,
+            })
+          }
+          queue.markStarted(projectId, number)
+        } catch (error) {
+          queue.endLaunch(projectId, number)
+          throw error
         }
-      }),
+      })
+    },
   }
 })
 

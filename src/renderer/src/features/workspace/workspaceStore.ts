@@ -44,6 +44,9 @@ interface WorkspaceState {
   restartPane(projectId: ProjectId, paneId: PaneId, options?: { isFresh?: boolean }): void
   /** Replaces all layouts with saved panes (fresh ids), e.g. on launch. */
   hydrate(snapshot: WorkspaceSnapshot): void
+  /** True once saved panes are back (or could not be read), so the queue sees every agent. */
+  readonly isRestored: boolean
+  markRestored(): void
   addPane(projectId: ProjectId, kind: TerminalKind, worktree?: Worktree, extras?: PaneExtras): void
   /** Called once the pane's session started, so its first prompt is never sent again. */
   clearInitialPrompt(projectId: ProjectId, paneId: PaneId): void
@@ -130,8 +133,11 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       updateLayout(projectId, (layout) => setPaneSession(layout, paneId, sessionId)),
     restartPane: (projectId, paneId, options) =>
       updateLayout(projectId, (layout) => restartPane(layout, paneId, options)),
+    isRestored: false,
+    markRestored: () => set((state) => (state.isRestored ? state : { isRestored: true })),
     hydrate: (snapshot) =>
       set({
+        isRestored: true,
         layouts: Object.fromEntries(
           Object.entries(snapshot.projects).map(([projectId, saved]) => {
             const panes = saved.panes.map(({ kind, worktree, sessionId, title }): Pane => ({

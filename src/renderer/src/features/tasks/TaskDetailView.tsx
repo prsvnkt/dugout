@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
+import { AGENT_LIST } from '@shared/agents'
 import type { ProjectId } from '@shared/project'
 import { TASK_STATUS_LABEL, TASK_STATUSES, type TaskDetail, type TaskStatus } from '@shared/tasks'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
@@ -11,7 +12,8 @@ import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
 import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
 import { Markdown } from './markdown/Markdown'
 import { CheckBadge } from '@renderer/features/checks/CheckBadge'
-import { StartAgentMenu } from './StartAgentMenu'
+import { QueueTaskButton } from '@renderer/features/taskQueue/QueueTaskButton'
+import { AgentChoiceMenu } from './AgentChoiceMenu'
 import { TaskComments } from './TaskComments'
 import { visibleLabels } from './taskList'
 import { useProjectTasks, useTaskStore } from './taskStore'
@@ -19,7 +21,10 @@ import { useTaskAgents } from './useTaskAgents'
 import { useTaskSource } from './useTaskSource'
 import { TaskTimelines } from '@renderer/features/timeline/TaskTimelines'
 import { UsageFigure, useTaskUsage } from '@renderer/features/usage/UsageFigure'
+import { taskStartOptions } from './taskStartOptions'
 import styles from './TaskDetailView.module.css'
+
+const START_OPTIONS = taskStartOptions(AGENT_LIST)
 
 interface TaskDetailViewProps {
   readonly projectId: ProjectId
@@ -129,10 +134,19 @@ export function TaskDetailView({ projectId, number, taskKey }: TaskDetailViewPro
               ))}
             </select>
           </label>
-          <StartAgentMenu
+          <AgentChoiceMenu
             label={agents ? 'Start another agent' : 'Start agent'}
+            title="Start an agent in a new worktree with this task as its first prompt"
+            options={START_OPTIONS}
+            isPrimary
             disabled={isBusy || task.status === 'done'}
-            onStart={(kinds) => void run(startAgent(projectId, number, kinds))}
+            onChoose={(kinds) => void run(startAgent(projectId, number, kinds))}
+          />
+          <QueueTaskButton
+            projectId={projectId}
+            task={task}
+            disabled={isBusy || task.status === 'done'}
+            run={(action) => void run(action)}
           />
           {second && (
             <button

@@ -150,6 +150,11 @@
   font-family: var(--font-mono);
 }
 
+.narrow {
+  align-self: flex-start;
+  min-width: 80px;
+}
+
 .hint {
   color: var(--text-muted);
   font-size: 11px;

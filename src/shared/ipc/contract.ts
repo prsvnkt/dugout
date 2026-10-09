@@ -22,6 +22,7 @@ import {
 import { MAX_LINEAR_API_KEY_LENGTH } from '../linear'
 import { EXTERNAL_APP_IDS } from '../openIn'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
+import { MAX_MAX_AGENTS, MAX_QUEUED_TASKS, MAX_TASK_KEY_LENGTH, MIN_MAX_AGENTS } from '../taskQueue'
 import {
   DEV_PORT_RANGE,
   isOneLineCommand,
@@ -157,7 +158,35 @@ export const taskSourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('linear'), teamKey: z.string().regex(LINEAR_TEAM_KEY_PATTERN) }),
 ])
 
-/** An optional field, so projects.json files from before decision 051 still load. */
+/** How many agents a project runs at once when it starts queued tasks (decision 047). */
+const maxAgents = z.number().int().min(MIN_MAX_AGENTS).max(MAX_MAX_AGENTS)
+
+const queuedTaskNumber = z.number().int().positive()
+
+/** A task waiting in its project's queue for a free agent slot. */
+const queuedTaskSchema = z.object({
+  number: queuedTaskNumber,
+  key: z.string().trim().min(1).max(MAX_TASK_KEY_LENGTH),
+  title: z.string().max(MAX_TASK_TITLE_LENGTH),
+  agent: z.enum(AGENT_KINDS),
+})
+
+export const projectChangeTaskQueueRequestSchema = z.object({
+  id: projectId,
+  change: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('add'), task: queuedTaskSchema }),
+    z.object({ kind: z.literal('remove'), number: queuedTaskNumber }),
+    z.object({
+      kind: z.literal('move'),
+      number: queuedTaskNumber,
+      offset: z.union([z.literal(-1), z.literal(1)]),
+    }),
+  ]),
+})
+
+export const projectSetMaxAgentsRequestSchema = z.object({ id: projectId, maxAgents })
+
+/** Optional fields, so projects.json files from before decisions 047 and 051 still load. */
 export const projectSchema = z.object({
   id: projectId,
   name: projectName,
@@ -168,6 +197,8 @@ export const projectSchema = z.object({
   checkCommand: checkCommand.optional(),
   worktreeSetup: worktreeSetupSchema.optional(),
   taskSource: taskSourceSchema.optional(),
+  maxAgents: maxAgents.optional(),
+  taskQueue: z.array(queuedTaskSchema).max(MAX_QUEUED_TASKS).optional(),
 })
 
 export const projectSetTaskSourceRequestSchema = z.object({
@@ -190,6 +221,7 @@ export type ProjectRemoveRequest = z.infer<typeof projectRemoveRequestSchema>
 export type ProjectSetDevCommandRequest = z.infer<typeof projectSetDevCommandRequestSchema>
 export type ProjectSetCheckCommandRequest = z.infer<typeof projectSetCheckCommandRequestSchema>
 export type ProjectSetWorktreeSetupRequest = z.infer<typeof projectSetWorktreeSetupRequestSchema>
+export type ProjectChangeTaskQueueRequest = z.infer<typeof projectChangeTaskQueueRequestSchema>
 export type ProjectsFile = z.infer<typeof projectsFileSchema>
 
 /** A path inside a repository: relative, with no `..` segments, so it cannot escape it. */

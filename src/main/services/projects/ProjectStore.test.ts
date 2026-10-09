@@ -229,3 +229,68 @@ describe('ProjectStore dev command', () => {
     await expect(store.setDevCommand('nope', 'npm run dev')).rejects.toThrow('Project not found')
   })
 })
+
+describe('ProjectStore task queue', () => {
+  const queued = (number: number) => ({
+    number,
+    key: `#${number}`,
+    title: `Task ${number}`,
+    agent: 'claude' as const,
+  })
+
+  test('keeps the queue and the agent limit across a reload', async () => {
+    // Arrange
+    const { store, dir } = setup()
+    await store.load()
+    const project = await store.add({ rootPath: REPO })
+
+    // Act
+    await store.changeTaskQueue(project.id, { kind: 'add', task: queued(1) })
+    await store.changeTaskQueue(project.id, { kind: 'add', task: queued(2) })
+    await store.changeTaskQueue(project.id, { kind: 'move', number: 2, offset: -1 })
+    await store.setMaxAgents(project.id, 1)
+    const reloaded = setup(dir).store
+    await reloaded.load()
+
+    // Assert
+    expect(reloaded.list()[0]?.taskQueue).toEqual([queued(2), queued(1)])
+    expect(reloaded.list()[0]?.maxAgents).toBe(1)
+  })
+
+  test('applies changes sent at the same time one after the other', async () => {
+    const { store } = setup()
+    await store.load()
+    const project = await store.add({ rootPath: REPO })
+    await store.changeTaskQueue(project.id, { kind: 'add', task: queued(1) })
+    await store.changeTaskQueue(project.id, { kind: 'add', task: queued(2) })
+
+    await Promise.all([
+      store.changeTaskQueue(project.id, { kind: 'remove', number: 1 }),
+      store.changeTaskQueue(project.id, { kind: 'remove', number: 2 }),
+      store.changeTaskQueue(project.id, { kind: 'add', task: queued(3) }),
+    ])
+
+    expect(store.list()[0]?.taskQueue).toEqual([queued(3)])
+  })
+
+  test('drops the queue from the project once it is empty', async () => {
+    const { store } = setup()
+    await store.load()
+    const project = await store.add({ rootPath: REPO })
+    await store.changeTaskQueue(project.id, { kind: 'add', task: queued(1) })
+
+    const updated = await store.changeTaskQueue(project.id, { kind: 'remove', number: 1 })
+
+    expect(updated).not.toHaveProperty('taskQueue')
+  })
+
+  test('refuses an unknown project', async () => {
+    const { store } = setup()
+    await store.load()
+
+    await expect(store.setMaxAgents('nope', 2)).rejects.toThrow('Project not found')
+    await expect(store.changeTaskQueue('nope', { kind: 'remove', number: 1 })).rejects.toThrow(
+      'Project not found',
+    )
+  })
+})

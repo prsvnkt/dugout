@@ -15,6 +15,7 @@ import { useProjectTasks, useTaskStore } from './taskStore'
 import { useTaskAgents } from './useTaskAgents'
 import { useTaskUsage } from '@renderer/features/usage/UsageFigure'
 import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
+import { TaskQueue } from '@renderer/features/taskQueue/TaskQueue'
 import styles from './Tasks.module.css'
 
 const REFRESH_INTERVAL_MS = 30_000
@@ -204,6 +205,7 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
         />
       )}
       <div className={styles.scroll}>
+        <TaskQueue project={project} />
         {tasks === null && !error && <LoadingCards />}
         {tasks?.length === 0 && !isCreating && (
           <div className={styles.empty}>
