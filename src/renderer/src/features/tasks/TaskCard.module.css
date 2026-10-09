@@ -139,3 +139,8 @@
     transform: none;
   }
 }
+
+/* "also changed by #12": cut short when the card is narrow. */
+.overlap {
+  max-width: 100%;
+}

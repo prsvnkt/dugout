@@ -12,6 +12,8 @@ import {
 } from '@renderer/features/workspace/paneActivity'
 import type { Subagent } from '@renderer/features/agents/subagents'
 import { OpenInMenu } from '@renderer/features/openIn/OpenInMenu'
+import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
+import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
 import { ActivityIndicator } from './ActivityIndicator'
 import { useDoneSeen } from './useDoneSeen'
 import { useTerminal, type TerminalStatus } from './useTerminal'
@@ -40,6 +42,8 @@ interface TerminalPaneProps {
   readonly initialPrompt?: string | undefined
   /** Shown in the header for agents started on a task. */
   readonly task?: { number: number; title: string } | undefined
+  /** Other agents that changed some of the same files (advisory), shown in the header. */
+  readonly overlaps: readonly LabelledOverlap[]
   onFocus(): void
   onClose(): void
   onActivity(
@@ -69,7 +73,7 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 export function TerminalPane(props: TerminalPaneProps) {
   const { index, kind, projectId, cwd, branch, projectColor, shouldFocus, isFocused } = props
   const { focusRequest } = props
-  const { resumeSessionId, initialPrompt, task, worktreePath } = props
+  const { resumeSessionId, initialPrompt, task, worktreePath, overlaps } = props
   const { onFocus, onClose, onActivity, onSubagents, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const terminal = useTerminal(containerRef, {
@@ -125,6 +129,7 @@ export function TerminalPane(props: TerminalPaneProps) {
             ⎇ {branch}
           </span>
         )}
+        <OverlapFlag overlaps={overlaps} className={styles.overlap} />
         <ActivityIndicator
           activity={activity}
           label={describe(activity, status)}

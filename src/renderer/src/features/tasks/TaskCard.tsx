@@ -5,6 +5,8 @@ import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator
 import { ACTIVITY_LABEL } from '@renderer/features/workspace/paneActivity'
 import { formatAge } from '@renderer/lib/formatAge'
 import { Icon } from '@renderer/lib/Icon'
+import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
+import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
 import { priorityOf, visibleLabels } from './taskList'
 import type { TaskAgents } from './useTaskAgents'
 import styles from './TaskCard.module.css'
@@ -18,6 +20,8 @@ const PRIORITY_LABEL: Readonly<Record<TaskPriority, string>> = {
 interface TaskCardProps {
   readonly task: Task
   readonly agents: TaskAgents | undefined
+  /** Other agents that changed files this task's agents changed too (advisory). */
+  readonly overlaps: readonly LabelledOverlap[]
   /** The task is open in the active editor tab. */
   readonly isCurrent: boolean
   /** Click (or Enter) previews the task in a tab; double-click keeps the tab open. */
@@ -38,11 +42,11 @@ function AgentsOnTask({ agents }: { agents: TaskAgents }) {
 }
 
 /** One task in the Tasks list: title, when it changed, labels and the agents on it. */
-export function TaskCard({ task, agents, isCurrent, onOpen }: TaskCardProps) {
+export function TaskCard({ task, agents, overlaps, isCurrent, onOpen }: TaskCardProps) {
   const labels = visibleLabels(task.labels)
   const priority = priorityOf(task.labels)
   const age = formatAge(task.updatedAt)
-  const hasFooter = labels.length > 0 || agents !== undefined
+  const hasFooter = labels.length > 0 || agents !== undefined || overlaps.length > 0
   return (
     <li>
       <button
@@ -79,6 +83,7 @@ export function TaskCard({ task, agents, isCurrent, onOpen }: TaskCardProps) {
                 {label}
               </span>
             ))}
+            <OverlapFlag overlaps={overlaps} className={styles.overlap} />
             {agents && <AgentsOnTask agents={agents} />}
           </span>
         )}

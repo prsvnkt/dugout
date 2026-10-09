@@ -67,6 +67,11 @@
   white-space: nowrap;
 }
 
+/* "also changed by #12": shrinks before the status does. */
+.overlap {
+  flex-shrink: 2;
+}
+
 .status {
   margin-left: auto;
   font-size: 12px;

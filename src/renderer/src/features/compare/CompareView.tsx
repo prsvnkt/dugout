@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { TriangleAlert } from 'lucide-react'
 import type { CompareTarget, WorktreeChanges } from '@shared/compare'
 import type { ProjectId } from '@shared/project'
 import { dugout } from '@renderer/lib/dugout'
@@ -6,6 +7,9 @@ import {
   ReviewComments,
   type CommentTarget,
 } from '@renderer/features/reviewComments/ReviewComments'
+import { Icon } from '@renderer/lib/Icon'
+import { alsoChangedBy } from '@renderer/features/overlaps/overlaps'
+import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
 import { compareFiles } from './compareFiles'
 import styles from './CompareView.module.css'
 
@@ -69,6 +73,15 @@ export function CompareView({ projectId, tabId, target }: CompareViewProps) {
       })),
     [projectId, left, right],
   )
+  const overlaps = useProjectOverlaps(projectId)
+  const elsewhere = useMemo(
+    () => overlaps.elsewhere([left.worktreePath, right.worktreePath]),
+    [overlaps, left.worktreePath, right.worktreePath],
+  )
+  const elsewhereNote = (path: string) => {
+    const others = elsewhere.get(path)
+    return others ? alsoChangedBy(others) : null
+  }
   const who = (changedIn: readonly number[]) =>
     changedIn.length === 2
       ? 'both'
@@ -87,21 +100,30 @@ export function CompareView({ projectId, tabId, target }: CompareViewProps) {
           <p className={styles.muted}>Neither agent changed anything yet.</p>
         )}
         <ul className={styles.list}>
-          {files.map((file) => (
-            <li key={file.path}>
-              <button
-                className={styles.file}
-                aria-pressed={file.path === selected}
-                onClick={() => setSelected(file.path)}
-                aria-label={`${file.path}, ${who(file.changedIn)}`}
-              >
-                <span className={styles.path}>{file.path}</span>
-                <span className={styles.who} data-both={file.changedIn.length === 2}>
-                  {who(file.changedIn)}
-                </span>
-              </button>
-            </li>
-          ))}
+          {files.map((file) => {
+            const note = elsewhereNote(file.path)
+            return (
+              <li key={file.path}>
+                <button
+                  className={styles.file}
+                  aria-pressed={file.path === selected}
+                  onClick={() => setSelected(file.path)}
+                  aria-label={[file.path, who(file.changedIn), note].filter(Boolean).join(', ')}
+                >
+                  <span className={styles.path}>{file.path}</span>
+                  <span className={styles.who} data-both={file.changedIn.length === 2}>
+                    {who(file.changedIn)}
+                  </span>
+                  {note && (
+                    <span className={styles.elsewhere}>
+                      <Icon icon={TriangleAlert} />
+                      {note}
+                    </span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       </aside>
       <div className={styles.diff}>

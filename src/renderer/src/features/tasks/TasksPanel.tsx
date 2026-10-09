@@ -10,6 +10,7 @@ import { TaskGroups } from './TaskGroups'
 import { filterTasks, groupTasks } from './taskList'
 import { useProjectTasks, useTaskStore } from './taskStore'
 import { useTaskAgents } from './useTaskAgents'
+import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
 import styles from './Tasks.module.css'
 
 const REFRESH_INTERVAL_MS = 30_000
@@ -65,6 +66,7 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
   const setPanelOpen = useGitStore((state) => state.setPanelOpen)
   const openTask = useEditorStore((state) => state.openTask)
   const agents = useTaskAgents(project.id)
+  const overlaps = useProjectOverlaps(project.id)
   const currentTask = useCurrentTask(project.id)
   const [query, setQuery] = useState('')
   const [isCreating, setIsCreating] = useState(false)
@@ -154,6 +156,7 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
         <TaskGroups
           groups={groups}
           agents={agents}
+          overlapsFor={overlaps.forTask}
           currentTask={currentTask}
           onOpen={(task, isPreview) => openTask(project.id, task.number, task.title, isPreview)}
         />

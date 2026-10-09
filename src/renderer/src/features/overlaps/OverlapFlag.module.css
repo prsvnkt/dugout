@@ -1,0 +1,19 @@
+.flag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--status-needs-input);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.flag svg {
+  flex-shrink: 0;
+}
+
+.text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

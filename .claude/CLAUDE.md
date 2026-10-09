@@ -65,6 +65,8 @@ src/
               add, agent check).
               Review and Compare diffs take line comments for agents (reviewComments/): one
               prompt, pasted into the checkout's agent via terminal/terminalInput.ts.
+              overlaps/ tracks what each worktree changed and flags agents and tasks that
+              changed the same files (advisory, decision 044).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.

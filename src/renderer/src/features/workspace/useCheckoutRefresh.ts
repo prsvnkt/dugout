@@ -5,6 +5,8 @@ import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
+import { useOverlapStore } from '@renderer/features/overlaps/overlapStore'
+import { useLiveWorktreeKey } from '@renderer/features/overlaps/useOverlaps'
 
 const REFRESH_INTERVAL_MS = 3_000
 
@@ -18,7 +20,8 @@ function useActivitySignature(projectId: ProjectId): string {
 }
 
 /**
- * Keeps the visible project's selected checkout fresh (git status, file tree, open files): on show, on a timer while the window is
+ * Keeps the visible project's selected checkout fresh (git status, file tree, open files) and
+ * what each of its worktrees changed (overlap warnings): on show, on a timer while the window is
  * visible, when the window regains focus, and whenever one of its agents changes status.
  */
 export function useCheckoutRefresh(projectId: ProjectId, isActive: boolean): void {
@@ -26,6 +29,8 @@ export function useCheckoutRefresh(projectId: ProjectId, isActive: boolean): voi
   const refreshTree = useExplorerStore((state) => state.refresh)
   const syncWithDisk = useEditorStore((state) => state.syncWithDisk)
   const loadWorktrees = useWorktreeStore((state) => state.load)
+  const refreshOverlaps = useOverlapStore((state) => state.refresh)
+  const worktreeKey = useLiveWorktreeKey(projectId)
   const checkout = useSelectedCheckout(projectId)
   const activitySignature = useActivitySignature(projectId)
 
@@ -39,6 +44,7 @@ export function useCheckoutRefresh(projectId: ProjectId, isActive: boolean): voi
       void refreshGit(checkout)
       void refreshTree(checkout)
       void syncWithDisk(projectId)
+      void refreshOverlaps(projectId, worktreeKey ? worktreeKey.split('\n') : [])
     }
     refresh()
     const refreshIfVisible = () => {
@@ -50,5 +56,15 @@ export function useCheckoutRefresh(projectId: ProjectId, isActive: boolean): voi
       window.clearInterval(timer)
       window.removeEventListener('focus', refreshIfVisible)
     }
-  }, [isActive, checkout, projectId, refreshGit, refreshTree, syncWithDisk, activitySignature])
+  }, [
+    isActive,
+    checkout,
+    projectId,
+    refreshGit,
+    refreshTree,
+    syncWithDisk,
+    refreshOverlaps,
+    worktreeKey,
+    activitySignature,
+  ])
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MAX_COMPARED_WORKTREES } from '../compare'
 import { MAX_OPEN_FILE_BYTES } from '../files'
 import {
   DUGOUT_LABEL_PREFIX,
@@ -343,7 +344,7 @@ export type TaskUpdateRequest = z.input<typeof taskUpdateRequestSchema>
 
 export const compareChangesRequestSchema = z.object({
   projectId,
-  worktreePaths: z.array(absolutePath).min(2).max(4),
+  worktreePaths: z.array(absolutePath).min(2).max(MAX_COMPARED_WORKTREES),
 })
 
 const mcpRecord = z.record(z.string().min(1).max(256), z.string().max(4096))

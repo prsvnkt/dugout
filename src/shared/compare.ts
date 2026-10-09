@@ -1,5 +1,8 @@
 import type { GitChangeKind } from './git'
 
+/** Most worktrees one request may list (Compare shows two; overlap warnings track them all). */
+export const MAX_COMPARED_WORKTREES = 32
+
 /** What one worktree changed since its branch left the base branch. */
 export interface WorktreeChanges {
   readonly worktreePath: string
