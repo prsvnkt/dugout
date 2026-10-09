@@ -20,6 +20,13 @@ import {
 } from '../git'
 import { EXTERNAL_APP_IDS } from '../openIn'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
+import {
+  DEV_PORT_RANGE,
+  isOneLineCommand,
+  MAX_DEV_COMMAND_LENGTH,
+  MAX_DEV_PORT,
+  MIN_DEV_PORT,
+} from '../preview'
 import { AGENT_KINDS, TERMINAL_KINDS } from '../terminal'
 
 /** Schemas for IPC payloads. Main validates every incoming payload; never trust the renderer. */
@@ -48,6 +55,8 @@ export const terminalCreateRequestSchema = z.object({
   resumeSessionId: sessionId.optional(),
   /** First message for a new Claude session (e.g. the task it was started for). */
   initialPrompt: z.string().min(1).max(MAX_INITIAL_PROMPT_LENGTH).optional(),
+  /** `PORT` for a dev server started in this shell. */
+  port: z.number().int().min(MIN_DEV_PORT).max(MAX_DEV_PORT).optional(),
   cwd: absolutePath,
   cols: dimension,
   rows: dimension,
@@ -80,12 +89,26 @@ export const projectAddRequestSchema = z.object({ rootPath: absolutePath })
 
 export const projectRemoveRequestSchema = z.object({ id: projectId })
 
+/** The command "Run" types into a new shell, e.g. `npm run dev`. One line. */
+const devCommand = z
+  .string()
+  .trim()
+  .max(MAX_DEV_COMMAND_LENGTH)
+  .refine(isOneLineCommand, 'The dev command must be one line')
+
+/** null or blank clears the project's dev command. */
+export const projectSetDevCommandRequestSchema = z.object({
+  id: projectId,
+  command: devCommand.nullable(),
+})
+
 export const projectSchema = z.object({
   id: projectId,
   name: projectName,
   rootPath: absolutePath,
   color: projectColor,
   createdAt: z.iso.datetime(),
+  devCommand: devCommand.min(1).optional(),
 })
 
 /** On-disk format of projects.json. Bump `version` and migrate when it changes. */
@@ -96,6 +119,7 @@ export const projectsFileSchema = z.object({
 
 export type ProjectAddRequest = z.infer<typeof projectAddRequestSchema>
 export type ProjectRemoveRequest = z.infer<typeof projectRemoveRequestSchema>
+export type ProjectSetDevCommandRequest = z.infer<typeof projectSetDevCommandRequestSchema>
 export type ProjectsFile = z.infer<typeof projectsFileSchema>
 
 /** A path inside a repository: relative, with no `..` segments, so it cannot escape it. */
@@ -382,6 +406,15 @@ export const agentConfigSaveMcpRequestSchema = z.object({
       'Server names must be unique.',
     ),
 })
+
+/** Ports already given to running dev servers, which a new one must not get. */
+export const previewAssignPortRequestSchema = z.object({
+  reserved: z
+    .array(z.number().int().min(MIN_DEV_PORT).max(MAX_DEV_PORT))
+    .max(DEV_PORT_RANGE.last - DEV_PORT_RANGE.first + 1),
+})
+
+export const previewOpenUrlRequestSchema = z.object({ url: z.url().max(2048) })
 
 export const settingsUpdateRequestSchema = z.object({ defaultAgent: z.enum(AGENT_KINDS) })
 export type SettingsUpdateRequest = z.infer<typeof settingsUpdateRequestSchema>

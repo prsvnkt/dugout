@@ -70,6 +70,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               kind={pane.kind}
               resumeSessionId={pane.sessionId}
               initialPrompt={pane.initialPrompt}
+              devServer={pane.devServer}
               task={pane.task}
               overlaps={overlaps.forWorktree(pane.worktree?.path)}
               projectId={project.id}

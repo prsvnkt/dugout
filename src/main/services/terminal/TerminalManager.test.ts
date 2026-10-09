@@ -194,6 +194,17 @@ describe('TerminalManager agent status', () => {
     expect(spawned[0]?.options.env).not.toHaveProperty('DUGOUT_HOOK_TOKEN')
   })
 
+  test('gives a dev server shell its assigned PORT', () => {
+    const { manager, spawned, events } = setupWithHooks()
+
+    manager.create({ ...request, kind: 'shell', port: 4101 }, events)
+    manager.create({ ...request, kind: 'shell' }, events)
+
+    expect(spawned[0]?.options.env.PORT).toBe('4101')
+    expect(spawned[0]?.options.args).toEqual(['-l'])
+    expect(spawned[1]?.options.env).not.toHaveProperty('PORT')
+  })
+
   test('claude terminals start in the starting state and follow hook signals', () => {
     const { manager, events, onAgentStatusChange } = setupWithHooks()
     const id = manager.create(request, events)

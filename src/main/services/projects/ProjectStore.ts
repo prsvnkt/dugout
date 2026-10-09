@@ -38,9 +38,10 @@ export class ProjectStore {
     const parsed = projectsFileSchema.safeParse(safeJsonParse(raw))
     if (parsed.success) {
       // Names always follow the folder, including projects saved when names were editable.
-      this.projects = parsed.data.projects.map((project) => ({
+      this.projects = parsed.data.projects.map(({ devCommand, ...project }) => ({
         ...project,
         name: suggestProjectName(project.rootPath),
+        ...(devCommand && { devCommand }),
       }))
       return
     }
@@ -63,6 +64,17 @@ export class ProjectStore {
     }
     await this.commit([...this.projects, project])
     return project
+  }
+
+  /** Sets the project's dev command; null or blank removes it. */
+  async setDevCommand(id: ProjectId, command: string | null): Promise<Project> {
+    const project = this.projects.find((candidate) => candidate.id === id)
+    if (!project) throw new Error('Project not found.')
+    const { devCommand, ...rest } = project
+    const trimmed = command?.trim()
+    const updated: Project = trimmed ? { ...rest, devCommand: trimmed } : rest
+    await this.commit(this.projects.map((candidate) => (candidate.id === id ? updated : candidate)))
+    return updated
   }
 
   async remove(id: ProjectId): Promise<void> {

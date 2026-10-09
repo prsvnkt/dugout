@@ -45,7 +45,8 @@ src/
                 hooks, MCP; registry.ts lists them), agentHooks/ (hook server, status signals,
                 pending approvals, subagents, session ids),
                 worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
-                files/ (explorer + editor file access, path-safe), github/ (sign-in, API),
+                files/ (explorer + editor file access, path-safe), github/ (sign-in, API,
+                PRs, preview deployments), preview/ (dev server ports, which links may open),
                 settings/ (app preferences: default agent, clone folder, last "Open in…" app),
                 openIn/ (open a checkout in VS Code, Cursor, Zed or Finder),
                 tasks/ (GitHub Issues as tasks),
@@ -62,6 +63,8 @@ src/
               (agents/) minimises down to its header (workspace/LeftSidebar.tsx).
               The right panel's Tasks view (tasks/) lists task cards; a task opens as an editor
               tab (kind `task`), rendered with tasks/markdown/ (safe markdown, no raw HTML).
+              The Git panel's Preview block (preview/) shows the branch's preview deployment
+              and runs the project's dev command in a shell with an assigned PORT.
               A project with no agents open shows start/StartScreen.tsx (prompt box, sessions to
               resume, open tasks); with no projects at all, welcome/WelcomeScreen.tsx (repos to
               add, agent check).

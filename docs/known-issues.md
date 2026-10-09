@@ -163,3 +163,14 @@ what was meant). Comments are lost when the app reloads.
 
 **Likely fix:** allow comments on the left side as `path (removed):line`, and move comments with
 Monaco decoration ranges when the model changes.
+
+## Dev server shells are not restored on relaunch
+
+- **Area:** preview (`src/renderer/src/features/preview/`, `workspace/useWorkspacePersistence.ts`)
+- **Found:** 2026-10-09, while building dev servers per worktree (decision 049)
+
+**What happens:** a shell started with "Run" is saved like any shell, without its dev command or
+port, so after a relaunch it comes back as a plain shell and the Preview block offers "Run"
+again.
+
+**Likely fix:** save `devServer` with the pane and rerun it on restore (asking for a fresh port).

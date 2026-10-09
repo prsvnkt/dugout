@@ -1,3 +1,4 @@
+import type { DevServer } from '@shared/preview'
 import type { TerminalKind } from '@shared/terminal'
 import type { Worktree } from '@shared/worktree'
 
@@ -18,6 +19,8 @@ export interface Pane {
   readonly initialPrompt?: string
   /** What the agent was started for, shown when offering to resume it. */
   readonly title?: string
+  /** A shell started by "Run": types this dev command once, with `PORT` set. Not saved. */
+  readonly devServer?: DevServer
 }
 
 export interface PaneTask {
@@ -31,6 +34,7 @@ export interface PaneExtras {
   /** An earlier session to resume instead of starting a new one. */
   readonly sessionId?: string | undefined
   readonly title?: string | undefined
+  readonly devServer?: DevServer | undefined
 }
 
 /** The side-by-side terminal panes of one project. */
@@ -66,6 +70,7 @@ export function addPane(
     ...(extras.initialPrompt && { initialPrompt: extras.initialPrompt }),
     ...(extras.sessionId && { sessionId: extras.sessionId }),
     ...(extras.title && { title: extras.title }),
+    ...(extras.devServer && { devServer: extras.devServer }),
   }
   return { panes: [...layout.panes, pane], focusedPaneId: pane.id }
 }

@@ -20,6 +20,8 @@ export interface Project {
   readonly rootPath: string
   readonly color: ProjectColor
   readonly createdAt: string
+  /** What "Run" starts in a new shell with an assigned `PORT`, e.g. `npm run dev`. */
+  readonly devCommand?: string
 }
 
 export const MAX_PROJECT_NAME_LENGTH = 60

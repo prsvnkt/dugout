@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { AgentStatus } from '@shared/agentStatus'
+import type { DevServer } from '@shared/preview'
 import type { ToolCallPreview } from '@shared/toolCall'
 import { dugout } from '@renderer/lib/dugout'
 import { isAgentKind, type TerminalExit, type TerminalKind } from '@shared/terminal'
@@ -71,11 +72,13 @@ export interface TerminalOptions {
   readonly resumeSessionId?: string | undefined
   /** First message for a new session. Read once at start. */
   readonly initialPrompt?: string | undefined
+  /** Shells only: started with `PORT` set, then this command typed once. Read once at start. */
+  readonly devServer?: DevServer | undefined
 }
 
 export function useTerminal(
   containerRef: RefObject<HTMLDivElement | null>,
-  { kind, projectId, cwd, resumeSessionId, initialPrompt }: TerminalOptions,
+  { kind, projectId, cwd, resumeSessionId, initialPrompt, devServer }: TerminalOptions,
 ): TerminalHandle {
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
@@ -86,6 +89,7 @@ export function useTerminal(
   const [subagents, setSubagents] = useState<readonly Subagent[]>(NO_SUBAGENTS)
   const resumeRef = useRef(resumeSessionId)
   const initialPromptRef = useRef(initialPrompt)
+  const devServerRef = useRef(devServer)
   const terminalRef = useRef<Terminal | null>(null)
 
   useEffect(() => {
@@ -159,14 +163,21 @@ export function useTerminal(
           rows: terminal.rows,
           ...(resumeRef.current && { resumeSessionId: resumeRef.current }),
           ...(initialPromptRef.current && { initialPrompt: initialPromptRef.current }),
+          ...(devServerRef.current && { port: devServerRef.current.port }),
         })
         .then((result) => {
           if (!result.ok) {
             if (!isDisposed) setStatus({ state: 'error', message: result.error })
             return
           }
-          if (isDisposed) dugout.terminal.kill(result.data)
-          else connect(result.data)
+          if (isDisposed) {
+            dugout.terminal.kill(result.data)
+            return
+          }
+          connect(result.data)
+          // Typed like the user would, so the shell stays open and ↑ runs it again.
+          if (devServerRef.current)
+            dugout.terminal.write(result.data, `${devServerRef.current.command}\r`)
         })
         .catch((error: unknown) => {
           console.error('[terminal] create failed', error)

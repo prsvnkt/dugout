@@ -118,3 +118,43 @@ describe('ProjectStore', () => {
     warn.mockRestore()
   })
 })
+
+describe('ProjectStore dev command', () => {
+  test('saves a trimmed dev command and keeps it across a reload', async () => {
+    // Arrange
+    const { store, dir } = setup()
+    await store.load()
+    const project = await store.add({ rootPath: REPO })
+
+    // Act
+    const updated = await store.setDevCommand(project.id, '  npm run dev  ')
+    const reloaded = setup(dir).store
+    await reloaded.load()
+
+    // Assert
+    expect(updated.devCommand).toBe('npm run dev')
+    expect(reloaded.list()[0]?.devCommand).toBe('npm run dev')
+  })
+
+  test('clears the dev command when given blank text or null', async () => {
+    const { store } = setup()
+    await store.load()
+    const project = await store.add({ rootPath: REPO })
+    await store.setDevCommand(project.id, 'npm run dev')
+
+    const cleared = await store.setDevCommand(project.id, '   ')
+    await store.setDevCommand(project.id, 'npm start')
+    const clearedAgain = await store.setDevCommand(project.id, null)
+
+    expect(cleared).not.toHaveProperty('devCommand')
+    expect(clearedAgain).not.toHaveProperty('devCommand')
+    expect(store.list()[0]).not.toHaveProperty('devCommand')
+  })
+
+  test('refuses an unknown project', async () => {
+    const { store } = setup()
+    await store.load()
+
+    await expect(store.setDevCommand('nope', 'npm run dev')).rejects.toThrow('Project not found')
+  })
+})

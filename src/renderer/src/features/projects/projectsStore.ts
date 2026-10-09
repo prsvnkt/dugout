@@ -13,6 +13,8 @@ interface ProjectsState {
   /** Throws with a user-facing message on failure, for the calling form to display. */
   add(request: ProjectAddRequest): Promise<Project>
   remove(id: ProjectId): Promise<void>
+  /** Saves the project's dev command (null or blank clears it). Throws a user-facing message. */
+  setDevCommand(id: ProjectId, command: string | null): Promise<void>
   select(id: ProjectId): void
   selectIndex(index: number): void
 }
@@ -45,6 +47,13 @@ export const useProjectsStore = create<ProjectsState>()((set, get) => ({
       const selectedId = state.selectedId === id ? (projects[0]?.id ?? null) : state.selectedId
       return { projects, selectedId }
     })
+  },
+
+  async setDevCommand(id, command) {
+    const updated = unwrap(await dugout.projects.setDevCommand(id, command))
+    set((state) => ({
+      projects: state.projects.map((project) => (project.id === id ? updated : project)),
+    }))
   },
 
   select(id) {
