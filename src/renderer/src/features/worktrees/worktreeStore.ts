@@ -20,7 +20,11 @@ const EMPTY: readonly Worktree[] = []
 
 export const useWorktreeStore = create<WorktreeState>()((set, get) => {
   const setError = (projectId: ProjectId, error: string | null) =>
-    set((state) => ({ errors: { ...state.errors, [projectId]: error } }))
+    set((state) =>
+      state.errors[projectId] === error
+        ? state
+        : { errors: { ...state.errors, [projectId]: error } },
+    )
 
   return {
     byProject: {},
@@ -29,7 +33,13 @@ export const useWorktreeStore = create<WorktreeState>()((set, get) => {
     async load(projectId) {
       const result = await dugout.worktrees.list(projectId)
       if (!result.ok) return setError(projectId, result.error)
-      set((state) => ({ byProject: { ...state.byProject, [projectId]: result.data } }))
+      // An unchanged list keeps its object, so the panel does not re-render on every poll.
+      set((state) => {
+        const current = state.byProject[projectId]
+        return current && JSON.stringify(current) === JSON.stringify(result.data)
+          ? state
+          : { byProject: { ...state.byProject, [projectId]: result.data } }
+      })
     },
 
     async startSession(projectId, agent) {

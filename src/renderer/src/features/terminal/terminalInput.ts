@@ -26,6 +26,7 @@ export function sendPrompt(terminalId: TerminalId, prompt: string): boolean {
   const paste = pasters.get(terminalId)
   if (!paste) return false
   paste(prompt)
+  // Not cancelled if the pane closes first: main ignores writes to terminals it no longer has.
   setTimeout(() => dugout.terminal.write(terminalId, '\r'), SUBMIT_DELAY_MS)
   return true
 }

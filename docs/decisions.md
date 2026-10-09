@@ -167,6 +167,9 @@ terminal's project and calls GitHub with the user's token — the agent never se
 `mcp__dugout`. The first prompt is placed before `--mcp-config`, which takes a list. Providers
 are behind `TaskService`, so Jira or local storage can be added later.
 
+_Superseded in part by 053: the hook settings no longer pre-approve the whole `mcp__dugout`
+server, only its read and propose tools; task writes ask first._
+
 ## 019 — "Needs you" inbox across projects (2026-10-06)
 
 Hooks for ready, needs-input and done forward their payload, and the hook server extracts a
@@ -213,13 +216,14 @@ checkout. Only the fields Dugout shows are checked and rewritten; unknown fields
 each server are kept, writes are atomic, and a save is refused if the file changed since it was
 read. Values that look like secrets written out in full get a warning (the file is usually
 committed; use `${VAR}`). Claude Code keeps loading `.mcp.json` itself. Codex panes get the same
-servers as `-c mcp_servers.<name>=…`, read from the pane's checkout when it starts. Codex does not
+servers as `-c mcp_servers.<name>=…`, read from the pane's checkout when it starts (superseded by
+052: only once the user approved the project's servers). Codex does not
 expand `${VAR}`, so a `${KEY}` env entry becomes `env_vars`, `Authorization: Bearer ${VAR}` becomes
 `bearer_token_env_var`, and a whole-value `${VAR}` header becomes `env_http_headers`; servers that
 need anything else (SSE, `${VAR}` inside a command, URL or longer value) stay Claude-only, and the
 tab says why. Values are never expanded into Codex's arguments, so no secret reaches a process
 list. There is no per-project "share with Codex" switch; sharing what Codex can run is the point
-(add one if a project needs it).
+(add one if a project needs it). Superseded by 052: sharing now waits for a per-project approval.
 
 "Make AGENTS.md the source" moves CLAUDE.md into a new AGENTS.md (or keeps an existing one) and
 leaves CLAUDE.md as an `@AGENTS.md` import (`@../AGENTS.md` from `.claude/CLAUDE.md`) plus a
@@ -1077,7 +1081,189 @@ in Linear (issue #27).
   Linear's 10,000-point query limit; comment counts are not fetched for lists (cards show them
   only for GitHub), since they would multiply the complexity of every 30-second refresh.
 
-## 052 — Keyboard patterns behind every ARIA role; muted text at AA contrast (2026-10-09)
+## 052 — Packaging: minified bundles, renderer deps are devDependencies (2026-10-09)
+
+**Context.** The v0.4.0 DMG was 161 MB. electron-builder adds every production `dependency` to
+app.asar on top of the `files` list, so Monaco, React, xterm and the other renderer packages
+shipped twice: bundled in `out/renderer` and again as raw `node_modules` (~164 MB, Monaco alone
+102 MB). electron-vite also leaves every bundle unminified.
+
+**Decision.**
+
+- **`dependencies` holds only what main loads at runtime:** `node-pty`, `zod` and
+  `@modelcontextprotocol/sdk` (electron-vite externalises them from the main and MCP bundles).
+  Everything the renderer imports is a devDependency, since Vite bundles it.
+- **Minify the renderer only** (esbuild). Main and preload are a few hundred KB, and readable
+  stack traces in their logs are worth more than the bytes. No sourcemaps: nothing symbolicates
+  them yet; revisit with crash reporting.
+- **`npmRebuild: false`:** node-pty's N-API prebuilds run in any Electron, so the rebuild is
+  wasted work. The packaged e2e suite (`npm run test:e2e:packaged`) covers it.
+- **`!out/demo/**`** keeps `npm run demo:gif` footage out of the app.
+
+Result: app.asar 30 MB, DMG 134 MB (from 161 MB); the rest is Electron itself.
+
+## 053 — Agents get read-only Dugout tools pre-approved; writes prompt (2026-10-09)
+
+**Context.** Claude's hook settings allowed `mcp__dugout`, the whole server (decision 018), so
+`create_task`, `create_tasks`, `update_task` and `comment_on_task` ran without a prompt. Those
+post to GitHub Issues or Linear with the user's account, while a task's description, written by
+anyone who can open an issue on a public repo, is the agent's first prompt, and the task queue
+(decision 047) starts such agents unattended. Instructions planted in an issue could make an
+agent read a secret and post it as a comment, with nobody asked.
+
+**Decision.**
+
+- **One source of truth.** `src/main/mcp/toolAccess.ts` declares every "dugout" tool as `read`
+  (list/get tasks, list/get/search context), `propose` (`add_note`, which only creates a proposal
+  a person approves, decision 050) or `write` (the four task writes). A unit test fails if the
+  server offers a tool that is not declared there, so a new tool cannot be pre-approved by
+  accident; `write` is never pre-approved.
+- **Claude:** `permissions.allow` lists each read and propose tool as `mcp__dugout__<tool>`; writes
+  go through Claude Code's normal permission prompt (and Dugout's Needs you / inbox).
+- **Codex** had no pre-approval: Dugout sets no approval mode for the server, and Codex's default
+  (`auto`) asks for any MCP tool not marked read-only. The tools now carry MCP annotations from the
+  same declaration (`readOnlyHint` for reads; `add_note` is not destructive and stays inside
+  Dugout; writes reach outside it), so Codex runs reads and `add_note` without asking and still
+  asks before writes. No new `-c` keys: older Codex versions reject unknown MCP config fields.
+- **OpenCode** allowed every tool by default. Its inline config now adds permission rules
+  `"dugout_*": "ask"`, then `"allow"` for each read and propose tool (OpenCode names MCP tools
+  `<server>_<tool>` and the last matching rule wins), checked against OpenCode's source (Oct 2026).
+- **The first prompt** wraps the description in `<task-description>` … `</task-description>`,
+  after one sentence saying it was written by whoever filed the task and is data, not
+  instructions. A closing tag inside the description is defused so it cannot end the block early.
+  This lowers the odds an agent follows planted text; the permission prompt is what enforces it.
+
+## 054 — Dugout-run git ignores repo hooks and fsmonitor (2026-10-09)
+
+**Context.** Git runs commands that the repository itself names: hooks (`.git/hooks/*`, or
+`core.hooksPath`, e.g. `.husky/`), `core.fsmonitor`, `core.askPass`, `core.gitProxy`, and a
+remote's `uploadpack` / `receivepack`. Dugout runs `git status` every 3s and pushes with the
+GitHub token in `DUGOUT_GITHUB_TOKEN` (decision 015), so a hostile repo or branch could run
+commands in Dugout's main process without any click, and read the token from a `pre-push` hook
+when the user pushed or clicked Create PR. Agents run in their own terminals, where hooks
+are the user's business; this is about git Dugout runs on its own behalf.
+
+**Decision.**
+
+- **`runGit` hardens every call** (so no caller can forget): `-c core.fsmonitor=false`,
+  `-c core.hooksPath=/dev/null` (no hooks; git treats the missing files under it as no hook),
+  `-c core.askPass=` (a credential prompt fails instead of running a program, with
+  `GIT_TERMINAL_PROMPT=0`), `-c protocol.ext.allow=never`, and `GIT_PROXY_COMMAND=""` (set, it
+  wins over `core.gitProxy`). `-c` beats repo config and reaches the gits git starts itself.
+  `resolveRepoRoot` now goes through `runGit` too.
+- **Commit from the Git panel keeps the repo's hooks** (`hooks: 'repo'`): the user asked for the
+  commit, and expects their lint-staged or commit-msg hook to run as it would in their terminal.
+  Commit never carries credentials (only `runNetwork` adds them), so its hooks never see the
+  token; `runNetwork` forces `hooks: 'none'`.
+- **Network commands** (push, fetch, clone) also name git's default pack command
+  (`--receive-pack`, `--upload-pack`): for local and `file://` remotes it runs locally with the
+  token in its env, and git keeps the first `remote.<name>.uploadpack` it reads (the repo's), so
+  `-c` cannot override it. Push adds `--no-verify` as a second guard against `pre-push`, and push
+  and fetch skip submodules (whose config Dugout does not control). Fetch runs once per remote,
+  because `fetch --all` does not pass `--upload-pack` on; every remote is tried and failures are
+  reported together. It now also fetches remotes marked `skipFetchAll`.
+- **Already safe:** `core.sshCommand` loses to the `GIT_SSH_COMMAND` Dugout always sets;
+  `url.<base>.insteadOf` can only send git to another URL, where the token helper (scoped to the
+  GitHub host, decision 015) gives nothing away and the rules above still apply; repo
+  `credential.*.helper`s for the GitHub host are cleared by Dugout's own empty entry.
+- **Accepted** (see known issues): `pre-push` hooks, including Git LFS's, do not run when
+  pushing from the Git panel; repo `http.*` settings (proxy, TLS checks) still apply to pushes;
+  clean/smudge filters and textconv drivers from repo config still run.
+
+## 055 — Release: check before dist, SHA256SUMS (2026-10-09)
+
+**Context.** The Release workflow went straight from `npm ci` to `npm run dist`, and tags are
+not protected, so a tag on any commit could ship a build that never passed CI. Releases are
+ad-hoc signed (see known issues), so users had no way to check a download (issue #65).
+
+**Decision.**
+
+- **Check first.** The Release workflow runs `npm run check` before `dist`. The e2e tests are
+  not run there: they would double the release time, and the tagged commit is normally a merged
+  release PR that already passed them on `main`.
+- **Checksums.** After `dist`, the workflow writes `dist/SHA256SUMS` (basenames, from
+  `shasum -a 256` run inside `dist/`) and attaches it to the draft release with the DMG and zip.
+  The README tells users to run `shasum -a 256 -c SHA256SUMS --ignore-missing`.
+- **CI hygiene** (issue #84). CI and Release cache the Electron download
+  (`~/Library/Caches/electron`, keyed on `package-lock.json`), and the cosmetic
+  `brand-dev-electron.mjs` postinstall step is skipped when `CI` is set and only warns on failure.
+- **Not yet:** signing, Hardened Runtime, notarization and Electron fuses need a Developer ID;
+  they stay open in issue #65 and known issues.
+
+## 056 — Terminal output flow control and visibility-gated WebGL (2026-10-09)
+
+**Context.** Every pane in every project loaded xterm's WebGL renderer, hidden ones too, and
+Chromium keeps only ~16 live WebGL contexts per renderer: past that it drops the oldest, so a
+visible pane could silently fall back to the DOM renderer (#79). PTY output was written to xterm
+with no backpressure, so a burst (`cat` of a big file, a build log) queued without limit and
+starved the UI; and every ResizeObserver callback fitted xterm and sent a resize, so a splitter
+drag sent one SIGWINCH per frame and the agent TUI flickered (#80).
+
+**Decision.**
+
+- **WebGL only while visible.** `TerminalPane` gets `isVisible` (its project is the active one);
+  `useTerminal` loads the WebGL addon while visible and disposes it while hidden
+  (`terminal/webglToggle.ts`). Hidden panes keep running on the DOM renderer, which costs little
+  under `visibility: hidden`. A lost context falls back to the DOM renderer and WebGL is retried
+  on the next show. Visibility-driven rather than an LRU cap: it keeps the count at "panes of one
+  project", with nothing to tune.
+- **Flow control.** The renderer counts characters written to xterm but not yet parsed
+  (`terminal.write(data, callback)`, `terminal/flowControl.ts`). Above 1 MB pending it sends
+  `terminal:pause`, which calls node-pty's `pause()`; below 256 KB it sends `terminal:resume`.
+  Both are fire-and-forget, zod-validated, and no-ops for unknown ids (a pane closed while
+  paused). `TerminalManager` remembers the paused state so the agent that replaces a worktree
+  setup process (decision 038) starts paused too. Characters stand in for bytes.
+- **Resizes.** After the first measurement (which still fits at once and starts the PTY, since
+  frames do not run while the window is minimised), xterm fits at most once per animation frame,
+  and the size reaches the PTY 75 ms after the last change (`terminal/resizeScheduling.ts`). The
+  size is still sent straight away once the PTY connects. `MIN_MEASURABLE_PX` still skips
+  unmeasurable panes.
+- **Early output.** The pane subscribes to `terminal:data` before calling `create()` and buffers
+  output (up to 256 KB, oldest dropped) until it knows its id (`terminal/outputRouter.ts`). Main
+  replies before any PTY data today (it spawns and returns in the same turn; data needs a later
+  event-loop turn), but that relied on Electron delivering the invoke reply before later sends.
+
+## 057 — Codex gets a project's .mcp.json servers only once approved (2026-10-09)
+
+**Context.** Decision 022 turned every server in the checkout's `.mcp.json` into
+`-c mcp_servers.<name>=…` on the Codex command line when a Codex agent started. Claude Code loads
+`.mcp.json` itself and asks the user before it runs a project's servers; Codex has no such file,
+and config passed as session flags is not gated. So a cloned repo with
+`{"command": "sh", "args": ["-c", "curl … | sh"]}` in `.mcp.json` ran as the user the moment a
+Codex agent started, and an HTTP server could send any environment variable (`bearer_token_env_var`,
+`env_http_headers`) to any URL. That bypasses the agent's own trust prompt, which the terminal rules
+forbid.
+
+**Decision.**
+
+- **Approval per project, in app data.** A project may have `approvedMcpServers` in
+  `projects.json`: the sha256 of its `.mcp.json` servers as Dugout parses them (name, type,
+  command, args, env, url, headers), sorted by name with every object's keys sorted, so key order
+  and whitespace do not matter but any change to a command, argument, value or server does
+  (`agentConfig/serverApproval.ts`). Nothing is written to the repo.
+- **At launch.** An agent whose CLI does not ask itself has the capability `needsMcpApproval`
+  (Codex only; Claude Code asks, OpenCode does not get the servers yet). `TerminalManager` hands
+  every adapter the project's approved hash; the Codex adapter reads the checkout's `.mcp.json`,
+  and passes the servers it can express only if their hash matches. Otherwise it passes none of
+  them and reports them as `withheldServers` on its launch; the agent still starts, with Dugout's
+  own server. Any change to the file, in the main checkout or a worktree, needs a new approval.
+  The contract test checks that no adapter puts an unapproved server on its command line.
+- **Asking.** A Codex pane that started without servers shows a notice under its header
+  ("1 project MCP server from .mcp.json is not shared with Codex until you approve it.") listing
+  each server's name, command line or URL, and the names (never values) of its env vars or
+  headers, with "Approve for Codex", "Agent settings" and dismiss. Agent settings → MCP servers
+  shows the same list in an "Approval for Codex" box with the approved state and "Revoke
+  approval"; server rows say "Claude, and Codex once approved" until then. Agent names come from
+  the capability and `label`, not from the kind.
+- **What is approved.** The renderer sends back the hash it showed; main approves only if the
+  main checkout's `.mcp.json` still has that hash, so a file changed in between is refused
+  (`AgentConfigService.checkApproval`). The renderer cannot pick an arbitrary hash to trust a
+  different file. An approval applies to agents started afterwards; a running agent keeps what it
+  started with until it is restarted.
+- Servers written through Agent settings need approval like any others: the file may hold
+  servers from the repo too, and one explicit step keeps the rule simple.
+
+## 058 — Keyboard patterns behind every ARIA role; muted text at AA contrast (2026-10-09)
 
 **Context.** An accessibility audit (#81) found roles that promised keyboard behaviour the UI did
 not have: editor tabs (`tablist`), the explorer (`tree`) and five menus (`menu`) had no arrow
@@ -1143,6 +1329,11 @@ for a non-text mark that always sits beside words), and so does xterm's ANSI `br
     and a headless codemap ✅.
 24. **Done since:** session timelines from Claude and Codex transcripts ✅.
 25. **Done since:** a task queue that starts the next task when an agent slot frees up ✅.
-26. **Done since:** keyboard navigation for editor tabs, the file tree and menus, and muted text
+26. **Done since:** agents ask before writing to tasks; only read and propose tools are
+    pre-approved ✅.
+27. **Done since:** terminal output flow control, debounced resizes and WebGL only for visible
+    panes ✅.
+28. **Done since:** Codex gets a project's `.mcp.json` servers only once they are approved ✅.
+29. **Done since:** keyboard navigation for editor tabs, the file tree and menus, and muted text
     at WCAG AA contrast ✅.
-27. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+30. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

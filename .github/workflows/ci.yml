@@ -25,8 +25,20 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      # postinstall's install-electron downloads the Electron binary (~110 MB) into this cache.
+      - uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/electron
+          key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - run: npm run check
+      # The coverage report from `npm run check`, also when its threshold fails.
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
       # The e2e tests create git repositories and commits, which need an identity.
       - run: |
           git config --global user.name "Dugout CI"

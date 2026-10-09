@@ -1,0 +1,116 @@
+/* Project MCP servers waiting for approval (decision 057): Agent settings and the agent notice. */
+
+.box {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--status-needs-input-dot);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+}
+
+.box[data-approved='true'] {
+  border-left-color: var(--status-done);
+}
+
+.title {
+  margin: 0 0 var(--space-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.text {
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.approved {
+  margin: 0 0 var(--space-2);
+  color: var(--status-done);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.command {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.inputs {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  color: var(--status-error);
+}
+
+/* In an agent's pane, between its header and the terminal; scrolls if the list is long. */
+.notice {
+  position: relative;
+  flex-shrink: 0;
+  max-height: 40%;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--divider);
+  border-left: 3px solid var(--status-needs-input-dot);
+  background: var(--bg-panel);
+  font-size: 12px;
+}
+
+.notice[data-approved='true'] {
+  border-left-color: var(--status-done);
+}
+
+.dismiss {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.dismiss:hover,
+.dismiss:focus-visible {
+  color: var(--text-primary);
+}
