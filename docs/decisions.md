@@ -556,6 +556,35 @@ worktree) and in the header of every worktree agent.
   a variable needs it set before Claude starts; `${VAR:-}` was not used because Codex cannot
   translate it.
 
+## 041 — Review comments from the diff go back to the agent (2026-10-09)
+
+**Context.** Review showed what an agent changed, but feedback meant switching to its terminal
+and re-typing file and line by hand (issue #17). This closes the review → fix loop (decision 003).
+
+**Decision.** In a Review diff (right-hand side) or either side of a Compare diff, select lines
+(or put the cursor on one) and press ⌘⇧M or right-click › Add Review Comment. A form under the
+diff shows `path:line` and the quoted code; Enter adds the comment. Commented lines are tinted
+and marked in the gutter. Pending comments are grouped per checkout (Compare: per agent), and
+"Send to agent" turns them into one prompt: a heading, then per comment `path:line` (or
+`path:start-end`), the code quoted with `> ` (at most 12 lines), and the comment
+(`reviewComments/reviewPrompt.ts`). Delivered comments are cleared.
+
+- **Who gets it:** the agent running in that checkout (main or worktree): the focused one if
+  several, else the newest. The prompt goes through xterm's `paste` (bracketed when the agent
+  asked for it) and Enter follows 150 ms later, so it arrives exactly as if the user pasted it
+  (`terminal/terminalInput.ts`, registered by `useTerminal`). An agent waiting for an answer
+  or still starting is not typed into (Enter would answer its question); the button is disabled
+  with the reason.
+- **No agent there:** the button becomes "Start <default agent> with comments", which opens the
+  default agent on that checkout with the prompt as its first message (the start screen's path).
+- **Renderer state only.** Comments live in a Zustand store, never in the repo or on disk, and
+  are lost on reload. Monaco code reaches the store from `editor/monaco/reviewComments.ts`;
+  nothing outside the Monaco folder imports `monaco-editor`.
+- **Open questions, answered simply:** any line on the new side can be commented, not only
+  changed ones (context lines are often what feedback is about); removed lines on the left of a
+  Review diff cannot. Comments keep the line numbers they were made on, even if the file is
+  edited afterwards. A prompt over 10,000 characters is refused with a message.
+
 ## 043 — Task cards, and tasks open in an editor tab (2026-10-09)
 
 **Context.** The Tasks panel listed tasks as one-line rows (`#n` and a cut-off title), showed
@@ -614,3 +643,5 @@ narrow side panel, so long tasks were cramped and you lost your place (issue #36
 11. **Done since:** "Open in…" VS Code, Cursor, Zed or Finder for projects and worktrees ✅.
 12. **Done since:** one-click MCP server presets in Agent settings ✅.
 13. **Done since:** task cards with markdown, and tasks open in an editor tab ✅.
+14. **Done since:** review comments from the Review and Compare diffs, sent to the agent as one
+    prompt ✅.

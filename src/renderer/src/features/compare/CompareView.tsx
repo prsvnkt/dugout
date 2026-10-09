@@ -2,10 +2,17 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import type { CompareTarget, WorktreeChanges } from '@shared/compare'
 import type { ProjectId } from '@shared/project'
 import { dugout } from '@renderer/lib/dugout'
+import {
+  ReviewComments,
+  type CommentTarget,
+} from '@renderer/features/reviewComments/ReviewComments'
 import { compareFiles } from './compareFiles'
 import styles from './CompareView.module.css'
 
 const CompareDiff = lazy(() => import('@renderer/features/editor/monaco/CompareDiff'))
+
+const COMMENT_HINT =
+  'Comment for an agent: select lines on its side, then press ⌘⇧M or right-click › Add Review Comment.'
 
 interface CompareViewProps {
   readonly projectId: ProjectId
@@ -54,6 +61,14 @@ export function CompareView({ projectId, tabId, target }: CompareViewProps) {
   }, [projectId, left.worktreePath, right.worktreePath, selected])
 
   const files = useMemo(() => (changes ? compareFiles(changes) : []), [changes])
+  const commentTargets = useMemo(
+    (): readonly CommentTarget[] =>
+      [left, right].map((side) => ({
+        checkout: { projectId, worktreePath: side.worktreePath },
+        label: side.label,
+      })),
+    [projectId, left, right],
+  )
   const who = (changedIn: readonly number[]) =>
     changedIn.length === 2
       ? 'both'
@@ -97,7 +112,9 @@ export function CompareView({ projectId, tabId, target }: CompareViewProps) {
         {selected && contents?.path === selected ? (
           <Suspense fallback={<p className={styles.muted}>Loading…</p>}>
             <CompareDiff
+              projectId={projectId}
               tabId={tabId}
+              worktreePaths={[left.worktreePath, right.worktreePath]}
               path={selected}
               left={contents.left}
               right={contents.right}
@@ -106,6 +123,7 @@ export function CompareView({ projectId, tabId, target }: CompareViewProps) {
         ) : (
           <p className={styles.muted}>Pick a file to compare the two versions.</p>
         )}
+        <ReviewComments targets={commentTargets} hint={COMMENT_HINT} />
       </div>
     </section>
   )

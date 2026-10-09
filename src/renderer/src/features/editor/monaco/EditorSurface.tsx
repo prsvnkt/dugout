@@ -3,11 +3,13 @@ import type { DiffSides } from '../editorStore'
 import type { EditorTab } from '../tabs'
 import { EDITOR_FONT, monaco, THEME } from './monacoSetup'
 import { modelFor, revisionModel, startModelRegistry } from './modelRegistry'
+import { attachReviewComments, type CommentSide, type ReviewCommentSupport } from './reviewComments'
 import styles from '../EditorArea.module.css'
 
 startModelRegistry()
 
 interface EditorSurfaceProps {
+  readonly projectId: string
   readonly tab: EditorTab
   readonly fileKey: string
   /** Bumps when the file's model becomes available, so the editor attaches to it. */
@@ -24,13 +26,17 @@ const SHARED_OPTIONS: monaco.editor.IEditorOptions = {
 }
 
 /** One code editor and one diff editor, re-pointed at models as tabs change. */
-export default function EditorSurface({ tab, fileKey, modelRevision, diff }: EditorSurfaceProps) {
+export default function EditorSurface(props: EditorSurfaceProps) {
+  const { projectId, tab, fileKey, modelRevision, diff } = props
   const codeHost = useRef<HTMLDivElement>(null)
   const diffHost = useRef<HTMLDivElement>(null)
   const codeEditor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const diffEditor = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
   const viewStates = useRef(new Map<string, monaco.editor.ICodeEditorViewState | null>())
   const shownKey = useRef<string | null>(null)
+  /** The file the diff's right-hand side shows, for review comments. */
+  const commentSide = useRef<CommentSide | null>(null)
+  const comments = useRef<ReviewCommentSupport | null>(null)
 
   useEffect(() => {
     if (!codeHost.current || !diffHost.current) return
@@ -41,7 +47,12 @@ export default function EditorSurface({ tab, fileKey, modelRevision, diff }: Edi
       renderSideBySide: true,
       originalEditable: false,
     })
+    comments.current = attachReviewComments(
+      diffEditor.current.getModifiedEditor(),
+      () => commentSide.current,
+    )
     return () => {
+      comments.current?.dispose()
       codeEditor.current?.dispose()
       diffEditor.current?.dispose()
     }
@@ -69,9 +80,11 @@ export default function EditorSurface({ tab, fileKey, modelRevision, diff }: Edi
       ? revisionModel(tab.id, 'modified', tab.path, diff.stagedModified?.content ?? '')
       : modelFor(fileKey)
     if (!modified) return
+    commentSide.current = { projectId, worktreePath: tab.worktreePath, path: tab.path }
     editor.setModel({ original, modified })
     editor.getModifiedEditor().updateOptions({ readOnly: tab.staged })
-  }, [tab, fileKey, modelRevision, diff])
+    comments.current?.refresh()
+  }, [projectId, tab, fileKey, modelRevision, diff])
 
   return (
     <div className={styles.surface}>

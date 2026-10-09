@@ -63,6 +63,8 @@ src/
               A project with no agents open shows start/StartScreen.tsx (prompt box, sessions to
               resume, open tasks); with no projects at all, welcome/WelcomeScreen.tsx (repos to
               add, agent check).
+              Review and Compare diffs take line comments for agents (reviewComments/): one
+              prompt, pasted into the checkout's agent via terminal/terminalInput.ts.
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.

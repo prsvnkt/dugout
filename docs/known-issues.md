@@ -123,3 +123,16 @@ kept elsewhere, renamed, or other builds (VS Code Insiders, Zed Preview) are not
 
 **Likely fix:** look apps up by bundle id through Launch Services (e.g. a small `mdfind`
 fallback or `NSWorkspace` via a native helper), and add the Insiders/Preview builds.
+
+## Review comments cannot target removed lines and do not follow edits
+
+- **Area:** review comments (`src/renderer/src/features/reviewComments/`)
+- **Found:** 2026-10-09, while building decision 041
+
+**What happens:** comments go on the new side of a Review diff only, so a removed line can be
+discussed only through a nearby line. A comment keeps the line numbers it was made on; if the
+file changes before it is sent, `path:line` may point a little off (the quoted code still says
+what was meant). Comments are lost when the app reloads.
+
+**Likely fix:** allow comments on the left side as `path (removed):line`, and move comments with
+Monaco decoration ranges when the model changes.
