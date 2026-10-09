@@ -1132,6 +1132,43 @@ agent read a secret and post it as a comment, with nobody asked.
   instructions. A closing tag inside the description is defused so it cannot end the block early.
   This lowers the odds an agent follows planted text; the permission prompt is what enforces it.
 
+## 054 — Dugout-run git ignores repo hooks and fsmonitor (2026-10-09)
+
+**Context.** Git runs commands that the repository itself names: hooks (`.git/hooks/*`, or
+`core.hooksPath`, e.g. `.husky/`), `core.fsmonitor`, `core.askPass`, `core.gitProxy`, and a
+remote's `uploadpack` / `receivepack`. Dugout runs `git status` every 3s and pushes with the
+GitHub token in `DUGOUT_GITHUB_TOKEN` (decision 015), so a hostile repo or branch could run
+commands in Dugout's main process without any click, and read the token from a `pre-push` hook
+when the user pushed or clicked Create PR. Agents run in their own terminals, where hooks
+are the user's business; this is about git Dugout runs on its own behalf.
+
+**Decision.**
+
+- **`runGit` hardens every call** (so no caller can forget): `-c core.fsmonitor=false`,
+  `-c core.hooksPath=/dev/null` (no hooks; git treats the missing files under it as no hook),
+  `-c core.askPass=` (a credential prompt fails instead of running a program, with
+  `GIT_TERMINAL_PROMPT=0`), `-c protocol.ext.allow=never`, and `GIT_PROXY_COMMAND=""` (set, it
+  wins over `core.gitProxy`). `-c` beats repo config and reaches the gits git starts itself.
+  `resolveRepoRoot` now goes through `runGit` too.
+- **Commit from the Git panel keeps the repo's hooks** (`hooks: 'repo'`): the user asked for the
+  commit, and expects their lint-staged or commit-msg hook to run as it would in their terminal.
+  Commit never carries credentials (only `runNetwork` adds them), so its hooks never see the
+  token; `runNetwork` forces `hooks: 'none'`.
+- **Network commands** (push, fetch, clone) also name git's default pack command
+  (`--receive-pack`, `--upload-pack`): for local and `file://` remotes it runs locally with the
+  token in its env, and git keeps the first `remote.<name>.uploadpack` it reads (the repo's), so
+  `-c` cannot override it. Push adds `--no-verify` as a second guard against `pre-push`, and push
+  and fetch skip submodules (whose config Dugout does not control). Fetch runs once per remote,
+  because `fetch --all` does not pass `--upload-pack` on; every remote is tried and failures are
+  reported together. It now also fetches remotes marked `skipFetchAll`.
+- **Already safe:** `core.sshCommand` loses to the `GIT_SSH_COMMAND` Dugout always sets;
+  `url.<base>.insteadOf` can only send git to another URL, where the token helper (scoped to the
+  GitHub host, decision 015) gives nothing away and the rules above still apply; repo
+  `credential.*.helper`s for the GitHub host are cleared by Dugout's own empty entry.
+- **Accepted** (see known issues): `pre-push` hooks, including Git LFS's, do not run when
+  pushing from the Git panel; repo `http.*` settings (proxy, TLS checks) still apply to pushes;
+  clean/smudge filters and textconv drivers from repo config still run.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
