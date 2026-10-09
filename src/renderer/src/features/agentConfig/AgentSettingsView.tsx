@@ -162,13 +162,14 @@ function InstructionsSection({ projectId, agent }: SectionProps) {
     <>
       {importsAgentsMd ? (
         <p className={styles.ok}>
-          ✓ {claudeMdPath} imports AGENTS.md, so Claude and Codex follow the same instructions.
+          ✓ {claudeMdPath} imports AGENTS.md, so every agent follows the same instructions.
         </p>
       ) : (
         <>
           <p className={styles.muted}>
-            Codex reads AGENTS.md; Claude reads CLAUDE.md. Make AGENTS.md the single source and have{' '}
-            {claudeMdPath ?? 'CLAUDE.md'} import it, keeping a section for Claude-only notes.
+            Codex and OpenCode read AGENTS.md; Claude reads CLAUDE.md. Make AGENTS.md the single
+            source and have {claudeMdPath ?? 'CLAUDE.md'} import it, keeping a section for
+            Claude-only notes.
             {!hasAgentsMd && claudeMdPath && ` The current ${claudeMdPath} becomes AGENTS.md.`}
           </p>
           <div className={styles.formActions}>
@@ -207,7 +208,7 @@ export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
         <h2 id="agent-settings-mcp">MCP servers</h2>
         <p className={styles.muted}>
           From .mcp.json at the project root. Claude Code loads them itself; Codex agents get the
-          ones Codex can run.
+          ones Codex can run. OpenCode agents get only Dugout&apos;s task tools for now.
         </p>
         <McpSection projectId={projectId} agent={agent} />
       </section>

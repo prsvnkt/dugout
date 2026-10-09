@@ -2,6 +2,19 @@
 
 Limitations we have accepted for now and intend to revisit. Remove an entry when it is fixed.
 
+## OpenCode agents do not get the project's .mcp.json servers
+
+- **Area:** `src/main/services/agents/opencode/`
+- **Found:** 2026-10-09, while adding the OpenCode adapter (decision 037)
+
+**What happens:** OpenCode gets Dugout's "dugout" task server and status plugin, but not the
+servers in the project's `.mcp.json`, which Claude Code loads itself and Codex gets as overrides.
+A user's own `OPENCODE_CONFIG_CONTENT`, if they set one, is replaced by Dugout's in its terminals.
+
+**Likely fix:** translate `.mcp.json` servers into OpenCode `local` / `remote` entries (`${VAR}`
+becomes `{env:VAR}`), show them in Agent settings per agent, and merge an inherited
+`OPENCODE_CONFIG_CONTENT` instead of replacing it.
+
 ## Worktrees start without untracked setup files
 
 - **Area:** worktree sessions (`src/main/services/worktrees/WorktreeManager.ts`)

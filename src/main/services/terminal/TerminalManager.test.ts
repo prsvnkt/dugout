@@ -565,3 +565,22 @@ describe('TerminalManager codex terminals', () => {
     expect(events.onAgentStatus).toHaveBeenCalledWith(id, 'needs-input', undefined, [])
   })
 })
+
+describe('TerminalManager OpenCode terminals', () => {
+  test('get the shared hook variables, their inline config, and status like any agent', () => {
+    const { manager, spawned, events } = setupWithHooks()
+    const id = manager.create({ ...request, kind: 'opencode' }, events)
+
+    const env = spawned[0]?.options.env
+    expect(spawned[0]?.options.args.at(-1)).toBe('"$DUGOUT_OPENCODE_COMMAND"')
+    expect(env).toMatchObject({
+      DUGOUT_TERMINAL_ID: 'agent-1',
+      DUGOUT_HOOK_TOKEN: 'tok',
+      DUGOUT_OPENCODE_COMMAND: 'opencode',
+    })
+    expect(JSON.parse(env?.OPENCODE_CONFIG_CONTENT ?? '{}').plugin).toHaveLength(1)
+    expect(manager.agentStatus(id)).toBe('starting')
+    manager.applyHookSignal(id, 'ready')
+    expect(manager.agentStatus(id)).toBe('idle')
+  })
+})

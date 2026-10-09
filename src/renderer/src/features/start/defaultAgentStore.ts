@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { create } from 'zustand'
 import { DEFAULT_AGENT } from '@shared/settings'
 import type { AgentKind } from '@shared/terminal'
@@ -35,3 +36,17 @@ export const useDefaultAgentStore = create<DefaultAgentState>()((set, get) => ({
     set({ defaultAgent: previous })
   },
 }))
+
+/** The default agent, loading the saved choice when first used. */
+export function useDefaultAgent(): AgentKind {
+  const defaultAgent = useDefaultAgentStore((state) => state.defaultAgent)
+  const load = useDefaultAgentStore((state) => state.load)
+  useEffect(() => void load(), [load])
+  return defaultAgent
+}
+
+/** The default agent, once the saved choice has loaded (⌘T may come before the start screen). */
+export async function loadedDefaultAgent(): Promise<AgentKind> {
+  await useDefaultAgentStore.getState().load()
+  return useDefaultAgentStore.getState().defaultAgent
+}

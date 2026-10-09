@@ -1,13 +1,13 @@
 # Dugout
 
-A macOS desktop app for running and supervising many coding agents (Claude Code, Codex) across
-projects, in one window. Electron + React + TypeScript, with real terminals (node-pty + xterm.js).
+A macOS desktop app for running and supervising many coding agents (Claude Code, Codex,
+OpenCode) across projects, in one window. Electron + React + TypeScript, with real terminals (node-pty + xterm.js).
 
 ## Product principles
 
-- **Wrap the agent CLIs, never reinvent them.** Sessions run the real `claude` or `codex` CLI in
-  a real PTY, with the user's own config, auth and slash commands. No Agent SDK, no custom chat
-  UI. More agents may follow, so UI text never assumes Claude (e.g. the start screen's prompt box
+- **Wrap the agent CLIs, never reinvent them.** Sessions run the real agent CLI (`claude`,
+  `codex`, `opencode`) in a real PTY, with the user's own config, auth and slash commands. No
+  Agent SDK, no custom chat UI. More agents may follow, so UI text never assumes Claude (e.g. the start screen's prompt box
   goes to the user's default agent).
 - **Organisation and supervision are the product:** projects, colours, split terminals,
   status, and a git panel for reviewing what agents changed.
@@ -81,7 +81,7 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 
 ## Gotchas
 
-- **Words on screen:** terminals running an agent CLI (Claude, Codex, …) are **agents**, plain
+- **Words on screen:** terminals running an agent CLI (Claude, Codex, OpenCode, …) are **agents**, plain
   terminals are **shells**, and repos are **projects**. Agent names come from `shared/agents.ts`
   (`label` "Claude", `productName` "Claude Code", `cliName`); never hard-code them in the UI.
   "Pane" is only a code name (`Pane`, `addPane`); never show it in the UI.
@@ -106,8 +106,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   xterm fit to 2 columns and garbles the Claude TUI. `useTerminal` also skips fitting when hidden.
 - **Request-response IPC returns `Result<T>`** (`handleRequest` in main, `unwrap` in renderer)
   so errors reach the UI as readable messages.
-- **Agent status comes only from hooks** (see decision 008). E2E tests use the fake `claude`
-  from `tests/e2e/helpers.ts` via `DUGOUT_CLAUDE_COMMAND`; never scrape terminal output.
+- **Agent status comes only from hooks** (see decision 008), or an agent's plugin (OpenCode,
+  decision 037). E2E tests use the fake `claude` / `codex` / `opencode` from
+  `tests/e2e/helpers.ts` via `DUGOUT_<AGENT>_COMMAND`; never scrape terminal output.
 - **All git commands go through `GitService`/`runGit`** so they inherit the no-lock, no-prompt,
   literal-pathspec environment (decision 009). Never call `git` from elsewhere.
 - **Shell command lines use only plain `"$VAR"` expansions** (decision 013). `${VAR:+…}` splits

@@ -13,14 +13,14 @@ changed.
 ![Dugout demo: describe a task and pick an agent, Claude Code and Codex working side by side, live status on every project tab, switching projects while agents keep going, and one inbox for every agent that needs you](docs/media/demo.gif)
 
 Dugout runs each agent's own CLI in a real terminal, so any terminal-based agent works in a
-shell pane. Claude Code and Codex are integrated today (live status, notifications, resumable
-sessions, task tools); more agents will get the same support one by one.
+shell pane. Claude Code, Codex and OpenCode are integrated today (live status, notifications,
+resumable sessions, task tools); more agents will get the same support one by one.
 
 ## Getting started
 
 Requires macOS and Node 22+, plus the CLI of each agent you want to run on your shell's PATH,
-for example [Claude Code](https://docs.claude.com/en/docs/claude-code) or
-[Codex](https://github.com/openai/codex).
+for example [Claude Code](https://docs.claude.com/en/docs/claude-code),
+[Codex](https://github.com/openai/codex) or [OpenCode](https://opencode.ai).
 
 ```sh
 npm install

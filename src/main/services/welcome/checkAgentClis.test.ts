@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { checkAgentClis, type ShellRunner, type ShellRunResult } from './checkAgentClis'
 
-const COMMANDS = { claude: 'claude', codex: 'codex' }
+const COMMANDS = { claude: 'claude', codex: 'codex', opencode: 'opencode' }
 
 interface RunnerCall {
   readonly commandLine: string
@@ -27,6 +27,7 @@ describe('checkAgentClis', () => {
     const { run } = fakeRunner({
       claude: { kind: 'exited', exitCode: 0, stdout: '/opt/homebrew/bin/claude\n' },
       codex: { kind: 'exited', exitCode: 1, stdout: '' },
+      opencode: { kind: 'exited', exitCode: 0, stdout: '/Users/me/.opencode/bin/opencode\n' },
     })
 
     // Act
@@ -36,6 +37,7 @@ describe('checkAgentClis', () => {
     expect(check).toEqual({
       claude: { state: 'installed', path: '/opt/homebrew/bin/claude' },
       codex: { state: 'missing' },
+      opencode: { state: 'installed', path: '/Users/me/.opencode/bin/opencode' },
     })
   })
 
@@ -56,13 +58,17 @@ describe('checkAgentClis', () => {
 
     const check = await checkAgentClis(run, COMMANDS)
 
-    expect(check).toEqual({ claude: { state: 'unknown' }, codex: { state: 'unknown' } })
+    expect(check).toEqual({
+      claude: { state: 'unknown' },
+      codex: { state: 'unknown' },
+      opencode: { state: 'unknown' },
+    })
   })
 
   it('passes the command through the environment, never inside the command line', async () => {
     const { run, calls } = fakeRunner({})
 
-    await checkAgentClis(run, { claude: '/tmp/my claude', codex: 'codex' })
+    await checkAgentClis(run, { ...COMMANDS, claude: '/tmp/my claude' })
 
     expect(calls[0]).toEqual({
       commandLine: 'command -v "$DUGOUT_CHECK_COMMAND"',

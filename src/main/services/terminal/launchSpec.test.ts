@@ -48,9 +48,11 @@ describe('buildTerminalEnv', () => {
       CLAUDE_PLUGIN_DATA: '/tmp',
       AI_AGENT: 'claude',
       CODEX_COMPANION_SESSION_ID: 'x',
+      OPENCODE: '1',
+      OPENCODE_PID: '456',
     })
     expect(env).toEqual(expect.objectContaining({ HOME: '/Users/me' }))
-    expect(Object.keys(env).filter((key) => /CLAUDE|AI_AGENT|CODEX/.test(key))).toEqual([])
+    expect(Object.keys(env).filter((key) => /CLAUDE|AI_AGENT|CODEX|OPENCODE/.test(key))).toEqual([])
   })
 
   test('does not inherit Dugout variables from the environment that launched the app', () => {

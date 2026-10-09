@@ -2,11 +2,13 @@ import type { AgentKind } from '@shared/agents'
 import type { AgentAdapter } from './AgentAdapter'
 import { claudeAdapter } from './claude/claudeAdapter'
 import { codexAdapter } from './codex/codexAdapter'
+import { opencodeAdapter } from './opencode/opencodeAdapter'
 
 /** Every agent Dugout can run. Adding one means an adapter folder plus an entry here. */
 export const AGENT_ADAPTERS: Readonly<Record<AgentKind, AgentAdapter>> = {
   claude: claudeAdapter,
   codex: codexAdapter,
+  opencode: opencodeAdapter,
 }
 
 export function agentAdapter(kind: AgentKind): AgentAdapter {

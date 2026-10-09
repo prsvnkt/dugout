@@ -16,6 +16,7 @@ paths:
 - E2E tests in `tests/e2e/` launch the built app with Playwright's `_electron`. Stub native
   dialogs via `app.evaluate(({ dialog }) => …)`. Read terminal output from `dugout.terminal.onData`,
   because xterm renders to a canvas.
-- E2E tests never run the real `claude` (it needs auth). Use plain shells, or the fake `claude`
-  from `tests/e2e/helpers.ts` (via `DUGOUT_CLAUDE_COMMAND`), which runs the generated hooks.
+- E2E tests never run a real agent CLI (they need auth). Use plain shells, or the fakes in
+  `tests/e2e/helpers.ts` (`makeFakeClaude` / `Codex` / `OpenCode`, via `DUGOUT_<AGENT>_COMMAND`),
+  which run the generated hooks or the real OpenCode plugin.
 - Coverage target is 80%+ for `src/main` and `src/shared` (`npm run test:coverage`).

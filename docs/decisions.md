@@ -500,7 +500,7 @@ Agents list and notification clicks use it too.
 
 Changing the `PostToolUse` hook command means Codex asks once more to trust Dugout's hooks.
 
-## 037 — Agent CLIs behind adapters, with capabilities (2026-10-09)
+## 037 — Agent CLIs behind adapters, with capabilities; OpenCode (2026-10-09)
 
 **Context.** Claude Code and Codex were special-cased in ~20 places (launch switch, hook config,
 MCP wiring, menus, start screen, task menu, welcome check), so a third agent would multiply that.
@@ -531,6 +531,29 @@ Every adapter passes one contract test (`agents/adapters.contract.test.ts`: plai
 provides, the command from its variable, resume and prompt only when asked, the task server when
 it has MCP, files cleaned up on exit) plus its own tests. The Codex hook overrides are pinned
 byte for byte, because any change makes Codex ask every user to trust them again (decision 021).
+
+**OpenCode** is the first new adapter (checked against opencode.ai's docs and its source, Oct
+2026). It runs `opencode` (the TUI), `--session <id>` to resume and `--prompt <text>` for a first
+message. Dugout gives it config through `OPENCODE_CONFIG_CONTENT`, the inline layer OpenCode
+merges over the user's own config (plugin lists are concatenated, MCP servers added by name), so
+nothing of theirs is replaced: the "dugout" server as a `local` MCP server, and Dugout's status
+plugin by `file://` URL. The plugin (`<userData>/opencode-status.mjs`, written at start like
+Claude's hook settings) listens to OpenCode's own events, the same ones its built-in
+notifications use, and posts Claude-shaped payloads to the hook socket with Bun's `fetch`: a
+session going busy is `working`, busy → idle is `done`, `permission.asked` is `needs-input` with
+the call (finished by its reply or `tool.execute.after`), a question needs you until answered.
+Subagent sessions (`parentID`) never change the agent's status. That maps reliably onto Dugout's
+statuses, so OpenCode has `hasStatus`; it reads AGENTS.md (falling back to CLAUDE.md), so the
+shared instructions (decision 022) cover it. It does not get the project's `.mcp.json` servers
+yet (see known issues). `OPENCODE` and `OPENCODE_PID` are stripped from terminals like Claude's
+markers. E2E tests use a fake `opencode` (`DUGOUT_OPENCODE_COMMAND`) that loads the real plugin.
+
+**Open questions, answered.** Shortcuts: ⌘T starts the _default agent_ (chosen on the start
+screen) and ⌥⌘T starts it in a new worktree; every agent is in File → New <Agent> Agent and in the
+"+" menu (which marks the default's shortcuts), with "New <Agent> agent in worktree" for each.
+Per-agent shortcuts would run out of keys, so Codex's ⌥⇧⌘T is gone. The "+" menu lists every
+registered agent rather than only installed ones; the welcome check says which are missing. No
+per-project restriction of which agents are offered; add one if a project needs it.
 
 ## 039 — "Open in…" an editor or Finder (2026-10-09)
 
@@ -701,4 +724,5 @@ ranges) and agents in the main checkout are not tracked; see `docs/known-issues.
 14. **Done since:** review comments from the Review and Compare diffs, sent to the agent as one
     prompt ✅.
 15. **Done since:** warnings when parallel agents change the same files ✅.
-16. **Done since:** agent CLIs behind adapters with capabilities ✅.
+16. **Done since:** agent CLIs behind adapters with capabilities ✅, OpenCode ✅.
+17. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

@@ -28,6 +28,9 @@ const STRIPPED_ENV_KEYS = new Set([
   'CODEX_NON_INTERACTIVE',
   'CODEX_INTERNAL_ORIGINATOR_OVERRIDE',
   'CODEX_MCP_PROTOCOL_VERSION',
+  // OpenCode marks its child processes; a nested opencode is not a child session.
+  'OPENCODE',
+  'OPENCODE_PID',
 ])
 
 function isInheritable(key: string): boolean {

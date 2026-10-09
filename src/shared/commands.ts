@@ -1,9 +1,11 @@
-import type { AgentKind, TerminalKind } from './terminal'
+import type { TerminalKind } from './terminal'
 
 /** Commands the native application menu sends to the renderer. */
 export type AppCommand =
   | { readonly type: 'pane.new'; readonly kind: TerminalKind }
-  | { readonly type: 'pane.newWorktree'; readonly agent: AgentKind }
+  /** The default agent (settings), in the focused checkout or in a new worktree. */
+  | { readonly type: 'pane.newDefaultAgent' }
+  | { readonly type: 'pane.newWorktree' }
   | { readonly type: 'pane.close' }
   | { readonly type: 'project.add' }
   | { readonly type: 'project.clone' }

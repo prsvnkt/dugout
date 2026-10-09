@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { Files, GitBranch, ListChecks, Plus, type LucideIcon } from 'lucide-react'
-import { AGENT_LABEL, AGENT_LIST, WORKTREE_AGENT } from '@shared/agents'
+import { AGENT_LIST, NEW_AGENT_SHORTCUT, NEW_WORKTREE_AGENT_SHORTCUT } from '@shared/agents'
 import type { Project } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
+import { useDefaultAgent } from '@renderer/features/start/defaultAgentStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { Icon } from '@renderer/lib/Icon'
 import { useDismiss } from '@renderer/lib/useDismiss'
@@ -69,6 +70,7 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
   const canAddPane = useProjectLayout(project.id).panes.length < MAX_PANES_PER_PROJECT
   const startWorktreeSession = useWorktreeStore((state) => state.startSession)
   const openAgentSettings = useEditorStore((state) => state.openAgentSettings)
+  const defaultAgent = useDefaultAgent()
   const choose = (action: () => void) => () => {
     close()
     action()
@@ -89,17 +91,24 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
             <MenuItem
               key={agent.kind}
               label={`New ${agent.label} agent`}
-              shortcut={agent.shortcut?.symbols}
+              shortcut={agent.kind === defaultAgent ? NEW_AGENT_SHORTCUT.symbols : undefined}
               disabled={!canAddPane}
               onSelect={choose(() => onAdd(agent.kind))}
             />
           ))}
-          <MenuItem
-            label={`New ${AGENT_LABEL[WORKTREE_AGENT]} agent in worktree`}
-            shortcut="⌥⌘T"
-            disabled={!canAddPane}
-            onSelect={choose(() => void startWorktreeSession(project.id, WORKTREE_AGENT))}
-          />
+          <hr className={styles.divider} />
+          {AGENT_LIST.map((agent) => (
+            <MenuItem
+              key={agent.kind}
+              label={`New ${agent.label} agent in worktree`}
+              shortcut={
+                agent.kind === defaultAgent ? NEW_WORKTREE_AGENT_SHORTCUT.symbols : undefined
+              }
+              disabled={!canAddPane}
+              onSelect={choose(() => void startWorktreeSession(project.id, agent.kind))}
+            />
+          ))}
+          <hr className={styles.divider} />
           <MenuItem
             label="New shell"
             shortcut="⇧⌘T"

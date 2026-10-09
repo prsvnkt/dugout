@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { gitHubTestEnv, startGitHubStub } from './githubStub'
-import { launchApp, makeFakeClaude, makeTempDir } from './helpers'
+import { launchApp, makeFakeClaude, makeFakeOpenCode, makeTempDir } from './helpers'
 
 const IDENTITY = {
   GIT_AUTHOR_NAME: 'T',
@@ -66,6 +66,7 @@ test('says which agent CLIs are installed', async () => {
   app = await launchApp(userDataDir, {
     DUGOUT_CLAUDE_COMMAND: makeFakeClaude(),
     DUGOUT_CODEX_COMMAND: join(makeTempDir(), 'no-such-codex'),
+    DUGOUT_OPENCODE_COMMAND: makeFakeOpenCode(),
   })
   page = await app.firstWindow()
 
@@ -78,6 +79,9 @@ test('says which agent CLIs are installed', async () => {
     'Not found',
   )
   await expect(agents).toContainText('npm install -g @openai/codex')
+  await expect(agents.getByRole('listitem').filter({ hasText: 'OpenCode' })).toContainText(
+    'Installed',
+  )
 })
 
 test('asks to sign in to GitHub, then clones a repository in one click', async () => {
