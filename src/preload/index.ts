@@ -84,6 +84,10 @@ const api: DugoutApi = {
     get: () => ipcRenderer.invoke(IpcChannel.settingsGet),
     update: (change) => ipcRenderer.invoke(IpcChannel.settingsUpdate, change),
   },
+  openIn: {
+    apps: () => ipcRenderer.invoke(IpcChannel.openInApps),
+    open: (checkout, app) => ipcRenderer.invoke(IpcChannel.openInOpen, { ...checkout, app }),
+  },
   tasks: {
     list: (projectId) => ipcRenderer.invoke(IpcChannel.tasksList, { projectId }),
     get: (projectId, number) => ipcRenderer.invoke(IpcChannel.tasksGet, { projectId, number }),

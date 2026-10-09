@@ -111,3 +111,15 @@ folder, and makes a second copy when it does not.
 
 **Likely fix:** read each local repo's `origin` URL in the search and hide GitHub rows (or
 offer "Add") for repos that match.
+
+## "Open in…" only finds editors in the Applications folders
+
+- **Area:** open in editor (`src/main/services/openIn/OpenInService.ts`)
+- **Found:** 2026-10-09, while building "Open in…" (decision 039)
+
+**What happens:** an editor counts as installed only when its bundle sits in `/Applications` or
+`~/Applications` under its usual name (`Visual Studio Code.app`, `Cursor.app`, `Zed.app`). Apps
+kept elsewhere, renamed, or other builds (VS Code Insiders, Zed Preview) are not offered.
+
+**Likely fix:** look apps up by bundle id through Launch Services (e.g. a small `mdfind`
+fallback or `NSWorkspace` via a native helper), and add the Insiders/Preview builds.

@@ -72,6 +72,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               projectId={project.id}
               cwd={pane.worktree?.path ?? project.rootPath}
               branch={pane.worktree?.branch ?? null}
+              worktreePath={pane.worktree?.path}
               projectColor={projectColor}
               isFocused={layout.focusedPaneId === pane.id}
               shouldFocus={isActive && layout.focusedPaneId === pane.id}

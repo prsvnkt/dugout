@@ -11,6 +11,7 @@ import {
   type PaneActivity,
 } from '@renderer/features/workspace/paneActivity'
 import type { Subagent } from '@renderer/features/agents/subagents'
+import { OpenInMenu } from '@renderer/features/openIn/OpenInMenu'
 import { ActivityIndicator } from './ActivityIndicator'
 import { useDoneSeen } from './useDoneSeen'
 import { useTerminal, type TerminalStatus } from './useTerminal'
@@ -24,6 +25,8 @@ interface TerminalPaneProps {
   readonly cwd: string
   /** Branch of the pane's worktree, shown in its header. Null for the main checkout. */
   readonly branch: string | null
+  /** The pane's worktree, which its header offers to open in an editor. */
+  readonly worktreePath?: string | undefined
   /** The project's colour, the accent inside its pane (hidden projects' panes too). */
   readonly projectColor: string
   /** True when this pane should own keyboard focus (focused pane of the visible project). */
@@ -66,7 +69,7 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 export function TerminalPane(props: TerminalPaneProps) {
   const { index, kind, projectId, cwd, branch, projectColor, shouldFocus, isFocused } = props
   const { focusRequest } = props
-  const { resumeSessionId, initialPrompt, task } = props
+  const { resumeSessionId, initialPrompt, task, worktreePath } = props
   const { onFocus, onClose, onActivity, onSubagents, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const terminal = useTerminal(containerRef, {
@@ -127,6 +130,7 @@ export function TerminalPane(props: TerminalPaneProps) {
           label={describe(activity, status)}
           className={styles.status}
         />
+        {worktreePath && <OpenInMenu checkout={{ projectId, worktreePath }} target="worktree" />}
         {canRestart && (
           <button
             className={styles.restart}

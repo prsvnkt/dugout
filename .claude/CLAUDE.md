@@ -45,7 +45,8 @@ src/
                 subagents, session ids),
                 worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API),
-                settings/ (app preferences: default agent, clone folder),
+                settings/ (app preferences: default agent, clone folder, last "Open in…" app),
+                openIn/ (open a checkout in VS Code, Cursor, Zed or Finder),
                 tasks/ (GitHub Issues as tasks),
                 agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions),
                 welcome/ (first-run repo search, agent CLI check).
@@ -109,6 +110,7 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 - **Agents reach Dugout only through the MCP server → hook socket RPC**, scoped to their
   terminal's project. Never put tokens in MCP configs or tool results.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` and `DUGOUT_HOME_DIR` (the
-  welcome screen searches the home folder for repos); the e2e helpers set both.
+  welcome screen searches the home folder for repos); the e2e helpers set both. Tests that click
+  "Open in…" set `DUGOUT_OPEN_COMMAND` to a fake `open`, so no real app launches.
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.

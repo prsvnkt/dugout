@@ -6,6 +6,7 @@ import type { Project } from '@shared/project'
 import { useEditorStore, useProjectTabs } from '@renderer/features/editor/editorStore'
 import { CHANGE_LETTER } from '@renderer/features/git/changeKind'
 import { useCheckoutGit } from '@renderer/features/git/gitStore'
+import { OpenInMenu } from '@renderer/features/openIn/OpenInMenu'
 import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore'
 import { Icon } from '@renderer/lib/Icon'
 import { useCheckoutTree, useExplorerStore } from './explorerStore'
@@ -134,6 +135,10 @@ export function ExplorerPanel({ project }: { project: Project }) {
         <span className={styles.root} title={checkout.worktreePath ?? project.rootPath}>
           {rootName}
         </span>
+        <OpenInMenu
+          checkout={checkout}
+          target={checkout.worktreePath === undefined ? 'project' : 'worktree'}
+        />
         <button
           onClick={() => void refresh(checkout)}
           title="Refresh"
