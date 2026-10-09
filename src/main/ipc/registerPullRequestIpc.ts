@@ -10,7 +10,7 @@ import type { GitHubPullFeedback } from '../services/github/GitHubPullFeedback'
 import type { GitHubPulls } from '../services/github/GitHubPulls'
 import { githubRepoFromRemote, type GitHubRepoRef } from '../services/tasks/githubRepo'
 import { resolveGitHubBranch, type GitHubBranchDeps } from './githubBranch'
-import { handleRequest } from './handle'
+import { handleRequest, type IpcMainLike } from './handle'
 import { findProject } from './registerGitIpc'
 
 export interface PullRequestIpcDeps extends GitHubBranchDeps {
@@ -19,7 +19,7 @@ export interface PullRequestIpcDeps extends GitHubBranchDeps {
   readonly openExternal: (url: string) => Promise<void>
 }
 
-export function registerPullRequestIpc(deps: PullRequestIpcDeps): void {
+export function registerPullRequestIpc(deps: PullRequestIpcDeps, ipc?: IpcMainLike): void {
   /** The checkout's GitHub repo; fails when its remote is not on GitHub. */
   const requireRepo = async (request: GitProjectRequest): Promise<GitHubRepoRef> => {
     const project = findProject(deps.projects, request.projectId)
@@ -39,6 +39,7 @@ export function registerPullRequestIpc(deps: PullRequestIpcDeps): void {
       if (!target) return null
       return deps.auth.withToken((token) => deps.pulls.forBranch(token, target.repo, target.branch))
     },
+    ipc,
   )
 
   handleRequest(
@@ -50,6 +51,7 @@ export function registerPullRequestIpc(deps: PullRequestIpcDeps): void {
         deps.feedback.reviewThreads(token, repo, request.number),
       )
     },
+    ipc,
   )
 
   handleRequest(
@@ -61,12 +63,19 @@ export function registerPullRequestIpc(deps: PullRequestIpcDeps): void {
         deps.feedback.failingChecks(token, repo, request.number),
       )
     },
+    ipc,
   )
 
   // Pull request and check pages only: never an arbitrary URL from the renderer.
-  handleRequest(IpcChannel.gitOpenUrl, z.object({ url: z.url() }), async ({ url }) => {
-    const allowed = [new URL(deps.webBaseUrl).origin]
-    if (!allowed.includes(new URL(url).origin)) throw new Error('Only GitHub links can be opened.')
-    await deps.openExternal(url)
-  })
+  handleRequest(
+    IpcChannel.gitOpenUrl,
+    z.object({ url: z.url() }),
+    async ({ url }) => {
+      const allowed = [new URL(deps.webBaseUrl).origin]
+      if (!allowed.includes(new URL(url).origin))
+        throw new Error('Only GitHub links can be opened.')
+      await deps.openExternal(url)
+    },
+    ipc,
+  )
 }

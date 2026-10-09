@@ -436,7 +436,7 @@ async function start(): Promise<void> {
       ),
   })
   const settings = new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) })
-  registerCloneIpc(git, settings)
+  registerCloneIpc(git, settings, homeDir)
   registerSettingsIpc(settings)
   registerOpenInIpc(
     projectStore,

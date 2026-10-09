@@ -9,7 +9,7 @@ import type { GitHubDeployments } from '../services/github/GitHubDeployments'
 import { KnownPreviewUrls, openablePreviewUrl } from '../services/preview/openableUrl'
 import { candidatePorts, findFreePort } from '../services/preview/ports'
 import { resolveGitHubBranch, type GitHubBranchDeps } from './githubBranch'
-import { handleRequest } from './handle'
+import { handleRequest, type IpcMainLike } from './handle'
 
 export interface PreviewIpcDeps extends GitHubBranchDeps {
   readonly deployments: GitHubDeployments
@@ -17,7 +17,7 @@ export interface PreviewIpcDeps extends GitHubBranchDeps {
   readonly openExternal: (url: string) => Promise<void>
 }
 
-export function registerPreviewIpc(deps: PreviewIpcDeps): void {
+export function registerPreviewIpc(deps: PreviewIpcDeps, ipc?: IpcMainLike): void {
   const known = new KnownPreviewUrls()
 
   /** The checkout branch's preview deployment; null when there is none to show. */
@@ -33,16 +33,25 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): void {
       if (preview?.url) known.remember(preview.url)
       return preview
     },
+    ipc,
   )
 
-  handleRequest(IpcChannel.previewAssignPort, previewAssignPortRequestSchema, ({ reserved }) =>
-    findFreePort(candidatePorts(reserved), deps.isPortFree),
+  handleRequest(
+    IpcChannel.previewAssignPort,
+    previewAssignPortRequestSchema,
+    ({ reserved }) => findFreePort(candidatePorts(reserved), deps.isPortFree),
+    ipc,
   )
 
   // Only previews main reported and local dev servers: never an arbitrary renderer URL.
-  handleRequest(IpcChannel.previewOpenUrl, previewOpenUrlRequestSchema, async ({ url }) => {
-    const openable = openablePreviewUrl(url, known)
-    if (!openable) throw new Error('Only preview and dev server links can be opened.')
-    await deps.openExternal(openable)
-  })
+  handleRequest(
+    IpcChannel.previewOpenUrl,
+    previewOpenUrlRequestSchema,
+    async ({ url }) => {
+      const openable = openablePreviewUrl(url, known)
+      if (!openable) throw new Error('Only preview and dev server links can be opened.')
+      await deps.openExternal(openable)
+    },
+    ipc,
+  )
 }

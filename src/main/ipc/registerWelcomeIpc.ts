@@ -5,7 +5,7 @@ import { REPO_SEARCH_SCOPES } from '@shared/welcome'
 import type { SettingsStore } from '../services/settings/SettingsStore'
 import { checkAgentClis, type ShellRunner } from '../services/welcome/checkAgentClis'
 import { findLocalRepos, searchRoots } from '../services/welcome/findLocalRepos'
-import { handleRequest } from './handle'
+import { handleRequest, type IpcMainLike } from './handle'
 
 export interface WelcomeIpcDeps {
   readonly settings: SettingsStore
@@ -16,12 +16,20 @@ export interface WelcomeIpcDeps {
 }
 
 /** Read-only lookups for the first-run screen. Nothing here writes or spawns an agent. */
-export function registerWelcomeIpc(deps: WelcomeIpcDeps): void {
-  handleRequest(IpcChannel.welcomeFindRepos, z.enum(REPO_SEARCH_SCOPES), async (scope) => {
-    const { cloneParentDir } = await deps.settings.load()
-    return findLocalRepos(searchRoots(scope, { homeDir: deps.homeDir, cloneParentDir }))
-  })
-  handleRequest(IpcChannel.welcomeCheckAgents, z.undefined(), () =>
-    checkAgentClis(deps.runInLoginShell, deps.agentCommands),
+export function registerWelcomeIpc(deps: WelcomeIpcDeps, ipc?: IpcMainLike): void {
+  handleRequest(
+    IpcChannel.welcomeFindRepos,
+    z.enum(REPO_SEARCH_SCOPES),
+    async (scope) => {
+      const { cloneParentDir } = await deps.settings.load()
+      return findLocalRepos(searchRoots(scope, { homeDir: deps.homeDir, cloneParentDir }))
+    },
+    ipc,
+  )
+  handleRequest(
+    IpcChannel.welcomeCheckAgents,
+    z.undefined(),
+    () => checkAgentClis(deps.runInLoginShell, deps.agentCommands),
+    ipc,
   )
 }
