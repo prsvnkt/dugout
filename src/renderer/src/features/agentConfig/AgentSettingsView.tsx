@@ -3,11 +3,13 @@ import type { CodexSharing, McpServer } from '@shared/agentConfig'
 import type { ProjectId } from '@shared/project'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { CheckCommandSection } from './CheckCommandSection'
+import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { PresetList } from './PresetList'
 import { sharingText } from './sharingText'
 import { draftFromServer, EMPTY_DRAFT } from './serverDraft'
 import { ServerForm } from './ServerForm'
 import { useAgentConfig } from './useAgentConfig'
+import { WorktreeSetupSection } from './WorktreeSetupSection'
 import styles from './AgentSettings.module.css'
 
 interface AgentSettingsViewProps {
@@ -201,11 +203,12 @@ function InstructionsSection({ projectId, agent }: SectionProps) {
 }
 
 /**
- * Per-project agent setup: MCP servers for Claude and Codex, the shared instructions, and the
- * check Verify on Stop runs.
+ * Per-project agent setup: MCP servers, the shared instructions, the check Verify on Stop
+ * runs, and what new worktrees get before their first agent starts.
  */
 export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
   const agent = useAgentConfig(projectId)
+  const project = useProjectsStore((state) => state.projects.find(({ id }) => id === projectId))
   return (
     <section className={styles.view} aria-label="Agent settings">
       <section className={styles.section} aria-labelledby="agent-settings-mcp">
@@ -224,6 +227,18 @@ export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
         <h2 id="agent-settings-verify">Verify on Stop</h2>
         <CheckCommandSection projectId={projectId} />
       </section>
+      {project && (
+        <section className={styles.section} aria-labelledby="agent-settings-worktrees">
+          <h2 id="agent-settings-worktrees">Worktree setup</h2>
+          <p className={styles.muted}>
+            A new worktree is a clean checkout, without local files such as .env or installed
+            dependencies. Copy files from the main checkout into each new worktree, and run a
+            command there before its first agent starts; its output shows in the agent&apos;s
+            terminal. Symbolic links are not copied.
+          </p>
+          <WorktreeSetupSection key={project.id} project={project} />
+        </section>
+      )}
     </section>
   )
 }

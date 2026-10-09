@@ -7,9 +7,13 @@ import {
   terminalResizeRequestSchema,
   terminalWriteRequestSchema,
 } from '@shared/ipc/contract'
-import type { TerminalId } from '@shared/terminal'
+import { isAgentKind, type TerminalId } from '@shared/terminal'
 import type { CheckRunner } from '../services/checks/CheckRunner'
-import type { TerminalManager } from '../services/terminal/TerminalManager'
+import type {
+  TerminalEvents,
+  TerminalManager,
+  TerminalSetup,
+} from '../services/terminal/TerminalManager'
 import { handleRequest } from './handle'
 import { parsePayload } from './validate'
 
@@ -51,15 +55,29 @@ function trackOwnership(manager: TerminalManager) {
   }
 }
 
-/** `checks` runs Verify on Stop for agents that report status (decision 042). */
-export function registerTerminalIpc(manager: TerminalManager, checks: CheckRunner): void {
+/** Hands out new worktrees' setup commands (`WorktreeManager`). */
+export interface TerminalSetups {
+  claimSetup(cwd: string): TerminalSetup | null
+}
+
+/**
+ * `checks` runs Verify on Stop for agents that report status (decision 042); `setups`
+ * gives the first agent in a new worktree its setup command (decision 038).
+ */
+export function registerTerminalIpc(
+  manager: TerminalManager,
+  checks: CheckRunner,
+  setups: TerminalSetups,
+): void {
   const ownership = trackOwnership(manager)
 
   handleRequest(IpcChannel.terminalCreate, terminalCreateRequestSchema, async (request, event) => {
     await assertDirectory(request.cwd)
 
     const owner = event.sender
-    const id = manager.create(request, {
+    // The first agent in a new worktree runs its setup first; shells never do.
+    const setup = isAgentKind(request.kind) ? setups.claimSetup(request.cwd) : null
+    const events: TerminalEvents = {
       onData: (terminalId, data) => sendTo(owner, IpcChannel.terminalData, terminalId, data),
       onExit: (terminalId, exit) => {
         ownership.remove(owner, terminalId)
@@ -74,7 +92,8 @@ export function registerTerminalIpc(manager: TerminalManager, checks: CheckRunne
         sendTo(owner, IpcChannel.terminalAgentSession, terminalId, sessionId),
       onAgentSubagent: (terminalId, update) =>
         sendTo(owner, IpcChannel.terminalAgentSubagent, terminalId, update),
-    })
+    }
+    const id = manager.create(request, events, setup ?? undefined)
     ownership.add(owner, id)
     checks.track(id, { projectId: request.projectId, cwd: request.cwd }, (status) =>
       sendTo(owner, IpcChannel.terminalCheckStatus, id, status),

@@ -3,6 +3,7 @@ import type { ProjectAddRequest } from '@shared/ipc/contract'
 import type { Project, ProjectId } from '@shared/project'
 import type { TaskSource } from '@shared/tasks'
 import { unwrap } from '@shared/result'
+import type { WorktreeSetup } from '@shared/worktreeSetup'
 import { dugout } from '@renderer/lib/dugout'
 
 interface ProjectsState {
@@ -20,6 +21,8 @@ interface ProjectsState {
   setCheckCommand(id: ProjectId, command: string | null): Promise<void>
   /** Where the project's tasks live. Throws with a user-facing message on failure. */
   setTaskSource(id: ProjectId, source: TaskSource): Promise<void>
+  /** Saves what new worktrees copy and run (null turns it off). Throws a user-facing message. */
+  setWorktreeSetup(id: ProjectId, setup: WorktreeSetup | null): Promise<void>
   select(id: ProjectId): void
   selectIndex(index: number): void
 }
@@ -70,6 +73,11 @@ export const useProjectsStore = create<ProjectsState>()((set, get) => ({
 
   async setTaskSource(id, source) {
     const updated = unwrap(await dugout.projects.setTaskSource(id, source))
+    set((state) => ({ projects: replaceProject(state.projects, updated) }))
+  },
+
+  async setWorktreeSetup(id, setup) {
+    const updated = unwrap(await dugout.projects.setWorktreeSetup(id, setup))
     set((state) => ({ projects: replaceProject(state.projects, updated) }))
   },
 

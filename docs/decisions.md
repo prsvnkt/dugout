@@ -555,6 +555,37 @@ Per-agent shortcuts would run out of keys, so Codex's ⌥⇧⌘T is gone. The "+
 registered agent rather than only installed ones; the welcome check says which are missing. No
 per-project restriction of which agents are offered; add one if a project needs it.
 
+## 038 — Worktree setup: copy local files, run a setup command (2026-10-09)
+
+**Context.** A new worktree is a clean checkout of HEAD, so `.env`, `node_modules/` and build
+output are missing, and agents spent their first minutes installing, or failed (#19).
+
+**Decision.** Per project and opt-in, Agent settings → _Worktree setup_ holds globs of files to
+copy from the main checkout (e.g. `.env*`) and a setup command (e.g. `npm install`), saved as
+`worktreeSetup` on the project in `projects.json`. Every way of making a worktree goes through
+`WorktreeManager.create` (the "+" menu's "in worktree" actions, ⌥⌘T and a task's "Start agent"),
+which copies the files and keeps the command for that worktree's first agent. Copies go through
+`FileService`: matches are found before the worktree exists (so a bad pattern leaves nothing
+behind), must be regular files inside the checkout, never in `.git`, and are refused if they or
+a folder on the way are symlinks; a matched folder copies all its files; more than 500 files is
+refused, pointing to the setup command for dependencies. Existing files (tracked ones) are kept,
+and nothing is written through a symlink in the worktree.
+
+The command runs in the agent's own terminal, before the agent: when an agent terminal is
+created in a worktree with a pending setup, `TerminalManager` first spawns the user's login shell
+with `echo "$DUGOUT_SETUP_BANNER" && eval "$DUGOUT_SETUP_COMMAND"` (plain `"$VAR"`s, decision
+013, so it reads as typed in their shell), and on exit code 0 starts the agent in the same
+terminal at its current size. This is shared code, not per adapter, so Claude, Codex, OpenCode
+and future agents all get it. While it runs the agent shows "Starting". On failure the terminal
+prints "Worktree setup failed (exit code N)" under the command's output and exits, so the pane
+shows "Exited (N)" with Restart.
+
+**Open questions, answered.** The setup runs once per worktree: a failed or interrupted setup is
+offered again to the next agent there (Restart), a successful one never again. Pending setups
+live in memory, so after quitting Dugout mid-setup, restored agents start without it. Shells in a
+worktree never run it. The command is one line, run in the user's shell; there is no timeout,
+since installs can be long and the output is visible (close the pane to stop it).
+
 ## 039 — "Open in…" an editor or Finder (2026-10-09)
 
 **Context.** For bigger manual edits people want their own editor, but worktrees live in app
@@ -882,4 +913,5 @@ in Linear (issue #27).
     block ✅.
 19. **Done since:** Verify on Stop: the project's check runs when an agent finishes ✅.
 20. **Done since:** Linear as a task source, chosen per project ✅.
-21. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+21. **Done since:** worktree setup (copy local files, run a setup command) ✅.
+22. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

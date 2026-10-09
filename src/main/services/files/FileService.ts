@@ -1,5 +1,6 @@
-import { lstat, readdir, readFile, realpath, stat } from 'node:fs/promises'
-import { join, resolve, sep } from 'node:path'
+import { constants } from 'node:fs'
+import { copyFile, glob, lstat, mkdir, readdir, readFile, realpath, stat } from 'node:fs/promises'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import {
   MAX_DIR_ENTRIES,
   MAX_OPEN_FILE_BYTES,
@@ -7,6 +8,7 @@ import {
   type FileContent,
   type FileStat,
 } from '@shared/files'
+import { MAX_COPIED_FILES } from '@shared/worktreeSetup'
 import type { GitService } from '../git/GitService'
 import { writeFileAtomic } from '../projects/atomicWrite'
 
@@ -24,6 +26,20 @@ const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'bas
 
 function isInside(root: string, path: string): boolean {
   return path === root || path.startsWith(root + sep)
+}
+
+/** True for `.git` itself and anything in it. */
+function isGitDir(path: string): boolean {
+  return path.split(sep).includes('.git')
+}
+
+/** `path` itself, or its closest ancestor that exists. */
+async function nearestExisting(path: string): Promise<string> {
+  const exists = await lstat(path).then(
+    () => true,
+    () => false,
+  )
+  return exists || dirname(path) === path ? path : nearestExisting(dirname(path))
 }
 
 function isMissing(error: unknown): boolean {
@@ -113,6 +129,80 @@ export class FileService {
     }
     await writeFileAtomic(absolute, content, current.mode & 0o777)
     return { mtimeMs: (await stat(absolute)).mtimeMs }
+  }
+
+  /**
+   * Regular files in `root` matching `patterns` (repo-relative globs; folders count with all
+   * their files), for copying into a new worktree. Refuses symlinks, anything outside `root`,
+   * and more than MAX_COPIED_FILES files.
+   */
+  async findCopyable(root: string, patterns: readonly string[]): Promise<string[]> {
+    const realRoot = await realpath(root)
+    const found = new Set<string>()
+    const add = (path: string) => {
+      found.add(path)
+      if (found.size > MAX_COPIED_FILES) {
+        throw new Error(
+          `Worktree setup matches over ${MAX_COPIED_FILES} files. Copy local files such as .env; ` +
+            'install dependencies with the setup command instead.',
+        )
+      }
+    }
+    const matches = glob([...patterns], { cwd: realRoot, exclude: (path) => isGitDir(path) })
+    for await (const match of matches) {
+      const absolute = await this.assertRealInside(realRoot, match)
+      const info = await lstat(absolute)
+      if (info.isDirectory()) {
+        for (const file of await this.filesUnder(realRoot, absolute)) add(file)
+      } else if (info.isFile()) {
+        add(relative(realRoot, absolute))
+      }
+    }
+    return [...found].sort()
+  }
+
+  /**
+   * Copies files found by `findCopyable` from one checkout to the same paths in another. Files
+   * that already exist there (e.g. tracked ones) are kept. Never writes through a symlink.
+   */
+  async copyFiles(fromRoot: string, toRoot: string, paths: readonly string[]): Promise<void> {
+    const [realFrom, realTo] = await Promise.all([realpath(fromRoot), realpath(toRoot)])
+    for (const path of paths) {
+      const source = await this.assertRealInside(realFrom, path)
+      if (!(await lstat(source)).isFile()) throw new Error(`${path} is not a regular file.`)
+      const target = resolve(realTo, path)
+      if (!isInside(realTo, target)) throw new Error(`${path} is outside the worktree.`)
+      await this.assertRealInside(realTo, await nearestExisting(dirname(target)))
+      await mkdir(dirname(target), { recursive: true })
+      await copyFile(source, target, constants.COPYFILE_EXCL).catch((error: unknown) => {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      })
+    }
+  }
+
+  /** Every regular file under `dir` (repo-relative), refusing symlinks and skipping .git. */
+  private async filesUnder(realRoot: string, dir: string): Promise<string[]> {
+    const entries = await readdir(dir, { withFileTypes: true, recursive: true })
+    const files: string[] = []
+    for (const entry of entries) {
+      const absolute = join(entry.parentPath, entry.name)
+      const path = relative(realRoot, absolute)
+      if (isGitDir(path)) continue
+      if (entry.isSymbolicLink()) throw new Error(`${path} is a symbolic link; it is not copied.`)
+      if (entry.isFile()) files.push(path)
+    }
+    return files
+  }
+
+  /** `path` inside `realRoot`, refused if it or any folder on the way is a symlink. */
+  private async assertRealInside(realRoot: string, path: string): Promise<string> {
+    const candidate = resolve(realRoot, path)
+    const shown = relative(realRoot, candidate) || '.'
+    if (!isInside(realRoot, candidate)) throw new Error(`${shown} is outside the project.`)
+    if ((await realpath(candidate)) !== candidate) {
+      throw new Error(`${shown} is a symbolic link (or inside one); it is not copied.`)
+    }
+    return candidate
   }
 
   /** Absolute, symlink-resolved path of `path`, which must stay inside `root`. */

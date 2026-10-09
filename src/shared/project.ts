@@ -13,6 +13,8 @@ export const PROJECT_COLORS = [
 
 export type ProjectColor = (typeof PROJECT_COLORS)[number]
 
+import type { WorktreeSetup } from './worktreeSetup'
+
 export type ProjectId = string
 
 export interface Project {
@@ -28,6 +30,8 @@ export interface Project {
   readonly checkCommand?: string
   /** Where the project's tasks live; GitHub Issues when missing. */
   readonly taskSource?: TaskSource | undefined
+  /** Files to copy and a command to run in each new worktree; absent when not set up. */
+  readonly worktreeSetup?: WorktreeSetup | undefined
 }
 
 export const MAX_PROJECT_NAME_LENGTH = 60

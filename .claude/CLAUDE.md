@@ -44,7 +44,7 @@ src/
                 git/ (review panel, PR URLs), agents/ (one adapter per agent CLI: launch line,
                 hooks, MCP; registry.ts lists them), agentHooks/ (hook server, status signals,
                 pending approvals, subagents, session ids),
-                worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
+                worktrees/ (isolated sessions + setup), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API,
                 PRs, PR review threads + failing CI for agents, preview deployments),
                 preview/ (dev server ports, which links may open),

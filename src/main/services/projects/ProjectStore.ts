@@ -2,6 +2,7 @@ import { readFile, rename } from 'node:fs/promises'
 import { projectsFileSchema, type ProjectAddRequest } from '@shared/ipc/contract'
 import { pickProjectColor, suggestProjectName, type Project, type ProjectId } from '@shared/project'
 import type { TaskSource } from '@shared/tasks'
+import { isEmptySetup, type WorktreeSetup } from '@shared/worktreeSetup'
 import { writeFileAtomic } from './atomicWrite'
 
 export interface ProjectStoreDeps {
@@ -88,6 +89,17 @@ export class ProjectStore {
     const { [key]: _previous, ...rest } = project
     const trimmed = command?.trim()
     const updated: Project = trimmed ? { ...rest, [key]: trimmed } : rest
+    await this.commit(this.projects.map((candidate) => (candidate.id === id ? updated : candidate)))
+    return updated
+  }
+
+  /** Sets what new worktrees copy and run; null, or a setup that does nothing, removes it. */
+  async setWorktreeSetup(id: ProjectId, setup: WorktreeSetup | null): Promise<Project> {
+    const project = this.projects.find((candidate) => candidate.id === id)
+    if (!project) throw new Error('Project not found.')
+    const { worktreeSetup, ...rest } = project
+    const updated: Project =
+      setup && !isEmptySetup(setup) ? { ...rest, worktreeSetup: setup } : rest
     await this.commit(this.projects.map((candidate) => (candidate.id === id ? updated : candidate)))
     return updated
   }

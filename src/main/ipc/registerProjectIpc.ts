@@ -6,6 +6,7 @@ import {
   projectSetDevCommandRequestSchema,
   projectSetCheckCommandRequestSchema,
   projectSetTaskSourceRequestSchema,
+  projectSetWorktreeSetupRequestSchema,
 } from '@shared/ipc/contract'
 import type { ProjectStore } from '../services/projects/ProjectStore'
 import { handleRequest } from './handle'
@@ -24,5 +25,10 @@ export function registerProjectIpc(store: ProjectStore): void {
     IpcChannel.projectSetTaskSource,
     projectSetTaskSourceRequestSchema,
     ({ projectId, source }) => store.setTaskSource(projectId, source),
+  )
+  handleRequest(
+    IpcChannel.projectSetWorktreeSetup,
+    projectSetWorktreeSetupRequestSchema,
+    ({ id, setup }) => store.setWorktreeSetup(id, setup),
   )
 }

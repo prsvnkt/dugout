@@ -18,7 +18,11 @@ const TYPE_LABEL: Readonly<Record<McpServer['type'], string>> = {
 }
 
 /** A labelled form field; the label names only the field, not the control's contents. */
-function Field(props: { label: string; hint?: string; children: (id: string) => ReactElement }) {
+export function Field(props: {
+  label: string
+  hint?: string
+  children: (id: string) => ReactElement
+}) {
   const id = useId()
   return (
     <div className={styles.field}>
