@@ -159,3 +159,6 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   "Open in…" set `DUGOUT_OPEN_COMMAND` to a fake `open`, so no real app launches.
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.
+- **Renderer packages are devDependencies on purpose:** Vite bundles them; only main-process
+  runtime packages (node-pty, zod, MCP SDK) belong in `dependencies`, or electron-builder ships
+  them twice (decision 052).
