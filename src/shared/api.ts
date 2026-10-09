@@ -50,6 +50,9 @@ export interface DugoutApi {
     write(id: TerminalId, data: string): void
     resize(id: TerminalId, cols: number, rows: number): void
     kill(id: TerminalId): void
+    /** Stop reading the PTY's output until `resume`, while the renderer catches up. */
+    pause(id: TerminalId): void
+    resume(id: TerminalId): void
     onData(listener: (id: TerminalId, data: string) => void): Unsubscribe
     onExit(listener: (id: TerminalId, exit: TerminalExit) => void): Unsubscribe
     /**
@@ -74,7 +77,7 @@ export interface DugoutApi {
     onAgentUsage(listener: (id: TerminalId, usage: AgentUsage) => void): Unsubscribe
     /**
      * `.mcp.json` servers the agent started without because the project has not approved them
-     * (decision 052); null when it left nothing out.
+     * (decision 057); null when it left nothing out.
      */
     withheldServers(id: TerminalId): Promise<Result<WithheldServers | null>>
   }

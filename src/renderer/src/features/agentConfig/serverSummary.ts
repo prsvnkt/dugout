@@ -14,7 +14,7 @@ export function serverInputs(server: McpServer): string {
 }
 
 /**
- * The agents that get `.mcp.json` servers only once approved (decision 052), e.g. "Codex"; read
+ * The agents that get `.mcp.json` servers only once approved (decision 057), e.g. "Codex"; read
  * from their capabilities, so another such agent shows up without code here.
  */
 export const APPROVAL_AGENTS = AGENT_LIST.filter((agent) => agent.capabilities.needsMcpApproval)

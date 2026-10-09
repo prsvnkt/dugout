@@ -38,7 +38,7 @@ export interface Project {
   /** Tasks waiting for a free agent slot, first to start first; absent when empty. */
   readonly taskQueue?: readonly QueuedTask[] | undefined
   /**
-   * The `.mcp.json` servers approved for agents that do not ask themselves (decision 052), as
+   * The `.mcp.json` servers approved for agents that do not ask themselves (decision 057), as
    * their hash; absent when none are. Kept in app data, never in the repo.
    */
   readonly approvedMcpServers?: string | undefined

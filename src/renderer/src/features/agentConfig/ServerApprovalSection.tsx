@@ -14,7 +14,7 @@ interface ServerApprovalSectionProps {
 
 /**
  * Approval of the project's `.mcp.json` servers for agents whose CLI does not ask before running
- * them (decision 052). Stored in Dugout, never in the repo; any change to the file needs it again.
+ * them (decision 057). Stored in Dugout, never in the repo; any change to the file needs it again.
  */
 export function ServerApprovalSection(props: ServerApprovalSectionProps) {
   const { servers, approval, isBusy } = props

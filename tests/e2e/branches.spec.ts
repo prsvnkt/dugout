@@ -2,17 +2,14 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
-import { launchApp, makeTempDir, stubFolderPicker } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'Dugout Test',
-  GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'Dugout Test',
-  GIT_COMMITTER_EMAIL: 'test@example.com',
-}
+import { launchApp, makeTempDir, stubFolderPicker, GIT_IDENTITY } from './helpers'
 
 function git(cwd: string, ...args: string[]): string {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...IDENTITY } })
+  return execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, ...GIT_IDENTITY },
+  })
 }
 
 function makeRepo(): string {
@@ -31,7 +28,7 @@ let app: ElectronApplication
 let page: Page
 
 test.beforeEach(async () => {
-  app = await launchApp(makeTempDir(), IDENTITY)
+  app = await launchApp(makeTempDir(), GIT_IDENTITY)
   page = await app.firstWindow()
 })
 

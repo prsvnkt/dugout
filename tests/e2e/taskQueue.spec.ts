@@ -9,15 +9,10 @@ import {
   makeFakeClaude,
   makeTempDir,
   recordTerminalOutput,
+  savedPanes,
   stubFolderPicker,
+  GIT_IDENTITY,
 } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'T',
-  GIT_AUTHOR_EMAIL: 't@example.com',
-  GIT_COMMITTER_NAME: 'T',
-  GIT_COMMITTER_EMAIL: 't@example.com',
-}
 
 let app: ElectronApplication
 let page: Page
@@ -30,7 +25,7 @@ function makeRepo(baseUrl: string): string {
   const root = join(makeTempDir(), 'app')
   mkdirSync(root)
   const git = (...args: string[]) =>
-    execFileSync('git', args, { cwd: root, env: { ...process.env, ...IDENTITY } })
+    execFileSync('git', args, { cwd: root, env: { ...process.env, ...GIT_IDENTITY } })
   git('init', '-q', '-b', 'main')
   writeFileSync(join(root, 'readme.md'), '# app\n')
   git('add', '.')
@@ -50,7 +45,7 @@ const issue = (number: number, title: string) => ({
 
 async function start(): Promise<void> {
   app = await launchApp(userDataDir, {
-    ...IDENTITY,
+    ...GIT_IDENTITY,
     ...gitHubTestEnv(stub.baseUrl),
     DUGOUT_CLAUDE_COMMAND: fakeClaude,
   })
@@ -142,8 +137,8 @@ test('the queue keeps its order across a restart, and starts nothing past the li
   await queue().getByRole('button', { name: 'Move #3 up' }).click()
   await expect(queue().getByRole('listitem')).toHaveText([/Speed up search/, /Add dark mode/])
   await expect(panes()).toHaveCount(1)
-  // Give the debounced layout save time to run.
-  await page.waitForTimeout(1_000)
+  // Wait for the debounced layout save to record the agent started by hand.
+  await expect.poll(() => savedPanes(userDataDir).map(({ kind }) => kind)).toEqual(['claude'])
 
   // Restart: the restored agent comes back at Ready, which frees its slot for #3 only
   await app.close()

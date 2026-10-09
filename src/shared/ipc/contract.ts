@@ -88,10 +88,14 @@ export const terminalResizeRequestSchema = z.object({
 export const terminalKillRequestSchema = z.object({ id: terminalId })
 export const terminalWithheldServersRequestSchema = z.object({ id: terminalId })
 
+/** Output flow control: pause or resume reading a terminal's PTY (decision 056). */
+export const terminalFlowRequestSchema = z.object({ id: terminalId })
+
 export type TerminalCreateRequest = z.infer<typeof terminalCreateRequestSchema>
 export type TerminalWriteRequest = z.infer<typeof terminalWriteRequestSchema>
 export type TerminalResizeRequest = z.infer<typeof terminalResizeRequestSchema>
 export type TerminalKillRequest = z.infer<typeof terminalKillRequestSchema>
+export type TerminalFlowRequest = z.infer<typeof terminalFlowRequestSchema>
 
 const projectId = z.string().min(1).max(64)
 const projectName = z.string().trim().min(1).max(MAX_PROJECT_NAME_LENGTH)
@@ -187,7 +191,7 @@ export const projectChangeTaskQueueRequestSchema = z.object({
 
 export const projectSetMaxAgentsRequestSchema = z.object({ id: projectId, maxAgents })
 
-/** Identifies a set of approved `.mcp.json` servers (decision 052): a sha256 hex digest. */
+/** Identifies a set of approved `.mcp.json` servers (decision 057): a sha256 hex digest. */
 const serversHash = z.string().regex(/^[0-9a-f]{64}$/)
 
 /** Optional fields, so projects.json files from before decisions 047, 051 and 052 still load. */

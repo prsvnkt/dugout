@@ -30,7 +30,7 @@ paths:
   reader exactly when it has `hasTimeline` (and then also `usage`, whose folder it searches).
   To react to a new hook event, add a `HOOK_BINDINGS` entry and a unit test.
 - Repo-supplied config (e.g. `.mcp.json` servers) reaches an agent through Dugout only if the
-  CLI asks the user itself, or the user approved it in Dugout (decision 052): an adapter with
+  CLI asks the user itself, or the user approved it in Dugout (decision 057): an adapter with
   `needsMcpApproval` passes the checkout's servers only when their hash matches the project's
   `approvedMcpServers`, and otherwise reports them as `withheldServers`. The agent still starts.
 - Hook commands must stay async, time-limited, silent and `|| true`; they run inside the user's

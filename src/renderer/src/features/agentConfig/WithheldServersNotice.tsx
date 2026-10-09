@@ -24,7 +24,7 @@ type NoticeState =
 
 /**
  * Shown in an agent's pane when it started without the project's `.mcp.json` servers because
- * they are not approved (decision 052). Never blocks the agent; an approval applies from its next
+ * they are not approved (decision 057). Never blocks the agent; an approval applies from its next
  * start, and is refused if the main checkout's file is not the one shown here.
  */
 export function WithheldServersNotice(props: WithheldServersNoticeProps) {

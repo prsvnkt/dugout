@@ -25,7 +25,7 @@ export function registerAgentConfigIpc(
       return agentConfig.read(project.rootPath, project.approvedMcpServers)
     },
   )
-  // Approves only what the main checkout's .mcp.json holds now (decision 052).
+  // Approves only what the main checkout's .mcp.json holds now (decision 057).
   handleRequest(
     IpcChannel.agentConfigApproveServers,
     agentConfigApproveServersRequestSchema,

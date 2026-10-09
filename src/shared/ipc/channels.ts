@@ -7,6 +7,8 @@ export const IpcChannel = {
   terminalWrite: 'terminal:write',
   terminalResize: 'terminal:resize',
   terminalKill: 'terminal:kill',
+  terminalPause: 'terminal:pause',
+  terminalResume: 'terminal:resume',
   terminalData: 'terminal:data',
   terminalExit: 'terminal:exit',
   terminalAgentStatus: 'terminal:agent-status',

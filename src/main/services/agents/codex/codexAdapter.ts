@@ -10,7 +10,7 @@ import { codexProjectServers } from './projectServers'
 
 /**
  * `-c` overrides: status hooks, the dugout server, then the checkout's `.mcp.json` servers if
- * the project approved them (decision 052), plus the servers left out when it has not.
+ * the project approved them (decision 057), plus the servers left out when it has not.
  */
 function overridesFor(context: AgentLaunchContext): {
   overrides: readonly string[]

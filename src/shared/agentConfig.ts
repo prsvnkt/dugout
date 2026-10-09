@@ -28,7 +28,7 @@ export type CodexSharing =
 
 /**
  * `.mcp.json` servers an agent with `needsMcpApproval` did not get when it started, because the
- * project's servers were not approved, or changed since (decision 052).
+ * project's servers were not approved, or changed since (decision 057).
  */
 export interface WithheldServers {
   /** The servers it would have got. */
@@ -37,7 +37,7 @@ export interface WithheldServers {
   readonly hash: string
 }
 
-/** Whether the project's current `.mcp.json` servers are approved (decision 052). */
+/** Whether the project's current `.mcp.json` servers are approved (decision 057). */
 export interface ServerApproval {
   /** Identifies every server in the file as read; sent back to approve exactly these. */
   readonly hash: string
@@ -59,7 +59,7 @@ export interface AgentConfig {
         readonly ok: true
         readonly servers: readonly McpServer[]
         readonly codex: Readonly<Record<string, CodexSharing>>
-        /** Whether agents with `needsMcpApproval` may get the servers (decision 052). */
+        /** Whether agents with `needsMcpApproval` may get the servers (decision 057). */
         readonly approval: ServerApproval
         /** Identifies the file contents read, so a save never overwrites newer changes. */
         readonly version: string

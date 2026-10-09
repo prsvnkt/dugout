@@ -23,6 +23,18 @@ export interface GitServiceDeps {
 const PUSH_TIMEOUT_MS = 120_000
 const FETCH_TIMEOUT_MS = 120_000
 const CLONE_TIMEOUT_MS = 30 * 60_000
+/**
+ * Network commands name git's default pack command themselves: one set in `.git/config` runs
+ * locally (for local and file:// remotes) with the token in its env. `--no-verify` backs up the
+ * disabled hooks, since pre-push would see the token too (decision 054).
+ */
+const PUSH_ARGS = [
+  'push',
+  '--no-verify',
+  '--no-recurse-submodules',
+  '--receive-pack=git-receive-pack',
+]
+const FETCH_ARGS = ['fetch', '--prune', '--no-recurse-submodules', '--upload-pack=git-upload-pack']
 /** `git check-ignore` exits 1 when nothing is ignored. */
 const CHECK_IGNORE_OK = [0, 1]
 const MISSING_AT_REVISION =
@@ -141,7 +153,8 @@ export class GitService {
     options: { includeAll?: boolean } = {},
   ): Promise<void> {
     if (options.includeAll) await this.run(root, ['add', '--all'])
-    await this.run(root, ['commit', '--quiet', '--file=-'], { input: message })
+    // The user's own commit runs their hooks (lint-staged, commit-msg); no token is present.
+    await this.run(root, ['commit', '--quiet', '--file=-'], { input: message, hooks: 'repo' })
   }
 
   /**
@@ -158,7 +171,8 @@ export class GitService {
     const isCreatedHere = existing === null
     const parent = dirname(destination)
     try {
-      await this.runNetwork(parent, ['clone', '--progress', '--', url, destination], {
+      const args = ['clone', '--progress', '--upload-pack=git-upload-pack', '--', url, destination]
+      await this.runNetwork(parent, args, {
         timeoutMs: CLONE_TIMEOUT_MS,
         ...(options.signal && { signal: options.signal }),
         ...(options.onProgress && { onStderr: cloneProgressHandler(options.onProgress) }),
@@ -169,9 +183,19 @@ export class GitService {
     }
   }
 
-  /** Updates every remote-tracking branch, dropping ones deleted on the remote. Never touches files. */
+  /**
+   * Updates every remote-tracking branch, dropping ones deleted on the remote. Never touches
+   * files. Fetches one remote at a time, like `fetch --all`, which would not pass `--upload-pack`
+   * on to the fetches it starts; every remote is tried, then the failures are reported.
+   */
   async fetch(root: string): Promise<void> {
-    await this.runNetwork(root, ['fetch', '--all', '--prune'], { timeoutMs: FETCH_TIMEOUT_MS })
+    const remotes = await this.remotes(root)
+    const failures = await remotes.reduce<Promise<readonly string[]>>(async (previous, remote) => {
+      const failed = await previous
+      const failure = await this.fetchRemote(root, remote)
+      return failure === null ? failed : [...failed, failure]
+    }, Promise.resolve([]))
+    if (failures.length > 0) throw new GitError(failures.join('\n'))
   }
 
   /** Pushes the current branch, publishing it to origin when it has no upstream yet. */
@@ -179,16 +203,32 @@ export class GitService {
     const status = await this.status(root)
     if (status.branch === null) throw new GitError('Check out a branch before pushing.')
     if (status.upstream !== null) {
-      await this.runNetwork(root, ['push'], { timeoutMs: PUSH_TIMEOUT_MS })
+      await this.runNetwork(root, PUSH_ARGS, { timeoutMs: PUSH_TIMEOUT_MS })
       return
     }
-    const { stdout } = await this.run(root, ['remote'])
-    if (!stdout.split('\n').includes('origin')) {
+    if (!(await this.remotes(root)).includes('origin')) {
       throw new GitError('This repository has no remote named "origin".')
     }
-    await this.runNetwork(root, ['push', '--set-upstream', 'origin', 'HEAD'], {
+    await this.runNetwork(root, [...PUSH_ARGS, '--set-upstream', 'origin', 'HEAD'], {
       timeoutMs: PUSH_TIMEOUT_MS,
     })
+  }
+
+  /** Fetches one remote; resolves its error message, or null when it succeeded. */
+  private async fetchRemote(root: string, remote: string): Promise<string | null> {
+    try {
+      await this.runNetwork(root, [...FETCH_ARGS, '--end-of-options', remote], {
+        timeoutMs: FETCH_TIMEOUT_MS,
+      })
+      return null
+    } catch (error) {
+      return `${remote}: ${error instanceof Error ? error.message : String(error)}`
+    }
+  }
+
+  private async remotes(root: string): Promise<string[]> {
+    const { stdout } = await this.run(root, ['remote'])
+    return stdout.split('\n').filter((name) => name.length > 0)
   }
 
   /** A file as it is at HEAD or in the index (staged), for the original side of a diff. */
@@ -363,16 +403,21 @@ export class GitService {
     return ref.startsWith('origin/') ? ref.slice('origin/'.length) : null
   }
 
-  /** Like `run`, with the configured credentials (e.g. GitHub token) for remote access. */
+  /**
+   * Like `run`, with the configured credentials (e.g. GitHub token) for remote access. The token
+   * must reach only Dugout's credential helper, so this never runs repository hooks
+   * (decision 054); callers also name the pack command so `.git/config` cannot.
+   */
   private async runNetwork(
     root: string,
     args: readonly string[],
-    options: Partial<Omit<RunGitOptions, 'cwd' | 'args'>> = {},
+    options: Partial<Omit<RunGitOptions, 'cwd' | 'args' | 'hooks'>> = {},
   ) {
     const credentials = (await this.deps.credentials?.()) ?? { args: [], env: {} }
     return this.run(root, [...credentials.args, ...args], {
       ...options,
       env: { ...this.env, ...credentials.env },
+      hooks: 'none',
     })
   }
 

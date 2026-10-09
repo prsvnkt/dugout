@@ -22,7 +22,7 @@ export interface AgentCapabilities {
   readonly hasTimeline: boolean
   /**
    * Dugout passes it the project's `.mcp.json` servers itself and the CLI does not ask before
-   * running them, so they wait for the user's approval in Dugout (decision 052).
+   * running them, so they wait for the user's approval in Dugout (decision 057).
    */
   readonly needsMcpApproval: boolean
 }

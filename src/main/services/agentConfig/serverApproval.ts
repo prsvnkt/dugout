@@ -20,7 +20,7 @@ function canonical(value: unknown): Canonical {
 
 /**
  * Identifies a set of `.mcp.json` servers, whatever order they and their keys are in, for the
- * per-project approval of servers Dugout passes to agents itself (decision 052).
+ * per-project approval of servers Dugout passes to agents itself (decision 057).
  */
 export function serversHash(servers: readonly McpServer[]): string {
   const sorted = [...servers].sort((a, b) => byKey(a.name, b.name))

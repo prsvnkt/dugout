@@ -39,7 +39,7 @@ describe('AgentConfigService', () => {
     })
   })
 
-  test('says whether the servers in the file are the approved ones (decision 052)', async () => {
+  test('says whether the servers in the file are the approved ones (decision 057)', async () => {
     write('.mcp.json', JSON.stringify({ mcpServers: { a: { command: 'run-a' } } }))
     const { mcp } = await service.read(root)
     if (!mcp.ok) throw new Error('expected servers')

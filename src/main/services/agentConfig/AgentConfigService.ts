@@ -30,7 +30,7 @@ function versionOf(text: string | null): string {
 
 /** A project's agent setup: `.mcp.json` servers and the AGENTS.md / CLAUDE.md instructions. */
 export class AgentConfigService {
-  /** `approvedHash`: the servers the project approved (decision 052), if any. */
+  /** `approvedHash`: the servers the project approved (decision 057), if any. */
   async read(root: string, approvedHash?: string): Promise<AgentConfig> {
     const [text, instructions] = await Promise.all([
       readOptional(join(root, MCP_JSON)),
@@ -67,7 +67,7 @@ export class AgentConfigService {
 
   /**
    * Refuses to approve servers unless `hash` is still what `.mcp.json` holds, so the approval
-   * covers exactly the servers the user was shown (decision 052).
+   * covers exactly the servers the user was shown (decision 057).
    */
   async checkApproval(root: string, hash: string): Promise<void> {
     const text = await readOptional(join(root, MCP_JSON))

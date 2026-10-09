@@ -13,6 +13,7 @@ class FakeProcess implements TerminalProcess {
   readonly written: string[] = []
   size: { cols: number; rows: number }
   isKilled = false
+  isPaused = false
   private dataListener: ((data: string) => void) | undefined
   private exitListener: ((exit: TerminalExit) => void) | undefined
 
@@ -40,6 +41,14 @@ class FakeProcess implements TerminalProcess {
 
   kill() {
     this.isKilled = true
+  }
+
+  pause() {
+    this.isPaused = true
+  }
+
+  resume() {
+    this.isPaused = false
   }
 
   emitData(data: string) {
@@ -151,6 +160,26 @@ describe('TerminalManager', () => {
     expect(ctx.manager.write('missing', 'x')).toBe(false)
     expect(ctx.manager.resize('missing', 80, 24)).toBe(false)
     expect(ctx.manager.kill('missing')).toBe(false)
+    expect(ctx.manager.pause('missing')).toBe(false)
+    expect(ctx.manager.resume('missing')).toBe(false)
+  })
+
+  test('pause and resume forward to the process, for output flow control', () => {
+    const id = ctx.manager.create(request, ctx.events)
+
+    expect(ctx.manager.pause(id)).toBe(true)
+    expect(ctx.spawned[0]?.isPaused).toBe(true)
+    expect(ctx.manager.resume(id)).toBe(true)
+    expect(ctx.spawned[0]?.isPaused).toBe(false)
+  })
+
+  test('pause and resume are no-ops once the terminal has exited', () => {
+    const id = ctx.manager.create(request, ctx.events)
+    ctx.spawned[0]?.emitExit({ exitCode: 0 })
+
+    expect(ctx.manager.pause(id)).toBe(false)
+    expect(ctx.manager.resume(id)).toBe(false)
+    expect(ctx.spawned[0]?.isPaused).toBe(false)
   })
 
   test('notifies and forgets a terminal when its process exits', () => {
@@ -714,6 +743,20 @@ describe('TerminalManager worktree setup', () => {
     expect(manager.write(id, 'hi')).toBe(true)
     expect(spawned[1]?.written).toEqual(['hi'])
     expect(manager.agentStatus(id)).toBe('starting')
+  })
+
+  test('keeps output paused when the agent replaces a paused setup', () => {
+    // Arrange
+    const { manager, spawned, id } = withSetup()
+    manager.pause(id)
+
+    // Act
+    spawned[0]?.emitExit({ exitCode: 0 })
+
+    // Assert
+    expect(spawned[1]?.isPaused).toBe(true)
+    manager.resume(id)
+    expect(spawned[1]?.isPaused).toBe(false)
   })
 
   test('shows the failure and ends the terminal when the setup fails', () => {
