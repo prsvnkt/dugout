@@ -1,6 +1,6 @@
 import type { Project, ProjectId } from '@shared/project'
 import type { Task, TaskDetail } from '@shared/tasks'
-import type { GitHubIssues, TaskPatch } from './GitHubIssues'
+import type { GitHubIssues, TaskInput, TaskPatch } from './GitHubIssues'
 import { githubRepoFromRemote, type GitHubRepoRef } from './githubRepo'
 
 export interface TaskServiceDeps {
@@ -26,7 +26,7 @@ export class TaskService {
     return this.withRepo(projectId, (token, repo) => this.deps.issues.get(token, repo, number))
   }
 
-  create(projectId: ProjectId, input: { title: string; body: string }): Promise<Task> {
+  create(projectId: ProjectId, input: TaskInput): Promise<Task> {
     return this.withRepo(projectId, (token, repo) => this.deps.issues.create(token, repo, input))
   }
 

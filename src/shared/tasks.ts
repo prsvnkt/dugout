@@ -35,3 +35,16 @@ export const TASK_STATUS_LABEL: Readonly<Record<TaskStatus, string>> = {
 
 export const MAX_TASK_TITLE_LENGTH = 256
 export const MAX_TASK_BODY_LENGTH = 65_000
+
+export const TASK_PRIORITIES = ['high', 'medium', 'low'] as const
+
+/** How soon a task should be done; stored as a `dugout:priority-*` label. */
+export type TaskPriority = (typeof TASK_PRIORITIES)[number]
+
+export const MAX_TASK_LABELS = 10
+export const MAX_TASK_LABEL_LENGTH = 50
+export const MAX_RELATED_TASKS = 20
+export const MAX_TASK_BATCH = 20
+export const MAX_TASK_SEARCH_LENGTH = 200
+/** Prefix of the labels Dugout manages itself (status and priority). */
+export const DUGOUT_LABEL_PREFIX = 'dugout:'
