@@ -102,6 +102,8 @@ interface ManagedTerminal {
   readonly detail: string | null
   /** Tool calls the agent asked to have approved that have not finished yet. */
   readonly approvals: readonly PendingApproval[]
+  /** The renderer asked to stop output until it catches up (decision 056). */
+  readonly isPaused: boolean
 }
 
 const CONVERSATION_STATUSES: ReadonlySet<AgentStatus> = new Set(['working', 'needs-input', 'done'])
@@ -178,6 +180,7 @@ export class TerminalManager {
       reportedSessionId: request.resumeSessionId ?? null,
       detail: null,
       approvals: NO_APPROVALS,
+      isPaused: false,
     })
     return id
   }
@@ -209,7 +212,9 @@ export class TerminalManager {
       const isSuccess = isOpen && exit.exitCode === 0 && !exit.signal
       setup.finish(isSuccess)
       if (isSuccess) {
-        this.terminals.set(id, { ...terminal, process: next.startAgent() })
+        const agent = next.startAgent()
+        if (terminal.isPaused) agent.pause()
+        this.terminals.set(id, { ...terminal, process: agent })
         return
       }
       if (isOpen) next.onData(id, setupFailedMessage(exit))
@@ -272,6 +277,24 @@ export class TerminalManager {
 
   kill(id: TerminalId): boolean {
     return this.withProcess(id, (process) => process.kill())
+  }
+
+  /** Flow control from the renderer; false (a no-op) once the terminal is gone. */
+  pause(id: TerminalId): boolean {
+    return this.setPaused(id, true)
+  }
+
+  resume(id: TerminalId): boolean {
+    return this.setPaused(id, false)
+  }
+
+  private setPaused(id: TerminalId, isPaused: boolean): boolean {
+    const terminal = this.terminals.get(id)
+    if (!terminal) return false
+    if (terminal.isPaused !== isPaused) this.terminals.set(id, { ...terminal, isPaused })
+    if (isPaused) terminal.process.pause()
+    else terminal.process.resume()
+    return true
   }
 
   killAll(): void {

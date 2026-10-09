@@ -39,6 +39,8 @@ interface TerminalPaneProps {
   readonly projectColor: string
   /** True when this pane should own keyboard focus (focused pane of the visible project). */
   readonly shouldFocus: boolean
+  /** False while the pane's project is hidden (its terminal then drops its WebGL context). */
+  readonly isVisible: boolean
   readonly isFocused: boolean
   /** Changes each time something asks to put the keyboard in this terminal (e.g. the inbox). */
   readonly focusRequest: number
@@ -78,7 +80,7 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 
 export function TerminalPane(props: TerminalPaneProps) {
   const { index, kind, projectId, cwd, branch, projectColor, shouldFocus, isFocused } = props
-  const { focusRequest } = props
+  const { focusRequest, isVisible } = props
   const { resumeSessionId, initialPrompt, task, worktreePath, overlaps, devServer } = props
   const { onFocus, onClose, onActivity, onSubagents, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
@@ -90,6 +92,7 @@ export function TerminalPane(props: TerminalPaneProps) {
     initialPrompt,
     devServer,
     taskNumber: task?.number,
+    isVisible,
   })
   const { status, agentStatus, agentDetail, agentApprovals, terminalId, sessionId } = terminal
   const { subagents, usage, focus } = terminal

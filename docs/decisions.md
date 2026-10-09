@@ -1189,6 +1189,39 @@ ad-hoc signed (see known issues), so users had no way to check a download (issue
 - **Not yet:** signing, Hardened Runtime, notarization and Electron fuses need a Developer ID;
   they stay open in issue #65 and known issues.
 
+## 056 — Terminal output flow control and visibility-gated WebGL (2026-10-09)
+
+**Context.** Every pane in every project loaded xterm's WebGL renderer, hidden ones too, and
+Chromium keeps only ~16 live WebGL contexts per renderer: past that it drops the oldest, so a
+visible pane could silently fall back to the DOM renderer (#79). PTY output was written to xterm
+with no backpressure, so a burst (`cat` of a big file, a build log) queued without limit and
+starved the UI; and every ResizeObserver callback fitted xterm and sent a resize, so a splitter
+drag sent one SIGWINCH per frame and the agent TUI flickered (#80).
+
+**Decision.**
+
+- **WebGL only while visible.** `TerminalPane` gets `isVisible` (its project is the active one);
+  `useTerminal` loads the WebGL addon while visible and disposes it while hidden
+  (`terminal/webglToggle.ts`). Hidden panes keep running on the DOM renderer, which costs little
+  under `visibility: hidden`. A lost context falls back to the DOM renderer and WebGL is retried
+  on the next show. Visibility-driven rather than an LRU cap: it keeps the count at "panes of one
+  project", with nothing to tune.
+- **Flow control.** The renderer counts characters written to xterm but not yet parsed
+  (`terminal.write(data, callback)`, `terminal/flowControl.ts`). Above 1 MB pending it sends
+  `terminal:pause`, which calls node-pty's `pause()`; below 256 KB it sends `terminal:resume`.
+  Both are fire-and-forget, zod-validated, and no-ops for unknown ids (a pane closed while
+  paused). `TerminalManager` remembers the paused state so the agent that replaces a worktree
+  setup process (decision 038) starts paused too. Characters stand in for bytes.
+- **Resizes.** After the first measurement (which still fits at once and starts the PTY, since
+  frames do not run while the window is minimised), xterm fits at most once per animation frame,
+  and the size reaches the PTY 75 ms after the last change (`terminal/resizeScheduling.ts`). The
+  size is still sent straight away once the PTY connects. `MIN_MEASURABLE_PX` still skips
+  unmeasurable panes.
+- **Early output.** The pane subscribes to `terminal:data` before calling `create()` and buffers
+  output (up to 256 KB, oldest dropped) until it knows its id (`terminal/outputRouter.ts`). Main
+  replies before any PTY data today (it spawns and returns in the same turn; data needs a later
+  event-loop turn), but that relied on Electron delivering the invoke reply before later sends.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1231,4 +1264,6 @@ ad-hoc signed (see known issues), so users had no way to check a download (issue
 25. **Done since:** a task queue that starts the next task when an agent slot frees up ✅.
 26. **Done since:** agents ask before writing to tasks; only read and propose tools are
     pre-approved ✅.
-27. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+27. **Done since:** terminal output flow control, debounced resizes and WebGL only for visible
+    panes ✅.
+28. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
