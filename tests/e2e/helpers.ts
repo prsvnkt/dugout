@@ -134,6 +134,8 @@ const firstPrompt = process.argv
 const { hooks } = JSON.parse(readFileSync(argValue('--settings'), 'utf8'))
 const resumed = argValue('--resume')
 const dugoutServer = () => JSON.parse(readFileSync(argValue('--mcp-config'), 'utf8')).mcpServers.dugout
+// Claude Code passes its whole env to stdio MCP servers.
+const passesWholeEnv = true
 
 // A transcript like Claude Code's, under $CLAUDE_CONFIG_DIR (the tests' stand-in for ~/.claude).
 const transcriptPath = () =>
@@ -213,6 +215,8 @@ const hooks = Object.fromEntries(
     .map(([key, value]) => [key.slice('hooks.'.length), value]),
 )
 const dugoutServer = () => overrides['mcp_servers.dugout']
+// Codex passes stdio MCP servers only a few defaults, plus the variables env_vars names.
+const passesWholeEnv = false
 const mcpNames = Object.keys(overrides).filter((key) => key.startsWith('mcp_servers.'))
 process.stdout.write('mcp=' + mcpNames.map((key) => key.slice('mcp_servers.'.length)).join(',') + '\r\n')
 
@@ -279,6 +283,8 @@ const dugoutServer = () => {
   const { command, environment } = config.mcp.dugout
   return { command: command[0], args: command.slice(1), env: environment }
 }
+// OpenCode passes its whole env to local MCP servers.
+const passesWholeEnv = true
 process.stdout.write('mcp=' + Object.keys(config.mcp ?? {}).join(',') + '\r\n')
 // OpenCode has no usage reader in Dugout yet.
 const transcriptPath = () => undefined
@@ -416,7 +422,11 @@ async function callDugoutTool(name, args) {
   const { StdioClientTransport } = sdk('client/stdio.js')
   const server = dugoutServer()
   const client = new Client({ name: AGENT_NAME, version: '1' })
-  await client.connect(new StdioClientTransport({ command: server.command, args: server.args, env: { ...process.env, ...server.env } }))
+  const forwarded = ['PATH', 'HOME', ...(server.env_vars ?? [])]
+  const inherited = passesWholeEnv
+    ? process.env
+    : Object.fromEntries(forwarded.map((key) => [key, process.env[key]]))
+  await client.connect(new StdioClientTransport({ command: server.command, args: server.args, env: { ...inherited, ...server.env } }))
   const result = await client.callTool({ name, arguments: args })
   process.stdout.write('tool-result=' + JSON.stringify(result.content[0].text).slice(0, 200) + '\r\n')
   await client.close()

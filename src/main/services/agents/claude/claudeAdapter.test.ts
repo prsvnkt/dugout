@@ -40,7 +40,14 @@ describe('claudeAdapter', () => {
     const launch = claudeAdapter.launch(launchContext({ mcp: { server: MCP_ENTRY, files } }))
 
     expect(JSON.parse(files.contents.get('t-1') ?? '')).toEqual({
-      mcpServers: { dugout: { type: 'stdio', ...MCP_ENTRY } },
+      mcpServers: {
+        dugout: {
+          type: 'stdio',
+          command: MCP_ENTRY.command,
+          args: MCP_ENTRY.args,
+          env: MCP_ENTRY.env,
+        },
+      },
     })
     launch.dispose?.()
     expect(files.contents.size).toBe(0)

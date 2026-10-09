@@ -174,6 +174,8 @@ test('runs Claude and Codex on one task and compares what each changed', async (
   await panes.nth(1).getByTestId('terminal').click()
   await page.keyboard.type('agent-comment\nedit\n')
   await expect.poll(output, { timeout: 20_000 }).toContain('tool-result=')
+  // Its own token reached the MCP server through env_vars, not the -c arguments (decision 059)
+  expect(await output()).not.toMatch(/unreadable response|HTTP 401|Cannot reach Dugout/)
   await panes.nth(0).getByTestId('terminal').click()
   await page.keyboard.type('edit\n')
   await expect.poll(() => output().then((text) => text.split('edited').length - 1)).toBe(2)

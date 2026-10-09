@@ -36,9 +36,16 @@ export const claudeAdapter: AgentAdapter = {
 
   launch(context) {
     const { mcp, terminalId } = context
+    // Claude Code passes its own env to stdio servers, so `inheritedEnv` needs no entry here.
+    const dugout = mcp && {
+      type: 'stdio',
+      command: mcp.server.command,
+      args: mcp.server.args,
+      env: mcp.server.env,
+    }
     const mcpConfigPath = mcp?.files.write(
       terminalId,
-      JSON.stringify({ mcpServers: { dugout: { type: 'stdio', ...mcp.server } } }, null, 2),
+      JSON.stringify({ mcpServers: { dugout } }, null, 2),
     )
     return {
       commandLine: commandLine(context, mcpConfigPath !== undefined),

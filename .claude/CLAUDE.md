@@ -42,7 +42,7 @@ src/
     ipc/        One register*Ipc.ts per domain. Validates every payload with zod.
     services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
                 git/ (review panel, PR URLs), agents/ (one adapter per agent CLI: launch line,
-                hooks, MCP; registry.ts lists them), agentHooks/ (hook server, status signals,
+                hooks, MCP; registry.ts lists them), agentHooks/ (hook server, per-terminal tokens, status signals,
                 pending approvals, subagents, session ids),
                 worktrees/ (isolated sessions + setup), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API,
@@ -153,7 +153,10 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 - **Tasks are numbered per source:** `Task.number` is the GitHub issue number or the number in a
   Linear identifier (ENG-123 → 123); show `task.key` ("#123" / "ENG-123"), never `#${number}`.
 - **Agents reach Dugout only through the MCP server → hook socket RPC**, scoped to their
-  terminal's project. Never put tokens in MCP configs or tool results.
+  terminal's project by that terminal's own hook token (decision 059). The token goes only in the
+  agent's env (`DUGOUT_HOOK_TOKEN`); never put it (or any token) in an MCP config file, a `-c`
+  override, `OPENCODE_CONFIG_CONTENT` or a tool result. The dugout server inherits it: list such
+  variables in `McpServerEntry.inheritedEnv` (Codex forwards them with `env_vars`).
 - **Every "dugout" MCP tool is declared in `mcp/toolAccess.ts`** as read, propose or write; that
   decides what agents may call without asking (decision 053). Writes are never pre-approved.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` and `DUGOUT_HOME_DIR` (the

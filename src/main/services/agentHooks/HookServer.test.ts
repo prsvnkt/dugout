@@ -4,22 +4,51 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { HookServer } from './HookServer'
+import { HookTokens } from './hookTokens'
 
-const TOKEN = 'secret-token'
+/** Pass as the token to send the one issued to the terminal named in the path. */
+const OWN = undefined
+let tokens = new HookTokens()
+let issued = new Map<string, string>()
 
-function post(socketPath: string, path: string, token = TOKEN, body = ''): Promise<number> {
+/** The token issued to a terminal (issued on first use, like `TerminalManager` does at launch). */
+function tokenFor(terminalId: string): string {
+  const existing = issued.get(terminalId)
+  if (existing) return existing
+  const token = tokens.issue(terminalId)
+  issued = new Map([...issued, [terminalId, token]])
+  return token
+}
+
+function ownToken(path: string): string {
+  const terminalId = /^\/(?:hooks|rpc)\/([^/]+)/.exec(path)?.[1]
+  return terminalId ? tokenFor(terminalId) : 'no-terminal'
+}
+
+function resetTokens(): void {
+  tokens = new HookTokens()
+  issued = new Map()
+}
+
+function post(
+  socketPath: string,
+  path: string,
+  token: string | undefined = OWN,
+  body = '',
+): Promise<number> {
   return postFull(socketPath, path, token, body).then((response) => response.status)
 }
 
 function postFull(
   socketPath: string,
   path: string,
-  token = TOKEN,
+  token: string | undefined = OWN,
   body = '',
 ): Promise<{ status: number; body: string }> {
+  const authorization = `Bearer ${token ?? ownToken(path)}`
   return new Promise((resolve, reject) => {
     const req = request(
-      { socketPath, path, method: 'POST', headers: { Authorization: `Bearer ${token}` } },
+      { socketPath, path, method: 'POST', headers: { Authorization: authorization } },
       (res) => {
         let text = ''
         res.on('data', (chunk: Buffer) => (text += chunk.toString()))
@@ -43,7 +72,8 @@ describe('HookServer', () => {
     onSignal.mockReset()
     onRpc.mockReset()
     onSubagent.mockReset()
-    server = new HookServer({ socketPath, token: TOKEN, onSignal, onRpc, onSubagent })
+    resetTokens()
+    server = new HookServer({ socketPath, tokens, onSignal, onRpc, onSubagent })
     await server.listen()
   })
 
@@ -66,10 +96,8 @@ describe('HookServer', () => {
       agent_transcript_path: '/Users/me/.claude/projects/r/s/subagents/agent-a-1.jsonl',
     }
 
-    expect(await post(socketPath, '/hooks/t/subagent-start', TOKEN, JSON.stringify(start))).toBe(
-      204,
-    )
-    expect(await post(socketPath, '/hooks/t/subagent-stop', TOKEN, JSON.stringify(stop))).toBe(204)
+    expect(await post(socketPath, '/hooks/t/subagent-start', OWN, JSON.stringify(start))).toBe(204)
+    expect(await post(socketPath, '/hooks/t/subagent-stop', OWN, JSON.stringify(stop))).toBe(204)
 
     expect(onSubagent.mock.calls).toEqual([
       ['t', { id: 'a-1', type: 'Explore', state: 'running' }, undefined],
@@ -84,11 +112,11 @@ describe('HookServer', () => {
 
   test('names an untyped subagent and ignores subagent payloads without a usable id', async () => {
     const send = (payload: unknown) =>
-      post(socketPath, '/hooks/t/subagent-start', TOKEN, JSON.stringify(payload))
+      post(socketPath, '/hooks/t/subagent-start', OWN, JSON.stringify(payload))
     expect(await send({ agent_id: 'a-2', agent_type: ' ' })).toBe(204)
     expect(await send({ agent_type: 'Explore' })).toBe(204)
     expect(await send({ agent_id: '$(whoami)', agent_type: 'Explore' })).toBe(204)
-    expect(await post(socketPath, '/hooks/t/subagent-start', TOKEN, '{ nope')).toBe(204)
+    expect(await post(socketPath, '/hooks/t/subagent-start', OWN, '{ nope')).toBe(204)
 
     expect(onSubagent.mock.calls).toEqual([
       ['t', { id: 'a-2', type: 'subagent', state: 'running' }, undefined],
@@ -97,13 +125,13 @@ describe('HookServer', () => {
 
   test('extracts the session id from a hook payload', async () => {
     const payload = JSON.stringify({ hook_event_name: 'SessionStart', session_id: 'abc-123' })
-    expect(await post(socketPath, '/hooks/term-1/ready', TOKEN, payload)).toBe(204)
+    expect(await post(socketPath, '/hooks/term-1/ready', OWN, payload)).toBe(204)
     expect(onSignal).toHaveBeenCalledWith('term-1', 'ready', { sessionId: 'abc-123' })
   })
 
   test('passes on the transcript path, only when it is an absolute path', async () => {
     const send = (transcript: unknown) =>
-      post(socketPath, '/hooks/t/done', TOKEN, JSON.stringify({ transcript_path: transcript }))
+      post(socketPath, '/hooks/t/done', OWN, JSON.stringify({ transcript_path: transcript }))
     await send('/Users/me/.claude/projects/r/s.jsonl')
     await send('relative.jsonl')
     await send(42)
@@ -115,8 +143,8 @@ describe('HookServer', () => {
   })
 
   test('ignores malformed payloads and suspicious session ids but keeps the signal', async () => {
-    await post(socketPath, '/hooks/t/ready', TOKEN, '{ not json')
-    await post(socketPath, '/hooks/t/ready', TOKEN, JSON.stringify({ session_id: '$(whoami)' }))
+    await post(socketPath, '/hooks/t/ready', OWN, '{ not json')
+    await post(socketPath, '/hooks/t/ready', OWN, JSON.stringify({ session_id: '$(whoami)' }))
     expect(onSignal.mock.calls).toEqual([
       ['t', 'ready', {}],
       ['t', 'ready', {}],
@@ -149,7 +177,7 @@ describe('HookServer', () => {
       'Fixed the login timeout.',
     ],
   ])('extracts a short detail from %o', async (payload, detail) => {
-    await post(socketPath, '/hooks/t/done', TOKEN, JSON.stringify(payload))
+    await post(socketPath, '/hooks/t/done', OWN, JSON.stringify(payload))
     expect(onSignal.mock.calls[0]?.[2]).toMatchObject({ detail })
   })
 
@@ -162,7 +190,7 @@ describe('HookServer', () => {
     }
 
     // Act
-    await post(socketPath, '/hooks/t/needs-input', TOKEN, JSON.stringify(payload))
+    await post(socketPath, '/hooks/t/needs-input', OWN, JSON.stringify(payload))
 
     // Assert
     expect(onSignal).toHaveBeenCalledWith('t', 'needs-input', {
@@ -186,7 +214,7 @@ describe('HookServer', () => {
       tool_response: { stdout: 'x'.repeat(500 * 1024) },
     }
 
-    expect(await post(socketPath, '/hooks/t/tool-done', TOKEN, JSON.stringify(payload))).toBe(204)
+    expect(await post(socketPath, '/hooks/t/tool-done', OWN, JSON.stringify(payload))).toBe(204)
 
     expect(onSignal).toHaveBeenCalledWith('t', 'tool-done', {
       toolCall: { toolUseId: 'toolu_1', key: 'Bash\u0000npm install' },
@@ -195,15 +223,15 @@ describe('HookServer', () => {
 
   test('truncates long details', async () => {
     const payload = { hook_event_name: 'Stop', last_assistant_message: 'x'.repeat(500) }
-    await post(socketPath, '/hooks/t/done', TOKEN, JSON.stringify(payload))
+    await post(socketPath, '/hooks/t/done', OWN, JSON.stringify(payload))
     const details = onSignal.mock.calls[0]?.[2] as { detail: string }
     expect(details.detail.length).toBeLessThanOrEqual(140)
   })
 
   test('rejects oversized payloads', async () => {
     const huge = 'x'.repeat(5 * 1024 * 1024)
-    expect(await post(socketPath, '/hooks/t/ready', TOKEN, huge)).toBe(413)
-    expect(await post(socketPath, '/rpc/t', TOKEN, 'x'.repeat(200 * 1024))).toBe(413)
+    expect(await post(socketPath, '/hooks/t/ready', OWN, huge)).toBe(413)
+    expect(await post(socketPath, '/rpc/t', OWN, 'x'.repeat(200 * 1024))).toBe(413)
     expect(onSignal).not.toHaveBeenCalled()
   })
 
@@ -212,9 +240,32 @@ describe('HookServer', () => {
     expect(onSignal).not.toHaveBeenCalled()
   })
 
+  test("rejects another terminal's token on a terminal's hooks", async () => {
+    tokenFor('term-2')
+    const tokenOfA = tokenFor('term-1')
+    expect(await post(socketPath, '/hooks/term-2/done', tokenOfA)).toBe(401)
+    expect(await post(socketPath, '/hooks/term-2/subagent-start', tokenOfA, '{}')).toBe(401)
+    expect(await post(socketPath, '/hooks/term-1/done', tokenOfA)).toBe(204)
+    expect(onSignal).toHaveBeenCalledTimes(1)
+    expect(onSignal).toHaveBeenCalledWith('term-1', 'done', {})
+  })
+
+  test('rejects a terminal whose token was revoked when it exited', async () => {
+    const token = tokenFor('term-1')
+    tokens.revoke('term-1')
+    expect(await post(socketPath, '/hooks/term-1/ready', token)).toBe(401)
+    expect(onSignal).not.toHaveBeenCalled()
+  })
+
+  test('rejects requests for a terminal that was never issued a token', async () => {
+    expect(await post(socketPath, '/hooks/stranger/ready', tokenFor('term-1'))).toBe(401)
+    expect(onSignal).not.toHaveBeenCalled()
+  })
+
   test('rejects unknown signals and paths', async () => {
     expect(await post(socketPath, '/hooks/term-1/explode')).toBe(404)
-    expect(await post(socketPath, '/elsewhere')).toBe(404)
+    expect(await post(socketPath, '/hooks/term-1')).toBe(404)
+    expect(await post(socketPath, '/elsewhere')).toBe(401)
     expect(onSignal).not.toHaveBeenCalled()
   })
 
@@ -226,7 +277,7 @@ describe('HookServer', () => {
     await server.close()
     const { writeFileSync } = await import('node:fs')
     writeFileSync(socketPath, '')
-    server = new HookServer({ socketPath, token: TOKEN, onSignal, onRpc, onSubagent })
+    server = new HookServer({ socketPath, tokens, onSignal, onRpc, onSubagent })
     await server.listen()
     expect(await post(socketPath, '/hooks/t/ready')).toBe(204)
   })
@@ -240,9 +291,10 @@ describe('HookServer task RPC', () => {
   beforeEach(async () => {
     socketPath = join(mkdtempSync(join(tmpdir(), 'dugout-rpc-')), 'hooks.sock')
     onRpc.mockReset()
+    resetTokens()
     server = new HookServer({
       socketPath,
-      token: TOKEN,
+      tokens,
       onSignal: vi.fn(),
       onRpc,
       onSubagent: vi.fn(),
@@ -259,7 +311,7 @@ describe('HookServer task RPC', () => {
     const response = await postFull(
       socketPath,
       '/rpc/term-1',
-      TOKEN,
+      OWN,
       JSON.stringify({ method: 'list', params: {} }),
     )
     expect(response.status).toBe(200)
@@ -272,7 +324,7 @@ describe('HookServer task RPC', () => {
     const response = await postFull(
       socketPath,
       '/rpc/t',
-      TOKEN,
+      OWN,
       JSON.stringify({ method: 'list', params: {} }),
     )
     expect(response.status).toBe(400)
@@ -290,8 +342,27 @@ describe('HookServer task RPC', () => {
     expect(onRpc).not.toHaveBeenCalled()
   })
 
+  test("rejects another terminal's token, and answers its own", async () => {
+    onRpc.mockResolvedValue([])
+    tokenFor('b')
+    const tokenOfA = tokenFor('a')
+    const call = JSON.stringify({ method: 'list', params: {} })
+    expect((await postFull(socketPath, '/rpc/b', tokenOfA, call)).status).toBe(401)
+    expect(onRpc).not.toHaveBeenCalled()
+    expect((await postFull(socketPath, '/rpc/a', tokenOfA, call)).status).toBe(200)
+    expect(onRpc).toHaveBeenCalledWith('a', 'list', {})
+  })
+
+  test('rejects a terminal whose token was revoked when it exited', async () => {
+    const token = tokenFor('a')
+    tokens.revoke('a')
+    const call = JSON.stringify({ method: 'list', params: {} })
+    expect((await postFull(socketPath, '/rpc/a', token, call)).status).toBe(401)
+    expect(onRpc).not.toHaveBeenCalled()
+  })
+
   test('rejects malformed calls', async () => {
-    const response = await postFull(socketPath, '/rpc/t', TOKEN, '{ nope')
+    const response = await postFull(socketPath, '/rpc/t', OWN, '{ nope')
     expect(response.status).toBe(400)
     expect(onRpc).not.toHaveBeenCalled()
   })

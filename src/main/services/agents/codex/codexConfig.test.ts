@@ -13,6 +13,7 @@ const MCP = {
   command: '/Apps/Dugout',
   args: ['/out/main/mcp.js'],
   env: { DUGOUT_TERMINAL_ID: 't-1' },
+  inheritedEnv: ['DUGOUT_HOOK_TOKEN'],
 }
 
 describe('tomlInline', () => {
@@ -52,7 +53,18 @@ describe('codexConfigOverrides', () => {
     const mcp = codexConfigOverrides(MCP)
       .map(parseOverride)
       .find((o) => o.key === 'mcp_servers.dugout')
-    expect(mcp?.value).toEqual(MCP)
+    expect(mcp?.value).toEqual({
+      command: MCP.command,
+      args: MCP.args,
+      env: MCP.env,
+      env_vars: ['DUGOUT_HOOK_TOKEN'],
+    })
+  })
+
+  test('forwards the hook token by name, so it is never in the arguments (decision 059)', () => {
+    const overrides = codexConfigOverrides(MCP).join('\n')
+    expect(overrides).toContain('env_vars = ["DUGOUT_HOOK_TOKEN"]')
+    expect(overrides).not.toMatch(/DUGOUT_HOOK_TOKEN = /)
   })
 })
 

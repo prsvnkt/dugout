@@ -2,6 +2,22 @@
 
 Limitations we have accepted for now and intend to revisit. Remove an entry when it is fixed.
 
+## Hook tokens: same-user processes can read an agent's env
+
+- **Area:** `src/main/services/agentHooks/`, `src/main/services/terminal/TerminalManager.ts`
+- **Found:** 2026-10-09, while scoping hook tokens per terminal (decision 059)
+
+**What happens:** Each agent terminal now has its own token, in its env only. Every agent runs as
+the user, though, so an agent that runs arbitrary shell commands can read another agent's
+environment (e.g. `ps eww <pid>`) and use that terminal's token. The same agent could also read
+or edit the other project's files directly, so the token mainly stops cross-terminal calls
+through Dugout's own tools and sibling config files. The agent's own permission prompts remain
+the boundary for shell access. Codex versions without the `env_vars` MCP key cannot forward the
+token, so Dugout's task tools fail to start there (closed, not open).
+
+**Likely fix:** pass the token to the MCP server over an inherited file descriptor or a one-time
+handshake instead of an env var, if the agent CLIs ever support it.
+
 ## Project context: codemap only with Claude; stale pins show on reload
 
 - **Area:** `src/main/services/context/`, `src/renderer/src/features/context/`

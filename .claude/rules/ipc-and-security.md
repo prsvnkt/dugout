@@ -19,4 +19,7 @@ paths:
   reloads or is destroyed. No orphaned processes.
 - Navigation and `window.open` are blocked; external `https://` links go to the system browser.
 - Never log secrets or terminal input. Tokens, when added, go through Electron `safeStorage`.
+- The hook socket accepts a request only with the token of the terminal named in its path
+  (`agentHooks/hookTokens.ts`, decision 059). The socket and per-terminal MCP configs live in
+  owner-only (0700) folders; files there are 0600.
 - The renderer CSP in `src/renderer/index.html` stays strict (`script-src 'self'`).
