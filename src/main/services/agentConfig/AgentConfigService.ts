@@ -7,6 +7,7 @@ import { writeFileAtomic } from '../projects/atomicWrite'
 import { codexSharing } from '../agents/codex/codexMcp'
 import { AGENTS_MD, CLAUDE_MD_PATHS, importsAgentsMd, linkInstructions } from './instructions'
 import { MCP_JSON, parseMcpJson, serializeMcpJson } from './mcpJson'
+import { serversHash } from './serverApproval'
 
 const PRESET_CODEX = Object.fromEntries(
   MCP_PRESETS.map((preset) => [preset.server.name, codexSharing(preset.server)]),
@@ -29,7 +30,8 @@ function versionOf(text: string | null): string {
 
 /** A project's agent setup: `.mcp.json` servers and the AGENTS.md / CLAUDE.md instructions. */
 export class AgentConfigService {
-  async read(root: string): Promise<AgentConfig> {
+  /** `approvedHash`: the servers the project approved (decision 052), if any. */
+  async read(root: string, approvedHash?: string): Promise<AgentConfig> {
     const [text, instructions] = await Promise.all([
       readOptional(join(root, MCP_JSON)),
       this.instructions(root),
@@ -37,8 +39,10 @@ export class AgentConfigService {
     try {
       const { servers } = parseMcpJson(text)
       const codex = Object.fromEntries(servers.map((server) => [server.name, codexSharing(server)]))
+      const hash = serversHash(servers)
+      const approval = { hash, isApproved: hash === approvedHash }
       return {
-        mcp: { ok: true, servers, codex, version: versionOf(text) },
+        mcp: { ok: true, servers, codex, approval, version: versionOf(text) },
         instructions,
         presetCodex: PRESET_CODEX,
       }
@@ -59,6 +63,17 @@ export class AgentConfigService {
       throw new Error('.mcp.json changed on disk. Reload the agent settings and try again.')
     }
     await writeFileAtomic(path, serializeMcpJson(parseMcpJson(text).raw, servers))
+  }
+
+  /**
+   * Refuses to approve servers unless `hash` is still what `.mcp.json` holds, so the approval
+   * covers exactly the servers the user was shown (decision 052).
+   */
+  async checkApproval(root: string, hash: string): Promise<void> {
+    const text = await readOptional(join(root, MCP_JSON))
+    if (serversHash(parseMcpJson(text).servers) !== hash) {
+      throw new Error('.mcp.json changed on disk. Review its servers again before approving them.')
+    }
   }
 
   /** Makes AGENTS.md the shared instructions, with CLAUDE.md importing it. */

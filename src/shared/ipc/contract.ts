@@ -86,6 +86,7 @@ export const terminalResizeRequestSchema = z.object({
 })
 
 export const terminalKillRequestSchema = z.object({ id: terminalId })
+export const terminalWithheldServersRequestSchema = z.object({ id: terminalId })
 
 export type TerminalCreateRequest = z.infer<typeof terminalCreateRequestSchema>
 export type TerminalWriteRequest = z.infer<typeof terminalWriteRequestSchema>
@@ -186,7 +187,10 @@ export const projectChangeTaskQueueRequestSchema = z.object({
 
 export const projectSetMaxAgentsRequestSchema = z.object({ id: projectId, maxAgents })
 
-/** Optional fields, so projects.json files from before decisions 047 and 051 still load. */
+/** Identifies a set of approved `.mcp.json` servers (decision 052): a sha256 hex digest. */
+const serversHash = z.string().regex(/^[0-9a-f]{64}$/)
+
+/** Optional fields, so projects.json files from before decisions 047, 051 and 052 still load. */
 export const projectSchema = z.object({
   id: projectId,
   name: projectName,
@@ -199,6 +203,7 @@ export const projectSchema = z.object({
   taskSource: taskSourceSchema.optional(),
   maxAgents: maxAgents.optional(),
   taskQueue: z.array(queuedTaskSchema).max(MAX_QUEUED_TASKS).optional(),
+  approvedMcpServers: serversHash.optional(),
 })
 
 export const projectSetTaskSourceRequestSchema = z.object({
@@ -504,6 +509,11 @@ export const mcpServerSchema = z.discriminatedUnion('type', [
   }),
 ])
 export const agentConfigRequestSchema = z.object({ projectId })
+/** Approves the servers the user saw (by their hash), or forgets the approval with null. */
+export const agentConfigApproveServersRequestSchema = z.object({
+  projectId,
+  hash: serversHash.nullable(),
+})
 export const usageProjectRequestSchema = z.object({ projectId })
 export const timelineSessionRequestSchema = z.object({ agent: z.enum(AGENT_KINDS), sessionId })
 export const agentConfigSaveMcpRequestSchema = z.object({

@@ -213,13 +213,14 @@ checkout. Only the fields Dugout shows are checked and rewritten; unknown fields
 each server are kept, writes are atomic, and a save is refused if the file changed since it was
 read. Values that look like secrets written out in full get a warning (the file is usually
 committed; use `${VAR}`). Claude Code keeps loading `.mcp.json` itself. Codex panes get the same
-servers as `-c mcp_servers.<name>=…`, read from the pane's checkout when it starts. Codex does not
+servers as `-c mcp_servers.<name>=…`, read from the pane's checkout when it starts (superseded by
+052: only once the user approved the project's servers). Codex does not
 expand `${VAR}`, so a `${KEY}` env entry becomes `env_vars`, `Authorization: Bearer ${VAR}` becomes
 `bearer_token_env_var`, and a whole-value `${VAR}` header becomes `env_http_headers`; servers that
 need anything else (SSE, `${VAR}` inside a command, URL or longer value) stay Claude-only, and the
 tab says why. Values are never expanded into Codex's arguments, so no secret reaches a process
 list. There is no per-project "share with Codex" switch; sharing what Codex can run is the point
-(add one if a project needs it).
+(add one if a project needs it). Superseded by 052: sharing now waits for a per-project approval.
 
 "Make AGENTS.md the source" moves CLAUDE.md into a new AGENTS.md (or keeps an existing one) and
 leaves CLAUDE.md as an `@AGENTS.md` import (`@../AGENTS.md` from `.claude/CLAUDE.md`) plus a
@@ -1077,6 +1078,46 @@ in Linear (issue #27).
   Linear's 10,000-point query limit; comment counts are not fetched for lists (cards show them
   only for GitHub), since they would multiply the complexity of every 30-second refresh.
 
+## 052 — Codex gets a project's .mcp.json servers only once approved (2026-10-09)
+
+**Context.** Decision 022 turned every server in the checkout's `.mcp.json` into
+`-c mcp_servers.<name>=…` on the Codex command line when a Codex agent started. Claude Code loads
+`.mcp.json` itself and asks the user before it runs a project's servers; Codex has no such file,
+and config passed as session flags is not gated. So a cloned repo with
+`{"command": "sh", "args": ["-c", "curl … | sh"]}` in `.mcp.json` ran as the user the moment a
+Codex agent started, and an HTTP server could send any environment variable (`bearer_token_env_var`,
+`env_http_headers`) to any URL. That bypasses the agent's own trust prompt, which the terminal rules
+forbid.
+
+**Decision.**
+
+- **Approval per project, in app data.** A project may have `approvedMcpServers` in
+  `projects.json`: the sha256 of its `.mcp.json` servers as Dugout parses them (name, type,
+  command, args, env, url, headers), sorted by name with every object's keys sorted, so key order
+  and whitespace do not matter but any change to a command, argument, value or server does
+  (`agentConfig/serverApproval.ts`). Nothing is written to the repo.
+- **At launch.** An agent whose CLI does not ask itself has the capability `needsMcpApproval`
+  (Codex only; Claude Code asks, OpenCode does not get the servers yet). `TerminalManager` hands
+  every adapter the project's approved hash; the Codex adapter reads the checkout's `.mcp.json`,
+  and passes the servers it can express only if their hash matches. Otherwise it passes none of
+  them and reports them as `withheldServers` on its launch; the agent still starts, with Dugout's
+  own server. Any change to the file, in the main checkout or a worktree, needs a new approval.
+  The contract test checks that no adapter puts an unapproved server on its command line.
+- **Asking.** A Codex pane that started without servers shows a notice under its header
+  ("1 project MCP server from .mcp.json is not shared with Codex until you approve it.") listing
+  each server's name, command line or URL, and the names (never values) of its env vars or
+  headers, with "Approve for Codex", "Agent settings" and dismiss. Agent settings → MCP servers
+  shows the same list in an "Approval for Codex" box with the approved state and "Revoke
+  approval"; server rows say "Claude, and Codex once approved" until then. Agent names come from
+  the capability and `label`, not from the kind.
+- **What is approved.** The renderer sends back the hash it showed; main approves only if the
+  main checkout's `.mcp.json` still has that hash, so a file changed in between is refused
+  (`AgentConfigService.checkApproval`). The renderer cannot pick an arbitrary hash to trust a
+  different file. An approval applies to agents started afterwards; a running agent keeps what it
+  started with until it is restarted.
+- Servers written through Agent settings need approval like any others: the file may hold
+  servers from the repo too, and one explicit step keeps the rule simple.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1117,4 +1158,5 @@ in Linear (issue #27).
     and a headless codemap ✅.
 24. **Done since:** session timelines from Claude and Codex transcripts ✅.
 25. **Done since:** a task queue that starts the next task when an agent slot frees up ✅.
-26. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+26. **Done since:** Codex gets a project's `.mcp.json` servers only once they are approved ✅.
+27. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

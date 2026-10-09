@@ -5,6 +5,7 @@ import {
   terminalCreateRequestSchema,
   terminalKillRequestSchema,
   terminalResizeRequestSchema,
+  terminalWithheldServersRequestSchema,
   terminalWriteRequestSchema,
 } from '@shared/ipc/contract'
 import { isAgentKind, type TerminalId } from '@shared/terminal'
@@ -108,6 +109,12 @@ export function registerTerminalIpc(
     )
     return id
   })
+
+  handleRequest(
+    IpcChannel.terminalWithheldServers,
+    terminalWithheldServersRequestSchema,
+    ({ id }) => manager.withheldServers(id),
+  )
 
   ipcMain.on(IpcChannel.terminalWrite, (_event, payload: unknown) => {
     const request = parsePayload(terminalWriteRequestSchema, payload, IpcChannel.terminalWrite)

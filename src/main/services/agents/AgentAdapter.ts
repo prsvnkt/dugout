@@ -1,3 +1,4 @@
+import type { WithheldServers } from '@shared/agentConfig'
 import type { AgentInfo } from '@shared/agents'
 import type { TimelineStep } from '../transcripts/timelineSteps'
 import type { TranscriptCarry, TranscriptUsage } from '../transcripts/types'
@@ -24,6 +25,11 @@ export interface AgentLaunchContext {
   readonly hasInitialPrompt: boolean
   /** Dugout's task server for this terminal; absent when it is not available. */
   readonly mcp?: { readonly server: McpServerEntry; readonly files: TerminalFiles }
+  /**
+   * The hash of the `.mcp.json` servers the project approved (decision 052); absent when none.
+   * An agent with `needsMcpApproval` gets the checkout's servers only when they match it.
+   */
+  readonly approvedProjectServers?: string | undefined
 }
 
 export interface AgentLaunch {
@@ -36,6 +42,11 @@ export interface AgentLaunch {
   readonly env: Readonly<Record<string, string>>
   /** Cleans up per-terminal files once the process exits. */
   readonly dispose?: () => void
+  /**
+   * `.mcp.json` servers left out because the project has not approved them (decision 052).
+   * Only agents with `needsMcpApproval` withhold anything.
+   */
+  readonly withheldServers?: WithheldServers
 }
 
 /** Usage: where an agent's transcript (its token data) lives and how to read it. */

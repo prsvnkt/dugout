@@ -130,6 +130,16 @@ export class ProjectStore {
     return this.update(id, (project) => ({ ...project, maxAgents }))
   }
 
+  /**
+   * Records which `.mcp.json` servers the user approved for agents that do not ask themselves
+   * (decision 052), as their hash; null forgets the approval.
+   */
+  setApprovedMcpServers(id: ProjectId, hash: string | null): Promise<Project> {
+    return this.update(id, ({ approvedMcpServers: _previous, ...rest }) =>
+      hash ? { ...rest, approvedMcpServers: hash } : rest,
+    )
+  }
+
   private update(id: ProjectId, change: (project: Project) => Project): Promise<Project> {
     return this.serially(async () => {
       const project = this.projects.find((candidate) => candidate.id === id)

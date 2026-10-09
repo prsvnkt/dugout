@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { X } from 'lucide-react'
 import '@xterm/xterm/css/xterm.css'
 import { AGENTS } from '@shared/agents'
@@ -14,6 +14,7 @@ import {
   type PaneActivity,
 } from '@renderer/features/workspace/paneActivity'
 import type { Subagent } from '@renderer/features/agents/subagents'
+import { WithheldServersNotice } from '@renderer/features/agentConfig/WithheldServersNotice'
 import { CheckIndicator } from '@renderer/features/checks/CheckIndicator'
 import { OpenInMenu } from '@renderer/features/openIn/OpenInMenu'
 import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
@@ -92,7 +93,8 @@ export function TerminalPane(props: TerminalPaneProps) {
     taskNumber: task?.number,
   })
   const { status, agentStatus, agentDetail, agentApprovals, terminalId, sessionId } = terminal
-  const { subagents, usage, focus } = terminal
+  const { subagents, usage, withheldServers, focus } = terminal
+  const [isNoticeDismissed, setIsNoticeDismissed] = useState(false)
   const canRestart = status.state === 'exited' || status.state === 'error'
   // If the agent never got ready, resuming failed (e.g. the session no longer exists).
   const isAgent = isAgentKind(kind)
@@ -184,6 +186,14 @@ export function TerminalPane(props: TerminalPaneProps) {
           <Icon icon={X} />
         </button>
       </header>
+      {isAgent && withheldServers && !isNoticeDismissed && (
+        <WithheldServersNotice
+          projectId={projectId}
+          agentLabel={AGENTS[kind].label}
+          withheld={withheldServers}
+          onDismiss={() => setIsNoticeDismissed(true)}
+        />
+      )}
       <div ref={containerRef} className={styles.terminal} data-testid="terminal" />
     </section>
   )

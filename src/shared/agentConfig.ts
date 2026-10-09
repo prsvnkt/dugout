@@ -26,6 +26,24 @@ export const RESERVED_MCP_SERVER = 'dugout'
 export type CodexSharing =
   { readonly isShared: true } | { readonly isShared: false; readonly reason: string }
 
+/**
+ * `.mcp.json` servers an agent with `needsMcpApproval` did not get when it started, because the
+ * project's servers were not approved, or changed since (decision 052).
+ */
+export interface WithheldServers {
+  /** The servers it would have got. */
+  readonly servers: readonly McpServer[]
+  /** Identifies every server in the file; approving stores it. */
+  readonly hash: string
+}
+
+/** Whether the project's current `.mcp.json` servers are approved (decision 052). */
+export interface ServerApproval {
+  /** Identifies every server in the file as read; sent back to approve exactly these. */
+  readonly hash: string
+  readonly isApproved: boolean
+}
+
 /** Which instruction file Claude reads, and whether it imports the shared AGENTS.md. */
 export interface InstructionsStatus {
   readonly hasAgentsMd: boolean
@@ -41,6 +59,8 @@ export interface AgentConfig {
         readonly ok: true
         readonly servers: readonly McpServer[]
         readonly codex: Readonly<Record<string, CodexSharing>>
+        /** Whether agents with `needsMcpApproval` may get the servers (decision 052). */
+        readonly approval: ServerApproval
         /** Identifies the file contents read, so a save never overwrites newer changes. */
         readonly version: string
       }

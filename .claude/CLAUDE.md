@@ -52,7 +52,8 @@ src/
                 openIn/ (open a checkout in VS Code, Cursor, Zed or Finder),
                 tasks/ (TaskService: a project's tasks from its source, GitHub Issues or
                 Linear, decision 051), linear/ (Linear GraphQL API, encrypted API key),
-                agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions),
+                agentConfig/ (.mcp.json servers and their approval for Codex: decision 052,
+                AGENTS.md / CLAUDE.md instructions),
                 transcripts/ (Claude / Codex transcript parsers for usage and timelines,
                 finding transcripts and their path checks),
                 usage/ (token ledger in app data, rollups, price table: decision 046),

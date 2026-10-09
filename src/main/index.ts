@@ -272,6 +272,8 @@ async function start(): Promise<void> {
       updateDockBadge(manager)
       notifier.handle(change)
     },
+    approvedProjectServers: (projectId) =>
+      projectStore.list().find((project) => project.id === projectId)?.approvedMcpServers,
   })
   terminalManager = manager
   const checks = new CheckRunner({

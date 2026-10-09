@@ -30,6 +30,25 @@ A user's own `OPENCODE_CONFIG_CONTENT`, if they set one, is replaced by Dugout's
 becomes `{env:VAR}`), show them in Agent settings per agent, and merge an inherited
 `OPENCODE_CONFIG_CONTENT` instead of replacing it.
 
+## Codex .mcp.json approval: one per project, from the main checkout, at start
+
+- **Area:** `src/main/services/agentConfig/serverApproval.ts`, `agents/codex/projectServers.ts`,
+  `src/renderer/src/features/agentConfig/`
+- **Found:** 2026-10-09, while adding the approval (decision 052)
+
+**What happens:** A project holds one approved hash, checked against the main checkout's
+`.mcp.json`. A worktree whose `.mcp.json` differs (a branch that changed it, or an agent that
+edited it) gets no servers, and approving from its pane's notice is refused, because the main
+checkout's file is not the one shown; it can be used only once the main checkout has the same
+servers. An approval reaches only agents started afterwards: running ones keep what they started
+with until restarted, and a dismissed notice comes back only with a new agent. The approval covers
+every server in the file, including ones Codex cannot run, so changing one of those asks again.
+Whoever adds `.mcp.json` servers for OpenCode (the issue above) must decide whether it asks before
+running them, and set `needsMcpApproval` if not.
+
+**Likely fix:** approve per checkout (or keep a few hashes per project), and offer "Restart with
+servers" on the notice once approved.
+
 ## Token usage: OpenCode, earlier sessions and long-context prices
 
 - **Area:** `src/main/services/usage/`, `src/main/services/transcripts/`

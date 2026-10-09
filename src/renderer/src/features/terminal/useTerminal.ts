@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
+import type { WithheldServers } from '@shared/agentConfig'
+import { AGENTS } from '@shared/agents'
 import type { AgentStatus } from '@shared/agentStatus'
 import type { DevServer } from '@shared/preview'
 import type { ToolCallPreview } from '@shared/toolCall'
@@ -44,6 +46,8 @@ export interface TerminalHandle {
   readonly subagents: readonly Subagent[]
   /** Tokens of the agent's session so far (agents with `hasUsage`); null until reported. */
   readonly usage: AgentUsage | null
+  /** `.mcp.json` servers the agent started without, waiting for approval (decision 052). */
+  readonly withheldServers: WithheldServers | null
   focus(): void
 }
 
@@ -94,6 +98,7 @@ export function useTerminal(
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [subagents, setSubagents] = useState<readonly Subagent[]>(NO_SUBAGENTS)
   const [usage, setUsage] = useState<AgentUsage | null>(null)
+  const [withheldServers, setWithheldServers] = useState<WithheldServers | null>(null)
   const resumeRef = useRef(resumeSessionId)
   const initialPromptRef = useRef(initialPrompt)
   const devServerRef = useRef(devServer)
@@ -167,6 +172,12 @@ export function useTerminal(
         () => input.dispose(),
         () => resize.dispose(),
       )
+      if (isAgentKind(kind) && AGENTS[kind].capabilities.needsMcpApproval) {
+        void dugout.terminal.withheldServers(id).then((result) => {
+          if (!result.ok) console.warn('[terminal] withheld servers', result.error)
+          else if (!isDisposed) setWithheldServers(result.data)
+        })
+      }
     }
 
     const start = () => {
@@ -234,6 +245,7 @@ export function useTerminal(
     sessionId,
     subagents,
     usage,
+    withheldServers,
     focus,
   }
 }

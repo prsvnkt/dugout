@@ -1,5 +1,5 @@
 import type { AgentStatus, SubagentUpdate } from './agentStatus'
-import type { AgentConfig, McpServer } from './agentConfig'
+import type { AgentConfig, McpServer, WithheldServers } from './agentConfig'
 import type { CloneDefaults, CloneProgress } from './clone'
 import type { CheckStatus } from './checks'
 import type { WorktreeChanges } from './compare'
@@ -72,6 +72,11 @@ export interface DugoutApi {
     onCheckStatus(listener: (id: TerminalId, status: CheckStatus) => void): Unsubscribe
     /** An agent session's token usage, each time its transcript grows. */
     onAgentUsage(listener: (id: TerminalId, usage: AgentUsage) => void): Unsubscribe
+    /**
+     * `.mcp.json` servers the agent started without because the project has not approved them
+     * (decision 052); null when it left nothing out.
+     */
+    withheldServers(id: TerminalId): Promise<Result<WithheldServers | null>>
   }
   readonly projects: {
     list(): Promise<Result<readonly Project[]>>
@@ -238,6 +243,12 @@ export interface DugoutApi {
       version: string,
     ): Promise<Result<void>>
     linkInstructions(projectId: ProjectId): Promise<Result<void>>
+    /**
+     * Approves the project's `.mcp.json` servers for agents that do not ask themselves (decision
+     * 052). `hash` is the `ServerApproval` or `WithheldServers` hash the user was shown; it is
+     * refused if the main checkout's file changed since. null forgets the approval.
+     */
+    approveServers(projectId: ProjectId, hash: string | null): Promise<Result<void>>
   }
   /** Token usage Dugout recorded for agents with `hasUsage` (decision 046). */
   readonly usage: {

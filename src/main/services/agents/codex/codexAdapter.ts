@@ -1,16 +1,27 @@
 import { join } from 'node:path'
+import type { WithheldServers } from '@shared/agentConfig'
 import { AGENTS } from '@shared/agents'
 import { readCodexTimeline } from '../../transcripts/codexTimeline'
 import { readCodexTranscript } from '../../transcripts/codexTranscript'
 import { findCodexTranscript } from '../../transcripts/transcriptFiles'
 import type { AgentAdapter, AgentLaunchContext } from '../AgentAdapter'
 import { codexConfigOverrides } from './codexConfig'
-import { codexProjectServerOverrides } from './projectServers'
+import { codexProjectServers } from './projectServers'
 
-/** `-c` overrides: status hooks, the dugout server, then the checkout's `.mcp.json` servers. */
-function overridesFor(context: AgentLaunchContext): string[] {
-  if (!context.mcp) return []
-  return [...codexConfigOverrides(context.mcp.server), ...codexProjectServerOverrides(context.cwd)]
+/**
+ * `-c` overrides: status hooks, the dugout server, then the checkout's `.mcp.json` servers if
+ * the project approved them (decision 052), plus the servers left out when it has not.
+ */
+function overridesFor(context: AgentLaunchContext): {
+  overrides: readonly string[]
+  withheld: WithheldServers | null
+} {
+  if (!context.mcp) return { overrides: [], withheld: null }
+  const project = codexProjectServers(context.cwd, context.approvedProjectServers)
+  return {
+    overrides: [...codexConfigOverrides(context.mcp.server), ...project.overrides],
+    withheld: project.withheld,
+  }
 }
 
 /** Each override goes in its own `$DUGOUT_CODEX_C<n>`, so the line stays plain "$VAR"s. */
@@ -34,13 +45,14 @@ export const codexAdapter: AgentAdapter = {
   commandVariable: 'DUGOUT_CODEX_COMMAND',
 
   launch(context) {
-    const overrides = overridesFor(context)
+    const { overrides, withheld } = overridesFor(context)
     return {
       commandLine: commandLine(context, overrides.length),
       env: {
         DUGOUT_CODEX_COMMAND: context.command,
         ...Object.fromEntries(overrides.map((value, index) => [`DUGOUT_CODEX_C${index}`, value])),
       },
+      ...(withheld && { withheldServers: withheld }),
     }
   },
 
