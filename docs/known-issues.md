@@ -311,6 +311,30 @@ ENG-123" in a pull request closes the issue only when the Linear GitHub integrat
 **Likely fix:** a key per project if anyone needs two workspaces; fetch comment counts lazily for
 visible cards; follow moved issues by their UUID.
 
+## Dependency overrides need manual upkeep
+
+- **Area:** `package.json` `overrides`
+- **Found:** 2026-10-09, in the repo audit (#85)
+
+**What happens:** `dompurify` is overridden to 3.4.16 because `monaco-editor@0.57.0` pins 3.4.15
+(advisory). Dependabot does not bump `overrides`, so a pin can outlive its reason unnoticed. A
+`global-agent` override (drops a vulnerable `sprintf-js`) is pending #33.
+
+**Likely fix:** drop the `dompurify` override once monaco depends on a version past 3.4.15; check
+`npm ls dompurify` on every monaco upgrade, and the same for `global-agent` once #33 lands.
+
+## README demo GIF is 9.7 MB
+
+- **Area:** `docs/media/demo.gif`
+- **Found:** 2026-10-09, in the repo audit (#85)
+
+**What happens:** the edited README demo is 9,727,926 bytes, against the ~2 MB that
+`scripts/demo/makeGif.sh` expects. Every clone downloads it, and each new cut adds another copy
+to the history.
+
+**Likely fix:** re-encode the existing file in place with gifsicle (`-O3 --lossy=80 --colors 128`)
+or an ffmpeg palette pass at the same size and frame rate, or host it as a release asset.
+
 ## Git panel push skips pre-push hooks; repo http settings and filters still apply
 
 - **Area:** `src/main/services/git/` (decision 054)
