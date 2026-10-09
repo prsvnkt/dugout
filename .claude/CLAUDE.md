@@ -139,7 +139,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   decision 037). E2E tests use the fake `claude` / `codex` / `opencode` from
   `tests/e2e/helpers.ts` via `DUGOUT_<AGENT>_COMMAND`; never scrape terminal output.
 - **All git commands go through `GitService`/`runGit`** so they inherit the no-lock, no-prompt,
-  literal-pathspec environment (decision 009). Never call `git` from elsewhere.
+  literal-pathspec environment (decision 009) and never run the repo's hooks, fsmonitor or other
+  commands its `.git/config` names (decision 054). Never call `git` from elsewhere, and never
+  pass `hooks: 'repo'` to a command that carries the GitHub token.
 - **Shell command lines use only plain `"$VAR"` expansions** (decision 013). `${VAR:+…}` splits
   differently in zsh and bash and does not exist in fish.
 - **Store updates that change nothing must return the same object.** Panes report values from
