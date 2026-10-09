@@ -2,6 +2,19 @@
 
 Limitations we have accepted for now and intend to revisit. Remove an entry when it is fixed.
 
+## Windowed lists need one fixed row height; other long lists are not windowed
+
+- **Area:** `src/renderer/src/lib/useVirtualRows.ts`, `features/explorer/FileTree.tsx`
+- **Found:** 2026-10-09, while windowing the explorer (decision 062)
+
+**What happens:** `useVirtualRows` places row `i` at `i × rowHeight`, so every row must be the
+same height (the explorer's 24px); a row that wraps or grows would overlap its neighbours. Find
+in page (⌘F) only finds rows in the DOM, the window, not the whole tree. The Timeline, Usage,
+task lists and the Agents list still render every item (fine at the sizes seen so far, #82).
+
+**Likely fix:** measure rows (or adopt `@tanstack/react-virtual`) if a windowed list ever needs
+variable heights; window the other lists with the same hook once one gets long.
+
 ## Project context: codemap only with Claude; stale pins show on reload
 
 - **Area:** `src/main/services/context/`, `src/renderer/src/features/context/`
