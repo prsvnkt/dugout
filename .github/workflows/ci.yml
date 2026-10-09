@@ -25,6 +25,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      # postinstall's install-electron downloads the Electron binary (~110 MB) into this cache.
+      - uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/electron
+          key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - run: npm run check
       # The e2e tests create git repositories and commits, which need an identity.
