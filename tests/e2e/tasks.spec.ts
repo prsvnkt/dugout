@@ -127,7 +127,7 @@ test('starts an agent on a task, which the agent then updates through its tools'
   const pane = page.locator('[data-active="true"]').getByRole('region', { name: /terminal$/ })
   await expect(pane).toContainText('#1')
   await expect(pane).toContainText('⎇ dugout/1-fix-login')
-  await expect.poll(output).toContain('prompt=You are working on GitHub issue #1: Fix login')
+  await expect.poll(output).toContain('prompt=You are working on task #1: Fix login')
 
   // The task moved to In progress (on GitHub too)
   await expect(detail().getByLabel('Status')).toHaveValue('in-progress')

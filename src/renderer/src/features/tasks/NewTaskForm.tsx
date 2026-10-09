@@ -10,7 +10,7 @@ interface NewTaskFormProps {
   onError(message: string): void
 }
 
-/** Title plus a markdown description (with a preview); creates a GitHub issue. */
+/** Title plus a markdown description (with a preview); creates an issue in the project's task source. */
 export function NewTaskForm({ projectId, onDone, onError }: NewTaskFormProps) {
   const create = useTaskStore((state) => state.create)
   const [title, setTitle] = useState('')

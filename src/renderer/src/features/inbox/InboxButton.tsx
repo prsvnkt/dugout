@@ -22,7 +22,7 @@ const ENTRY_SELECTOR = '[data-inbox-entry]'
 const STEP: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 }
 
 function EntryRow({ entry, onOpen }: { entry: InboxEntry; onOpen(): void }) {
-  const who = `${entry.projectName} · ${entry.agentLabel}${entry.taskNumber ? ` #${entry.taskNumber}` : ''}`
+  const who = `${entry.projectName} · ${entry.agentLabel}${entry.taskKey ? ` ${entry.taskKey}` : ''}`
   const hasApprovals = entry.approvals.length > 0
   const paneCheck = usePaneCheck(entry.paneId)
   const check = paneCheck.state === 'idle' ? null : paneCheck

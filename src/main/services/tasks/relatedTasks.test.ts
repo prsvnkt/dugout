@@ -23,4 +23,10 @@ describe('related tasks', () => {
   test('reads related lines, not other mentions', () => {
     expect(relatedIn('See #9.\nRelated: #3\nRelated: #12')).toEqual([3, 12])
   })
+
+  test('writes Linear identifiers with the team prefix', () => {
+    const body = 'Fix it.\n\nRelated: ENG-3'
+    expect(withRelated(body, [3, 7], 'ENG-')).toBe('Fix it.\n\nRelated: ENG-3\nRelated: ENG-7')
+    expect(relatedIn('Related: #4\nRelated: ENG-5', 'ENG-')).toEqual([5])
+  })
 })

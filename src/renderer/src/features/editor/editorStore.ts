@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { CompareTarget } from '@shared/compare'
 import type { RevisionContent } from '@shared/files'
 import type { ProjectId } from '@shared/project'
+import type { Task } from '@shared/tasks'
 import type { GitCheckout } from '@shared/worktree'
 import { dugout } from '@renderer/lib/dugout'
 import { editorBridge } from './editorBridge'
@@ -61,7 +62,11 @@ interface EditorState {
   /** Opens (or focuses) the project's Agent settings tab. */
   openAgentSettings(projectId: ProjectId): void
   /** Opens (or focuses) a task's tab; as a preview, it replaces the previous preview tab. */
-  openTask(projectId: ProjectId, number: number, title: string, isPreview: boolean): void
+  openTask(
+    projectId: ProjectId,
+    task: Pick<Task, 'number' | 'key' | 'title'>,
+    isPreview: boolean,
+  ): void
   activate(projectId: ProjectId, tabId: string): void
   pin(projectId: ProjectId, tabId: string): void
   /** Closes a tab, or asks first when its file has unsaved changes. */
@@ -232,14 +237,15 @@ export const useEditorStore = create<EditorState>()((set, get) => {
       setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
     },
 
-    openTask(projectId, number, title, isPreview) {
+    openTask(projectId, task, isPreview) {
       const tab = {
-        id: taskTabId(number),
+        id: taskTabId(task.number),
         kind: 'task' as const,
-        path: `#${number} ${title}`,
+        path: `${task.key} ${task.title}`,
         staged: false,
         worktreePath: null,
-        taskNumber: number,
+        taskNumber: task.number,
+        taskKey: task.key,
       }
       setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview }))
       releaseUnused()

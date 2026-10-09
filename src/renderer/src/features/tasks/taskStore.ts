@@ -31,6 +31,8 @@ const EMPTY: ProjectTasks = {
 interface TaskState {
   readonly byProject: Readonly<Record<ProjectId, ProjectTasks>>
   refresh(projectId: ProjectId): Promise<void>
+  /** Forgets the project's tasks, e.g. when it switches task source; late answers are dropped. */
+  reset(projectId: ProjectId): void
   /** A task tab shows the task: load its details and keep them fresh until `unview`. */
   view(projectId: ProjectId, number: number): Promise<void>
   unview(projectId: ProjectId, number: number): void
@@ -43,6 +45,9 @@ interface TaskState {
 }
 
 const refreshing = new Set<ProjectId>()
+/** Bumped by `reset`, so a refresh that started before it does not write old tasks back. */
+const epochs = new Map<ProjectId, number>()
+const epochOf = (projectId: ProjectId) => epochs.get(projectId) ?? 0
 
 export const useTaskStore = create<TaskState>()((set, get) => {
   const patch = (projectId: ProjectId, change: Partial<ProjectTasks>) =>
@@ -85,8 +90,10 @@ export const useTaskStore = create<TaskState>()((set, get) => {
     async refresh(projectId) {
       if (refreshing.has(projectId)) return
       refreshing.add(projectId)
+      const epoch = epochOf(projectId)
       try {
         const result = await dugout.tasks.list(projectId)
+        if (epochOf(projectId) !== epoch) return
         patch(projectId, result.ok ? { tasks: result.data, error: null } : { error: result.error })
         if (result.ok) {
           await Promise.all(
@@ -94,8 +101,17 @@ export const useTaskStore = create<TaskState>()((set, get) => {
           )
         }
       } finally {
-        refreshing.delete(projectId)
+        if (epochOf(projectId) === epoch) refreshing.delete(projectId)
       }
+    },
+
+    reset(projectId) {
+      epochs.set(projectId, epochOf(projectId) + 1)
+      refreshing.delete(projectId)
+      set((state) => {
+        const { [projectId]: _removed, ...rest } = state.byProject
+        return { byProject: rest }
+      })
     },
 
     async view(projectId, number) {

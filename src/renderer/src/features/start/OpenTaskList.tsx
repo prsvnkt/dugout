@@ -45,7 +45,7 @@ export function OpenTaskList({ project, isActive }: OpenTaskListProps) {
             <button className={styles.row} disabled={isBusy} onClick={() => start(task.number)}>
               <span className={styles.rowText}>
                 <span className={styles.rowTitle}>{task.title}</span>
-                <span className={styles.rowMeta}>#{task.number} · in a new worktree</span>
+                <span className={styles.rowMeta}>{task.key} · in a new worktree</span>
               </span>
               <span className={styles.rowAction}>Start with {AGENT_LABEL[defaultAgent]}</span>
             </button>

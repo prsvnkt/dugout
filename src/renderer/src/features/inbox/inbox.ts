@@ -1,4 +1,5 @@
 import type { Project, ProjectId } from '@shared/project'
+import { displayTaskKey } from '@shared/tasks'
 import { AGENT_LABEL, isAgentKind } from '@shared/terminal'
 import type { ToolCallPreview } from '@shared/toolCall'
 import type { PaneActivity } from '@renderer/features/workspace/paneActivity'
@@ -11,7 +12,8 @@ export interface InboxEntry {
   readonly paneId: PaneId
   readonly activity: 'needs-input' | 'done'
   readonly agentLabel: string
-  readonly taskNumber: number | null
+  /** The agent's task as its source writes it ("#12", "ENG-12"). */
+  readonly taskKey: string | null
   readonly detail: string | null
   /** The tool calls waiting for approval, in full, oldest first. */
   readonly approvals: readonly ToolCallPreview[]
@@ -45,7 +47,7 @@ export function inboxEntries(source: InboxSource): InboxEntry[] {
           paneId: pane.id,
           activity,
           agentLabel: isAgentKind(pane.kind) ? AGENT_LABEL[pane.kind] : pane.kind,
-          taskNumber: pane.task?.number ?? null,
+          taskKey: pane.task ? displayTaskKey(pane.task) : null,
           detail: detail?.detail ?? null,
           approvals:
             activity === 'needs-input' ? (detail?.approvals ?? NO_APPROVALS) : NO_APPROVALS,

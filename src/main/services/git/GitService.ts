@@ -78,8 +78,14 @@ export class GitService {
     return { ...status, files, baseBranch }
   }
 
-  /** The page for opening a pull request from the current branch into the base branch. */
-  async pullRequestUrl(root: string): Promise<string> {
+  /**
+   * The page for opening a pull request from the current branch into the base branch.
+   * `taskKey` writes a task number the way its source does ("#12", or "ENG-12" for Linear).
+   */
+  async pullRequestUrl(
+    root: string,
+    taskKey: (taskNumber: number) => string = (taskNumber) => `#${taskNumber}`,
+  ): Promise<string> {
     const status = await this.status(root)
     const base = status.baseBranch ?? FALLBACK_BASE_BRANCH
     if (status.branch === null || status.isUnborn) {
@@ -95,7 +101,7 @@ export class GitService {
       stdout,
       base,
       status.branch,
-      taskNumber ? `Closes #${taskNumber}` : undefined,
+      taskNumber ? `Closes ${taskKey(Number(taskNumber))}` : undefined,
     )
   }
 

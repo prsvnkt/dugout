@@ -48,6 +48,11 @@ import { agentCommands } from './services/agents/registry'
 import { loginShellRunner } from './services/welcome/checkAgentClis'
 import { SettingsStore } from './services/settings/SettingsStore'
 import { registerSettingsIpc } from './ipc/registerSettingsIpc'
+import { registerLinearIpc } from './ipc/registerLinearIpc'
+import { LinearAuth } from './services/linear/LinearAuth'
+import { linearConfig } from './services/linear/linearConfig'
+import { LinearIssues } from './services/linear/LinearIssues'
+import { LinearKeyStore } from './services/linear/LinearKeyStore'
 import { GitHubIssues } from './services/tasks/GitHubIssues'
 import { handleTaskRpc } from './services/tasks/taskRpc'
 import { TaskService } from './services/tasks/TaskService'
@@ -60,6 +65,7 @@ const PROJECTS_FILE = 'projects.json'
 const WORKTREES_DIR = 'worktrees'
 const WORKSPACE_FILE = 'workspace.json'
 const GITHUB_TOKEN_FILE = 'github-token.bin'
+const LINEAR_KEY_FILE = 'linear-key.bin'
 const SETTINGS_FILE = 'settings.json'
 /** A Verify on Stop check still running after this is stopped and reported as failed. */
 const CHECK_TIMEOUT_MS = 30 * 60_000
@@ -260,12 +266,29 @@ async function start(): Promise<void> {
     baseDir: join(dataDir, WORKTREES_DIR),
     createId: () => randomBytes(WORKTREE_ID_BYTES).toString('hex'),
   })
+  const linear = linearConfig(process.env)
+  const linearIssues = new LinearIssues({ fetch, apiUrl: linear.apiUrl })
+  const linearAuth = new LinearAuth({
+    store: new LinearKeyStore({
+      filePath: join(dataDir, LINEAR_KEY_FILE),
+      encryption: tokenEncryption,
+    }),
+    viewer: (apiKey) => linearIssues.viewer(apiKey),
+  })
+  registerLinearIpc({ auth: linearAuth, issues: linearIssues })
   taskService = new TaskService({
     findProject: (id) => projectStore.list().find((project) => project.id === id),
     remoteUrl: (root) => git.remoteUrl(root),
-    withToken: (call) => githubAuth.withToken(call),
-    issues: new GitHubIssues({ fetch, apiBaseUrl: github.apiBaseUrl }),
-    webBaseUrl: github.webBaseUrl,
+    github: {
+      withToken: (call) => githubAuth.withToken(call),
+      issues: new GitHubIssues({ fetch, apiBaseUrl: github.apiBaseUrl }),
+      webBaseUrl: github.webBaseUrl,
+    },
+    linear: {
+      withKey: (call) => linearAuth.withKey(call),
+      issues: linearIssues,
+      webOrigin: linear.webOrigin,
+    },
   })
   const tasks = taskService
   const githubBranch = {
@@ -291,10 +314,10 @@ async function start(): Promise<void> {
     tasks,
     projects: projectStore,
     worktrees,
-    webBaseUrl: github.webBaseUrl,
     openExternal: (url) => shell.openExternal(url),
   })
   registerGitIpc({
+    taskKey: (projectId, taskNumber) => tasks.keyFor(projectId, taskNumber),
     onTaskPullRequest: (projectId, taskNumber) => {
       tasks
         .update(projectId, taskNumber, { status: 'in-review' })

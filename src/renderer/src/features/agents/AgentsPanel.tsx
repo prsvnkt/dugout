@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { ChevronUp } from 'lucide-react'
 import type { Project } from '@shared/project'
+import { displayTaskKey } from '@shared/tasks'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
 import { ACTIVITY_LABEL, type PaneActivity } from '@renderer/features/workspace/paneActivity'
 import { useProjectLayout, useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
@@ -20,7 +21,7 @@ const SUBAGENT_LABEL: Readonly<Record<Subagent['state'], string>> = {
 }
 
 function describeWork(entry: AgentEntry): string | null {
-  if (entry.task) return `#${entry.task.number} ${entry.task.title}`
+  if (entry.task) return `${displayTaskKey(entry.task)} ${entry.task.title}`
   return entry.title
 }
 

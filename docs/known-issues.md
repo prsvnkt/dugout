@@ -201,3 +201,17 @@ still shows it.
 
 **Likely fix:** a small concurrency limit with a "Queued" state; run the worktree setup command
 before the first check; keep a failed check in the inbox until it is opened.
+
+## Linear tasks: one workspace, no comment counts on cards
+
+- **Area:** Linear task source (`src/main/services/linear/`, decision 051)
+- **Found:** 2026-10-09, while building decision 051
+
+**What happens:** Dugout keeps one Linear API key, so every Linear project uses the same
+workspace. Task cards show no comment count for Linear (lists skip comments to keep Linear's
+query complexity low); the task tab shows them. A Linear issue moved to another team gets a new
+identifier and leaves the project's list, and agents started on it keep the old key. "Closes
+ENG-123" in a pull request closes the issue only when the Linear GitHub integration is installed.
+
+**Likely fix:** a key per project if anyone needs two workspaces; fetch comment counts lazily for
+visible cards; follow moved issues by their UUID.

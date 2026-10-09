@@ -5,7 +5,8 @@ import { AGENTS } from '@shared/agents'
 import type { DevServer } from '@shared/preview'
 import { isAgentKind, type TerminalKind } from '@shared/terminal'
 import type { ToolCallPreview } from '@shared/toolCall'
-import { paneNumber } from '@renderer/features/workspace/layout'
+import { displayTaskKey } from '@shared/tasks'
+import { paneNumber, type PaneTask } from '@renderer/features/workspace/layout'
 import { Icon } from '@renderer/lib/Icon'
 import {
   ACTIVITY_LABEL,
@@ -44,7 +45,7 @@ interface TerminalPaneProps {
   /** First message for a new Claude session (e.g. the task it was started for). */
   readonly initialPrompt?: string | undefined
   /** Shown in the header for agents started on a task. */
-  readonly task?: { number: number; title: string } | undefined
+  readonly task?: PaneTask | undefined
   /** Other agents that changed some of the same files (advisory), shown in the header. */
   readonly overlaps: readonly LabelledOverlap[]
   /** A dev server this shell starts, shown in its header with its port. */
@@ -125,7 +126,7 @@ export function TerminalPane(props: TerminalPaneProps) {
         <span className={styles.kind}>{kindLabel(kind)}</span>
         {task && (
           <span className={styles.task} title={task.title}>
-            #{task.number}
+            {displayTaskKey(task)}
           </span>
         )}
         {devServer && (

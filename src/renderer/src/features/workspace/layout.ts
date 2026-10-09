@@ -25,6 +25,8 @@ export interface Pane {
 
 export interface PaneTask {
   readonly number: number
+  /** "#12" or "ENG-12"; missing for tasks remembered from before Linear tasks. */
+  readonly key?: string | undefined
   readonly title: string
 }
 

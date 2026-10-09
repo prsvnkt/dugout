@@ -16,19 +16,23 @@ import {
 export type TaskRpc = (method: string, params: Record<string, unknown>) => Promise<unknown>
 
 // Dugout validates every call again in main; these schemas tell the agent what it may send.
-const number = z.number().int().positive().describe('The task (GitHub issue) number')
+const number = z
+  .number()
+  .int()
+  .positive()
+  .describe('The task number, as list_tasks returns it (123 for #123 or for ENG-123)')
 const status = z.enum(TASK_STATUSES)
 const title = z.string().min(1).max(MAX_TASK_TITLE_LENGTH)
 const body = z.string().max(MAX_TASK_BODY_LENGTH)
 const labels = z
   .array(z.string().min(1).max(MAX_TASK_LABEL_LENGTH))
   .max(MAX_TASK_LABELS)
-  .describe('GitHub label names, e.g. "bug". Missing labels are created.')
+  .describe('Label names, e.g. "bug". Missing labels are created.')
 const related = z
   .array(number)
   .max(MAX_RELATED_TASKS)
-  .describe('Related task numbers, added to the description as "Related: #n" lines')
-const priority = z.enum(TASK_PRIORITIES).describe('Saved as a dugout:priority-* label')
+  .describe('Related task numbers, added to the description as "Related: <key>" lines')
+const priority = z.enum(TASK_PRIORITIES).describe('The task priority')
 const newTask = {
   title,
   body: body.default(''),
@@ -54,8 +58,9 @@ async function run(
 }
 
 const LIST_DESCRIPTION =
-  "List this project's tasks (GitHub issues) as number, title, status, priority, labels and " +
-  'updatedAt; use get_task for the description. Covers open and closed issues, every status ' +
+  "List this project's tasks (GitHub or Linear issues) as number, key (#12 or ENG-12), title, " +
+  'status, priority, labels and updatedAt; use get_task for the description. Covers open and ' +
+  'closed tasks, every status ' +
   '(todo, in-progress, in-review, done), unless you filter by status. Highest priority first. ' +
   'Use search to check for an existing task before creating one.'
 
@@ -88,8 +93,8 @@ function registerWriteTools(server: McpServer, rpc: TaskRpc): void {
     'create_task',
     {
       description:
-        'Create a new task, e.g. a follow-up you found while working. Returns its number, url ' +
-        'and status. To file several at once, use create_tasks.',
+        'Create a new task, e.g. a follow-up you found while working. Returns its number, key, ' +
+        'url and status. To file several at once, use create_tasks.',
       inputSchema: newTask,
     },
     (args) => run(rpc, 'create', args),
@@ -99,7 +104,7 @@ function registerWriteTools(server: McpServer, rpc: TaskRpc): void {
     {
       description:
         `Create up to ${MAX_TASK_BATCH} tasks in one call, in order. Returns each one's ` +
-        'number, url and status. If one fails, the error says which were already created.',
+        'number, key, url and status. If one fails, the error says which were already created.',
       inputSchema: { tasks: z.array(z.object(newTask)).min(1).max(MAX_TASK_BATCH) },
     },
     (args) => run(rpc, 'createMany', args),
@@ -109,7 +114,7 @@ function registerWriteTools(server: McpServer, rpc: TaskRpc): void {
     {
       description:
         "Change a task's title, description, status (todo, in-progress, in-review, done), " +
-        'priority or labels, or add related tasks. Returns its number, url and status.',
+        'priority or labels, or add related tasks. Returns its number, key, url and status.',
       inputSchema: {
         number,
         title: title.optional(),
@@ -118,7 +123,7 @@ function registerWriteTools(server: McpServer, rpc: TaskRpc): void {
         priority: z
           .enum([...TASK_PRIORITIES, 'none'])
           .optional()
-          .describe('Saved as a dugout:priority-* label; "none" removes it'),
+          .describe('The task priority; "none" removes it'),
         addLabels: labels.optional(),
         removeLabels: labels.optional(),
         related: related.optional(),
@@ -137,8 +142,9 @@ function registerWriteTools(server: McpServer, rpc: TaskRpc): void {
 }
 
 /**
- * The "dugout" MCP server: lets an agent read and update its project's tasks (GitHub Issues).
- * It never sees the GitHub token; every call goes through Dugout.
+ * The "dugout" MCP server: lets an agent read and update its project's tasks, wherever they
+ * live (GitHub Issues or Linear). It never sees a token or API key; every call goes through
+ * Dugout.
  */
 export function createTaskServer(rpc: TaskRpc): McpServer {
   const server = new McpServer({ name: 'dugout', version: '1.1.0' })

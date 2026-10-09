@@ -54,7 +54,7 @@ describe('inboxEntries', () => {
       projectId: 'p1',
       projectName: 'bene',
       agentLabel: 'Claude',
-      taskNumber: 12,
+      taskKey: '#12',
       detail: 'Bash: npm install',
       approvals: [npmInstall],
     })

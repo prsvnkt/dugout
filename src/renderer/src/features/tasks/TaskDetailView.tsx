@@ -16,11 +16,14 @@ import { TaskComments } from './TaskComments'
 import { visibleLabels } from './taskList'
 import { useProjectTasks, useTaskStore } from './taskStore'
 import { useTaskAgents } from './useTaskAgents'
+import { useTaskSource } from './useTaskSource'
 import styles from './TaskDetailView.module.css'
 
 interface TaskDetailViewProps {
   readonly projectId: ProjectId
   readonly number: number
+  /** "#12" or "ENG-12", shown before the task has loaded. */
+  readonly taskKey: string
 }
 
 /** Loads the task while its tab is shown and keeps it fresh (refreshes reload viewed tasks). */
@@ -53,7 +56,7 @@ function Byline({ task }: { task: TaskDetail }) {
 }
 
 /** One task, in an editor tab: description, status, comments, and the agents to start on it. */
-export function TaskDetailView({ projectId, number }: TaskDetailViewProps) {
+export function TaskDetailView({ projectId, number, taskKey }: TaskDetailViewProps) {
   const { task, loadError, isBusy } = useViewedTask(projectId, number)
   const { update, comment, startAgent } = useTaskStore()
   const openCompare = useEditorStore((state) => state.openCompare)
@@ -61,10 +64,11 @@ export function TaskDetailView({ projectId, number }: TaskDetailViewProps) {
   const agents = useTaskAgents(projectId).get(number)
   const overlaps = useProjectOverlaps(projectId).forTask(number)
   const [actionError, setActionError] = useState<string | null>(null)
+  const source = useTaskSource(projectId)
 
   if (!task) {
     return (
-      <section className={styles.detail} aria-label={`Task #${number}`}>
+      <section className={styles.detail} aria-label={`Task ${taskKey}`}>
         <p className={styles.notice} role={loadError ? 'alert' : 'status'}>
           {loadError ?? 'Loading task…'}
         </p>
@@ -88,17 +92,17 @@ export function TaskDetailView({ projectId, number }: TaskDetailViewProps) {
   const compare = () => {
     if (!first || !second) return
     openCompare(projectId, `task-${number}`, {
-      title: `Compare #${number}`,
+      title: `Compare ${task.key}`,
       sides: [first, second],
     })
   }
 
   return (
-    <section className={styles.detail} aria-label={`Task #${number}`}>
+    <section className={styles.detail} aria-label={`Task ${task.key}`}>
       <div className={styles.page}>
         <header className={styles.header}>
           <h1 className={styles.title}>
-            {task.title} <span className={styles.number}>#{task.number}</span>
+            {task.title} <span className={styles.number}>{task.key}</span>
           </h1>
           <Byline task={task} />
         </header>
@@ -139,7 +143,7 @@ export function TaskDetailView({ projectId, number }: TaskDetailViewProps) {
             className={styles.button}
             onClick={() => void run(dugout.tasks.openInBrowser(projectId, number))}
           >
-            Open on GitHub
+            {source.kind === 'linear' ? 'Open in Linear' : 'Open on GitHub'}
           </button>
           {agents?.check && <CheckBadge check={agents.check} />}
         </div>

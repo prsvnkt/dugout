@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { CircleDot, X } from 'lucide-react'
 import type { ProjectId } from '@shared/project'
+import { displayTaskKey } from '@shared/tasks'
 import { splitPath } from '@renderer/features/git/changeKind'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { AgentSettingsView } from '@renderer/features/agentConfig/AgentSettingsView'
@@ -163,7 +164,12 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
       {isAgentSettings ? (
         <AgentSettingsView projectId={projectId} />
       ) : isTask && active.taskNumber !== undefined ? (
-        <TaskDetailView key={active.id} projectId={projectId} number={active.taskNumber} />
+        <TaskDetailView
+          key={active.id}
+          projectId={projectId}
+          number={active.taskNumber}
+          taskKey={displayTaskKey({ number: active.taskNumber, key: active.taskKey })}
+        />
       ) : isCompare && active.compare ? (
         <CompareView projectId={projectId} tabId={active.id} target={active.compare} />
       ) : needsBuffer && !isEditable ? (

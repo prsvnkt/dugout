@@ -24,7 +24,8 @@ import type { Project, ProjectId } from './project'
 import type { Result } from './result'
 import type { AppSettings } from './settings'
 import type { AgentKind, TerminalExit, TerminalId } from './terminal'
-import type { Task, TaskDetail } from './tasks'
+import type { LinearState, LinearTeam } from './linear'
+import type { Task, TaskDetail, TaskSource } from './tasks'
 import type { TaskSession } from './taskSession'
 import type { AgentCliCheck, LocalRepo, RepoSearchScope } from './welcome'
 import type { GitCheckout, Worktree } from './worktree'
@@ -67,6 +68,8 @@ export interface DugoutApi {
     setDevCommand(id: ProjectId, command: string | null): Promise<Result<Project>>
     /** Sets the command Verify on Stop runs; null or blank turns it off. */
     setCheckCommand(id: ProjectId, command: string | null): Promise<Result<Project>>
+    /** Chooses where the project's tasks live (GitHub Issues or a Linear team). */
+    setTaskSource(projectId: ProjectId, source: TaskSource): Promise<Result<Project>>
   }
   /** Preview deployments and local dev servers, for checking what an agent changed. */
   readonly preview: {
@@ -158,6 +161,14 @@ export interface DugoutApi {
     listRepos(): Promise<Result<readonly GitHubRepo[]>>
     onStateChange(listener: (state: GitHubAuthState) => void): Unsubscribe
   }
+  /** Linear, for projects whose tasks are Linear issues. The API key never reaches the renderer. */
+  readonly linear: {
+    getState(): Promise<Result<LinearState>>
+    /** Checks the personal API key with Linear, then stores it encrypted in main. */
+    connect(apiKey: string): Promise<Result<LinearState>>
+    disconnect(): Promise<Result<LinearState>>
+    listTeams(): Promise<Result<readonly LinearTeam[]>>
+  }
   /** Clone a repository into a folder; the caller then adds it as a project. */
   readonly clone: {
     defaults(): Promise<Result<CloneDefaults>>
@@ -177,7 +188,7 @@ export interface DugoutApi {
     /** Remembers `app` as the last choice once it opened. */
     open(checkout: GitCheckout, app: ExternalAppId): Promise<Result<void>>
   }
-  /** A project's tasks: the GitHub Issues of its origin repository. */
+  /** A project's tasks: the GitHub Issues of its origin repository, or a Linear team's issues. */
   readonly tasks: {
     list(projectId: ProjectId): Promise<Result<readonly Task[]>>
     get(projectId: ProjectId, number: number): Promise<Result<TaskDetail>>

@@ -121,6 +121,24 @@ describe('ProjectStore', () => {
     await expect(ctx.store.setCheckCommand('nope', 'npm test')).rejects.toThrow('Project not found')
   })
 
+  test('remembers a Linear task source, and GitHub as no source at all', async () => {
+    const project = await ctx.store.add({ rootPath: REPO })
+
+    const linear = await ctx.store.setTaskSource(project.id, { kind: 'linear', teamKey: 'ENG' })
+    const reloaded = setup(ctx.dir).store
+    await reloaded.load()
+
+    expect(linear.taskSource).toEqual({ kind: 'linear', teamKey: 'ENG' })
+    expect(reloaded.list()).toEqual([linear])
+
+    const github = await ctx.store.setTaskSource(project.id, { kind: 'github' })
+    expect(github).toEqual(project)
+    expect('taskSource' in github).toBe(false)
+    await expect(ctx.store.setTaskSource('nope', { kind: 'github' })).rejects.toThrow(
+      'Project not found',
+    )
+  })
+
   test('removes a project', async () => {
     const project = await ctx.store.add({ rootPath: REPO })
     await ctx.store.remove(project.id)

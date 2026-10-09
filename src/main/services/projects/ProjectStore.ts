@@ -1,6 +1,7 @@
 import { readFile, rename } from 'node:fs/promises'
 import { projectsFileSchema, type ProjectAddRequest } from '@shared/ipc/contract'
 import { pickProjectColor, suggestProjectName, type Project, type ProjectId } from '@shared/project'
+import type { TaskSource } from '@shared/tasks'
 import { writeFileAtomic } from './atomicWrite'
 
 export interface ProjectStoreDeps {
@@ -93,6 +94,16 @@ export class ProjectStore {
 
   async remove(id: ProjectId): Promise<void> {
     await this.commit(this.projects.filter((project) => project.id !== id))
+  }
+
+  /** Where the project's tasks live; GitHub is stored as the absence of a source. */
+  async setTaskSource(id: ProjectId, source: TaskSource): Promise<Project> {
+    const project = this.projects.find((candidate) => candidate.id === id)
+    if (!project) throw new Error('Project not found.')
+    const { taskSource: _previous, ...rest } = project
+    const updated: Project = source.kind === 'github' ? rest : { ...rest, taskSource: source }
+    await this.commit(this.projects.map((candidate) => (candidate.id === id ? updated : candidate)))
+    return updated
   }
 
   private async commit(projects: readonly Project[]): Promise<void> {

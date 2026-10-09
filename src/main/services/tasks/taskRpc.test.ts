@@ -4,12 +4,14 @@ import { handleTaskRpc, LIST_COVERAGE, type TaskRpcTasks } from './taskRpc'
 
 const task = (number: number, extra: Partial<Task> = {}): Task => ({
   number,
+  key: `#${number}`,
   title: `Task ${number}`,
   body: `Body of task ${number}`,
   status: 'todo',
   url: `https://github.com/octo/app/issues/${number}`,
   author: 'octo',
   labels: [],
+  priority: null,
   commentCount: 0,
   updatedAt: '2026-10-01T00:00:00Z',
   ...extra,
@@ -41,6 +43,7 @@ describe('task RPC from agents', () => {
       tasks: [
         {
           number: 1,
+          key: '#1',
           title: 'Task 1',
           status: 'todo',
           priority: null,
@@ -55,16 +58,16 @@ describe('task RPC from agents', () => {
     const { call } = setup([])
     const result = (await call('list', { status: 'done' })) as { covers: string; tasks: unknown[] }
     expect(result.tasks).toEqual([])
-    expect(result.covers).toContain('Open and closed issues')
+    expect(result.covers).toContain('Open and closed tasks')
     expect(result.covers).toContain('status is done')
   })
 
   test('lists the highest priority first, keeping the update order within a priority', async () => {
     const { call } = setup([
       task(1),
-      task(2, { labels: ['dugout:priority-low'] }),
-      task(3, { labels: ['dugout:priority-high'] }),
-      task(4, { labels: ['dugout:priority-high'] }),
+      task(2, { priority: 'low' }),
+      task(3, { priority: 'high' }),
+      task(4, { priority: 'high' }),
     ])
 
     const result = (await call('list')) as { tasks: { number: number; priority: string }[] }
@@ -106,6 +109,7 @@ describe('task RPC from agents', () => {
     })
     expect(result).toEqual({
       number: 10,
+      key: '#10',
       url: 'https://github.com/octo/app/issues/10',
       status: 'todo',
     })
@@ -119,6 +123,7 @@ describe('task RPC from agents', () => {
     expect(tasks.update).toHaveBeenCalledWith('p1', 5, { priority: null, addLabels: ['ui'] })
     expect(result).toEqual({
       number: 5,
+      key: '#5',
       url: 'https://github.com/octo/app/issues/5',
       status: 'in-review',
     })
@@ -142,8 +147,8 @@ describe('task RPC from agents', () => {
     expect(tasks.create.mock.calls.map(([, input]) => input.title)).toEqual(['A', 'B'])
     expect(result).toEqual({
       created: [
-        { number: 20, url: 'https://github.com/octo/app/issues/20', status: 'todo' },
-        { number: 21, url: 'https://github.com/octo/app/issues/21', status: 'todo' },
+        { number: 20, key: '#20', url: 'https://github.com/octo/app/issues/20', status: 'todo' },
+        { number: 21, key: '#21', url: 'https://github.com/octo/app/issues/21', status: 'todo' },
       ],
     })
   })

@@ -32,6 +32,8 @@ const api: DugoutApi = {
       ipcRenderer.invoke(IpcChannel.projectSetDevCommand, { id, command }),
     setCheckCommand: (id, command) =>
       ipcRenderer.invoke(IpcChannel.projectSetCheckCommand, { id, command }),
+    setTaskSource: (projectId, source) =>
+      ipcRenderer.invoke(IpcChannel.projectSetTaskSource, { projectId, source }),
   },
   preview: {
     deployment: (checkout) => ipcRenderer.invoke(IpcChannel.previewDeployment, checkout),
@@ -87,6 +89,12 @@ const api: DugoutApi = {
     retry: () => ipcRenderer.invoke(IpcChannel.authRetry),
     listRepos: () => ipcRenderer.invoke(IpcChannel.githubListRepos),
     onStateChange: (listener) => subscribe(IpcChannel.authState, listener),
+  },
+  linear: {
+    getState: () => ipcRenderer.invoke(IpcChannel.linearGetState),
+    connect: (apiKey) => ipcRenderer.invoke(IpcChannel.linearConnect, { apiKey }),
+    disconnect: () => ipcRenderer.invoke(IpcChannel.linearDisconnect),
+    listTeams: () => ipcRenderer.invoke(IpcChannel.linearListTeams),
   },
   clone: {
     defaults: () => ipcRenderer.invoke(IpcChannel.cloneDefaults),

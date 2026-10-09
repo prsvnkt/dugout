@@ -5,6 +5,7 @@ import {
   projectRemoveRequestSchema,
   projectSetDevCommandRequestSchema,
   projectSetCheckCommandRequestSchema,
+  projectSetTaskSourceRequestSchema,
 } from '@shared/ipc/contract'
 import type { ProjectStore } from '../services/projects/ProjectStore'
 import { handleRequest } from './handle'
@@ -18,5 +19,10 @@ export function registerProjectIpc(store: ProjectStore): void {
   )
   handleRequest(IpcChannel.projectSetCheckCommand, projectSetCheckCommandRequestSchema, (request) =>
     store.setCheckCommand(request.id, request.command),
+  )
+  handleRequest(
+    IpcChannel.projectSetTaskSource,
+    projectSetTaskSourceRequestSchema,
+    ({ projectId, source }) => store.setTaskSource(projectId, source),
   )
 }
