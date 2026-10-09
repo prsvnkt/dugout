@@ -16,6 +16,10 @@ paths:
   Arrange-Act-Assert structure and names that describe behaviour.
 - Test services through their injected dependencies (see the `FakeProcess` backend in
   `TerminalManager.test.ts`). Do not mock Electron or node-pty modules globally.
+- Renderer stores are tested in Node through `useX.getState()`: import
+  `@renderer/lib/fakeDugout.testSupport` first (it installs a fake `window.dugout`), give each
+  test the IPC methods it needs with `setFakeDugout`, reset stores with `setState(initial, true)`,
+  and assert "nothing changed" with `toBe(before)`. No `vi.mock` of modules.
 - E2E tests in `tests/e2e/` launch the built app with Playwright's `_electron`. Stub native
   dialogs via `app.evaluate(({ dialog }) => …)`. Read terminal output from `dugout.terminal.onData`,
   because xterm renders to a canvas.

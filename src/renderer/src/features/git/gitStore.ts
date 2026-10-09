@@ -63,14 +63,17 @@ interface GitState {
 const refreshesInFlight = new Set<string>()
 
 export const useGitStore = create<GitState>()((set, get) => {
+  /** Applies `change` to a checkout's state; a change that changes nothing leaves state alone. */
   const patch = (checkout: GitCheckout, change: Partial<ProjectGitState>) => {
     const key = checkoutKey(checkout)
-    set((state) => ({
-      byCheckout: {
-        ...state.byCheckout,
-        [key]: { ...(state.byCheckout[key] ?? INITIAL), ...change },
-      },
-    }))
+    set((state) => {
+      const current = state.byCheckout[key] ?? INITIAL
+      const isSame = (Object.keys(change) as (keyof ProjectGitState)[]).every(
+        (field) => current[field] === change[field],
+      )
+      if (isSame && state.byCheckout[key]) return state
+      return { byCheckout: { ...state.byCheckout, [key]: { ...current, ...change } } }
+    })
   }
 
   /** Runs a mutating git action, surfaces its error, then refreshes. */
