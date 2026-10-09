@@ -1,11 +1,12 @@
 import { lazy, Suspense } from 'react'
-import { CircleDot, X } from 'lucide-react'
+import { BookOpen, CircleDot, X } from 'lucide-react'
 import type { ProjectId } from '@shared/project'
 import { displayTaskKey } from '@shared/tasks'
 import { splitPath } from '@renderer/features/git/changeKind'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { AgentSettingsView } from '@renderer/features/agentConfig/AgentSettingsView'
 import { CompareView } from '@renderer/features/compare/CompareView'
+import { ContextView } from '@renderer/features/context/ContextView'
 import { FileTypeIcon } from '@renderer/features/explorer/FileTypeIcon'
 import { ReviewComments } from '@renderer/features/reviewComments/ReviewComments'
 import { TaskDetailView } from '@renderer/features/tasks/TaskDetailView'
@@ -29,6 +30,7 @@ const VIEW_TABS: ReadonlySet<EditorTab['kind']> = new Set([
   'agent-settings',
   'task',
   'usage',
+  'context',
 ])
 
 function tabLabel(tab: EditorTab): string {
@@ -108,6 +110,7 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
   const isAgentSettings = active.kind === 'agent-settings'
   const isTask = active.kind === 'task'
   const isUsage = active.kind === 'usage'
+  const isContext = active.kind === 'context'
   const fileKey = fileKeyOf(checkoutOf(projectId, active.worktreePath), active.path)
   const buffer = buffers[fileKey]
   const pendingTab = tabs.find((tab) => tab.id === pendingClose)
@@ -144,6 +147,7 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
                   <FileTypeIcon name={splitPath(tab.path).name} />
                 )}
                 {tab.kind === 'task' && <Icon icon={CircleDot} />}
+                {tab.kind === 'context' && <Icon icon={BookOpen} />}
                 {tab.kind === 'diff' && (
                   <span className={styles.diffMark} aria-hidden>
                     Δ
@@ -174,6 +178,8 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
         <AgentSettingsView projectId={projectId} />
       ) : isUsage ? (
         <UsageView projectId={projectId} />
+      ) : isContext ? (
+        <ContextView projectId={projectId} />
       ) : isTask && active.taskNumber !== undefined ? (
         <TaskDetailView
           key={active.id}

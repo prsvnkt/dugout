@@ -224,3 +224,59 @@ describe('FileService copying into a worktree', () => {
     await expect(files.copyFiles(from, to, ['../x'])).rejects.toThrow(/outside/)
   })
 })
+
+describe('FileService.writeText and remove', () => {
+  test('creates a file and its folders, replaces it, then removes it', async () => {
+    const root = makeRepo()
+
+    await files.writeText(root, '.dugout/context/a.md', 'one\n')
+    await files.writeText(root, '.dugout/context/a.md', 'two\n')
+    expect(readFileSync(join(root, '.dugout/context/a.md'), 'utf8')).toBe('two\n')
+    expect(await files.fileNames(root, '.dugout/context')).toEqual(['a.md'])
+
+    await files.remove(root, '.dugout/context/a.md')
+    expect(await files.fileNames(root, '.dugout/context')).toEqual([])
+  })
+
+  test('lists no files in a missing folder', async () => {
+    expect(await files.fileNames(makeRepo(), '.dugout/context')).toEqual([])
+  })
+
+  test('refuses to write through a symlinked folder that leads out of the checkout', async () => {
+    const root = makeRepo()
+    const outside = realpathSync(mkdtempSync(join(tmpdir(), 'dugout-outside-')))
+    symlinkSync(outside, join(root, '.dugout'))
+
+    await expect(files.writeText(root, '.dugout/context/a.md', 'x')).rejects.toThrow(
+      'outside the project',
+    )
+  })
+})
+
+describe('FileService.hashPath', () => {
+  test('changes when a pinned file changes, and is null once it is gone', async () => {
+    const root = makeRepo()
+    writeFileSync(join(root, 'a.ts'), 'one')
+    const before = await files.hashPath(root, 'a.ts')
+
+    writeFileSync(join(root, 'a.ts'), 'two')
+    const after = await files.hashPath(root, 'a.ts')
+
+    expect(before).toMatch(/^[0-9a-f]{64}$/)
+    expect(after).not.toBe(before)
+    await files.remove(root, 'a.ts')
+    expect(await files.hashPath(root, 'a.ts')).toBeNull()
+  })
+
+  test('covers a folder: an added file changes its hash, nothing else does', async () => {
+    const root = makeRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(join(root, 'src', 'a.ts'), 'a')
+    const first = await files.hashPath(root, 'src')
+    expect(await files.hashPath(root, 'src')).toBe(first)
+
+    writeFileSync(join(root, 'src', 'b.ts'), 'b')
+
+    expect(await files.hashPath(root, 'src')).not.toBe(first)
+  })
+})

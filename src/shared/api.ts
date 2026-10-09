@@ -3,6 +3,13 @@ import type { AgentConfig, McpServer } from './agentConfig'
 import type { CloneDefaults, CloneProgress } from './clone'
 import type { CheckStatus } from './checks'
 import type { WorktreeChanges } from './compare'
+import type {
+  ContextEntry,
+  ContextEntryEdit,
+  ContextEntryInput,
+  ContextScope,
+  ProjectContext,
+} from './context'
 import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
 import type { GitBranch, GitStatus } from './git'
@@ -230,6 +237,26 @@ export interface DugoutApi {
   readonly usage: {
     project(projectId: ProjectId): Promise<Result<ProjectUsage>>
     /** A project's usage changed (an agent's transcript grew). */
+    onChange(listener: (projectId: ProjectId) => void): Unsubscribe
+  }
+  /**
+   * A project's context for agents: shared entries in `.dugout/context/`, private ones in app
+   * data, and notes agents proposed, which are shared only once approved.
+   */
+  readonly context: {
+    read(projectId: ProjectId): Promise<Result<ProjectContext>>
+    add(projectId: ProjectId, entry: ContextEntryInput): Promise<Result<ContextEntry>>
+    edit(projectId: ProjectId, edit: ContextEntryEdit): Promise<Result<ContextEntry>>
+    remove(projectId: ProjectId, id: string): Promise<Result<void>>
+    /** Takes a pinned file's current content as its new baseline (no longer stale). */
+    repin(projectId: ProjectId, id: string): Promise<Result<ContextEntry>>
+    approve(projectId: ProjectId, id: string): Promise<Result<ContextEntry>>
+    discard(projectId: ProjectId, id: string): Promise<Result<void>>
+    /** Asks for a Markdown or text file and imports it; null when the user cancels. */
+    importDoc(projectId: ProjectId, scope: ContextScope): Promise<Result<ContextEntry | null>>
+    /** Runs the agent headlessly in the project to write the shared codemap. */
+    buildCodemap(projectId: ProjectId, agent: AgentKind): Promise<Result<ContextEntry>>
+    /** A project's context changed outside the UI (e.g. an agent proposed a note). */
     onChange(listener: (projectId: ProjectId) => void): Unsubscribe
   }
   /** Saved panes per project, restored on launch. */

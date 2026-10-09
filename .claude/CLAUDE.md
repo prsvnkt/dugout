@@ -56,8 +56,11 @@ src/
                 transcripts/ (incremental Claude / Codex transcript parsers, reusable),
                 usage/ (token ledger in app data, rollups, price table: decision 046),
                 welcome/ (first-run repo search, agent CLI check),
-                checks/ (Verify on Stop: the project's check command after each Done).
-    mcp/        The "dugout" MCP server agents use for tasks (separate build entry: mcp.js).
+                checks/ (Verify on Stop: the project's check command after each Done),
+                context/ (project context for agents: .dugout/context/ entries, private notes,
+                proposals, pinned-file hashes, search, headless codemap).
+    mcp/        The "dugout" MCP server agents use for tasks and project context (separate build
+                entry: mcp.js).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
@@ -77,6 +80,8 @@ src/
               add, agent check).
               Review and Compare diffs take line comments for agents (reviewComments/): one
               prompt, pasted into the checkout's agent via terminal/terminalInput.ts.
+              context/ is the Context tab (editor tab kind `context`, opened from the rail):
+              entries agents read over MCP, and notes they proposed, waiting for approval.
               overlaps/ tracks what each worktree changed and flags agents and tasks that
               changed the same files (advisory, decision 044).
               checks/ shows Verify on Stop results (agent header, inbox, tasks) and sends a

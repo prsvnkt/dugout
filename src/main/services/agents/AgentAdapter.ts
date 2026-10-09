@@ -64,4 +64,9 @@ export interface AgentAdapter {
   launch(context: AgentLaunchContext): AgentLaunch
   /** Present exactly when the agent has `hasUsage`; its hooks report the transcript's path. */
   readonly usage?: AgentUsageReader
+  /**
+   * A one-shot run that answers `$DUGOUT_HEADLESS_PROMPT` on stdout and exits, without hooks or
+   * Dugout's tools (e.g. `claude -p`). Only agents with `canRunHeadless` have one.
+   */
+  headless?(command: string): AgentLaunch
 }

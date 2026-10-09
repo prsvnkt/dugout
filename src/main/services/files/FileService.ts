@@ -1,6 +1,16 @@
 import { constants } from 'node:fs'
-import { copyFile, glob, lstat, mkdir, readdir, readFile, realpath, stat } from 'node:fs/promises'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import {
+  copyFile,
+  glob,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  stat,
+} from 'node:fs/promises'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import {
   MAX_DIR_ENTRIES,
   MAX_OPEN_FILE_BYTES,
@@ -11,6 +21,7 @@ import {
 import { MAX_COPIED_FILES } from '@shared/worktreeSetup'
 import type { GitService } from '../git/GitService'
 import { writeFileAtomic } from '../projects/atomicWrite'
+import { hashTree } from './hashTree'
 
 export interface FileServiceDeps {
   readonly git: GitService
@@ -44,6 +55,18 @@ async function nearestExisting(path: string): Promise<string> {
 
 function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT'
+}
+
+/** `path` with symlinks resolved; parts that do not exist yet are kept as they are. */
+async function realpathOfNearest(path: string): Promise<string> {
+  const exists = await lstat(path).then(
+    () => true,
+    () => false,
+  )
+  if (exists) return realpath(path)
+  const parent = dirname(path)
+  if (parent === path) return path
+  return join(await realpathOfNearest(parent), basename(path))
 }
 
 function byKindThenName(a: DirEntry, b: DirEntry): number {
@@ -205,18 +228,49 @@ export class FileService {
     return candidate
   }
 
-  /** Absolute, symlink-resolved path of `path`, which must stay inside `root`. */
+  /** Creates or replaces a text file, creating its folders. */
+  async writeText(root: string, path: string, content: string): Promise<void> {
+    await writeFileAtomic(await this.resolveInside(root, path), content)
+  }
+
+  /** Deletes a file; a missing file is fine. */
+  async remove(root: string, path: string): Promise<void> {
+    await rm(await this.resolveInside(root, path), { force: true })
+  }
+
+  /** Names of the files directly in `dir`, or none when it does not exist. */
+  async fileNames(root: string, dir: string): Promise<string[]> {
+    const absolute = await this.resolveInside(root, dir)
+    try {
+      const dirents = await readdir(absolute, { withFileTypes: true })
+      return dirents.filter((dirent) => dirent.isFile()).map((dirent) => dirent.name)
+    } catch (error) {
+      if (isMissing(error)) return []
+      throw error
+    }
+  }
+
+  /** Content hash of a file or folder (see `hashTree`), or null when it does not exist. */
+  async hashPath(root: string, path: string): Promise<string | null> {
+    try {
+      return await hashTree(await this.resolveInside(root, path))
+    } catch (error) {
+      if (isMissing(error)) return null
+      throw error
+    }
+  }
+
+  /**
+   * Absolute, symlink-resolved path of `path`, which must stay inside `root`. For a path that
+   * does not exist yet, its nearest existing folder is resolved, so a write cannot follow a
+   * symlinked folder out of the checkout.
+   */
   private async resolveInside(root: string, path: string): Promise<string> {
     const realRoot = await realpath(root)
     const candidate = resolve(realRoot, path)
     if (!isInside(realRoot, candidate)) throw new Error(`${path} is outside the project.`)
 
-    // Resolve symlinks, if the path exists, and re-check where it really points.
-    const exists = await lstat(candidate).then(
-      () => true,
-      () => false,
-    )
-    const resolved = exists ? await realpath(candidate) : candidate
+    const resolved = await realpathOfNearest(candidate)
     if (!isInside(realRoot, resolved)) throw new Error(`${path} is outside the project.`)
     return resolved
   }

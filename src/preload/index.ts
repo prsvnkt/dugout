@@ -132,6 +132,20 @@ const api: DugoutApi = {
     linkInstructions: (projectId) =>
       ipcRenderer.invoke(IpcChannel.agentConfigLinkInstructions, { projectId }),
   },
+  context: {
+    read: (projectId) => ipcRenderer.invoke(IpcChannel.contextRead, { projectId }),
+    add: (projectId, entry) => ipcRenderer.invoke(IpcChannel.contextAdd, { projectId, entry }),
+    edit: (projectId, edit) => ipcRenderer.invoke(IpcChannel.contextEdit, { projectId, ...edit }),
+    remove: (projectId, id) => ipcRenderer.invoke(IpcChannel.contextRemove, { projectId, id }),
+    repin: (projectId, id) => ipcRenderer.invoke(IpcChannel.contextRepin, { projectId, id }),
+    approve: (projectId, id) => ipcRenderer.invoke(IpcChannel.contextApprove, { projectId, id }),
+    discard: (projectId, id) => ipcRenderer.invoke(IpcChannel.contextDiscard, { projectId, id }),
+    importDoc: (projectId, scope) =>
+      ipcRenderer.invoke(IpcChannel.contextImportDoc, { projectId, scope }),
+    buildCodemap: (projectId, agent) =>
+      ipcRenderer.invoke(IpcChannel.contextBuildCodemap, { projectId, agent }),
+    onChange: (listener) => subscribe(IpcChannel.contextChanged, listener),
+  },
   compare: {
     changes: (projectId, worktreePaths) =>
       ipcRenderer.invoke(IpcChannel.compareChanges, { projectId, worktreePaths }),

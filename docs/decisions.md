@@ -883,6 +883,60 @@ worktree on a free port, or hunting for the deploy preview (issue #28).
   reported or `http://localhost:<port>/` — never an arbitrary URL from the renderer. The GitHub
   link channel (`git:open-url`) is unchanged.
 
+## 050 — Project context agents read over MCP, curated in a Context tab (2026-10-09)
+
+**Context.** Every agent session started cold. CLAUDE.md / AGENTS.md hold rules, but there was
+no place for the growing body of project knowledge (decisions, gotchas, which files matter, what
+past agents learned) that every agent can read and people can curate (issue #20).
+
+**Decision.**
+
+- **Entries.** Kinds: note, pinned file or folder, link (http(s) only), imported document (a
+  Markdown or text file picked from disk, copied in, up to 100 KB) and one codemap. Each is a
+  Markdown file with a small front matter block (`kind`, JSON-quoted `title`, `path` / `hash` /
+  `url` / `source` / `agent`, `updated`); its id is the file name. A plain Markdown file dropped
+  in by hand is read as a note titled by its first heading; broken fields fall back to a note,
+  so nothing disappears.
+- **Storage and scope.** Shared entries live in `.dugout/context/` at the project's main
+  checkout, written through `FileService` (path-safe; it now also resolves the nearest existing
+  folder of a new file, so a symlinked `.dugout` cannot lead a write out of the repo). They are
+  ordinary files for the team to review and commit; Dugout never commits them. Private entries
+  and agents' proposals stay in app data (`context/<projectId>/`, owner-only files). Agents in
+  worktrees read the main checkout's context, like Agent settings. Ids are unique across shared,
+  private and proposed; a shared entry hides a private one with the same id.
+- **Staleness.** A pinned path stores a SHA-256 of the file, or of a folder's file names and
+  contents (skipping `.git` and `node_modules`, at most 2,000 files). Every read compares it:
+  "Changed since pinned" or "No longer in the project" (text plus an icon), until "Mark as
+  current" takes the new content as the baseline.
+- **Agents (MCP).** The "dugout" server (decision 018) gains `list_context` (index only: id, kind,
+  title, scope, path or link, and a pin flag when stale or missing; no bodies), `get_context(id)`
+  (one entry's body), `search_context(query)` (every word in title, path, link or body, any
+  case; at most 20 hits with a snippet) and `add_note(title, body)`. Calls go over the hook
+  socket RPC as `context.*` methods, are validated in main with `contextRpcSchemas` and scoped
+  to the terminal's project, exactly like the task tools; so every agent with `hasMcp` (Claude,
+  Codex, OpenCode) gets them, and context works without GitHub sign-in.
+- **Approval.** `add_note` only creates a **proposal** (with the proposing agent's kind) and tells
+  the renderer (`context:changed`). The rail's Context button shows how many wait; the Context
+  tab shows each in full with "Approve and share" (it becomes a shared note in
+  `.dugout/context/`) or "Discard". Agents never write shared or private entries directly.
+- **UI.** A Context editor tab per project (kind `context`, like Agent settings and tasks),
+  opened from a rail button (Lucide `BookOpen`, "Project context"): proposals, the entries
+  (kind, Shared / Private, path or link, Markdown on demand, Edit, Remove) and one form to
+  add a note, file or folder, link, or import a document, shared or private.
+- **Codemap.** "Build codemap" runs the user's **default agent** headlessly through its adapter:
+  `AgentAdapter.headless(command)` returns a plain `"$VAR"` command line that answers
+  `$DUGOUT_HEADLESS_PROMPT` on stdout (Claude: `claude -p`), run in the user's login shell in the
+  project root with the terminals' cleaned environment (10 minute limit), and the answer becomes
+  the shared `codemap` entry, replaced on each build. No hooks, no Dugout tools, no direct model
+  calls. Only adapters with the new `canRunHeadless` capability have it (just Claude for now);
+  the button is hidden otherwise. E2E tests use the fake `claude`'s `-p` answer.
+
+**Open question, answered.** Agents learn about context from the MCP server itself: the tool
+descriptions say what each is for, and the server's `instructions` (sent when it connects) carry
+one line: call `list_context` early. That reaches every agent that has the server, needs nothing
+in AGENTS.md (which is the user's file) and no per-agent SessionStart hook (Codex and OpenCode
+differ there). Context stays pull-based: nothing is pasted into prompts.
+
 ## 051 — Linear as a task source, chosen per project (2026-10-09)
 
 **Context.** Tasks were GitHub Issues only (decision 018); many teams that run agents track work
@@ -968,4 +1022,6 @@ in Linear (issue #27).
 20. **Done since:** Linear as a task source, chosen per project ✅.
 21. **Done since:** worktree setup (copy local files, run a setup command) ✅.
 22. **Done since:** token usage per agent, task and project, with context-window use ✅.
-23. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+23. **Done since:** project context agents read over MCP, with agent-proposed notes you approve
+    and a headless codemap ✅.
+24. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

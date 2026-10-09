@@ -2,6 +2,21 @@
 
 Limitations we have accepted for now and intend to revisit. Remove an entry when it is fixed.
 
+## Project context: codemap only with Claude; stale pins show on reload
+
+- **Area:** `src/main/services/context/`, `src/renderer/src/features/context/`
+- **Found:** 2026-10-09, while building project context (decision 050)
+
+**What happens:** "Build codemap" needs a headless mode in the default agent's adapter, and only
+Claude's (`claude -p`) is wired up, so the button is hidden while Codex or OpenCode is the
+default. A pinned file's "Changed since pinned" flag is computed when the Context tab loads or
+changes (and on every agent call), not while the tab stays open. The codemap build shows no
+progress for its up to 10 minutes, and an interactive shell banner would end up in its text.
+
+**Likely fix:** add `headless` to the Codex (`codex exec`) and OpenCode (`opencode run`) adapters
+once their stdout is checked to be the answer alone; refresh the tab with the existing change
+polling; stream the build's output into the tab.
+
 ## OpenCode agents do not get the project's .mcp.json servers
 
 - **Area:** `src/main/services/agents/opencode/`

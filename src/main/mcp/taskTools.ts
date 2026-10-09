@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import {
   MAX_RELATED_TASKS,
@@ -11,9 +11,7 @@ import {
   TASK_PRIORITIES,
   TASK_STATUSES,
 } from '@shared/tasks'
-
-/** Calls Dugout's main process; it resolves the project from the terminal the agent runs in. */
-export type TaskRpc = (method: string, params: Record<string, unknown>) => Promise<unknown>
+import { run, type DugoutRpc } from './rpcTool'
 
 // Dugout validates every call again in main; these schemas tell the agent what it may send.
 const number = z
@@ -41,22 +39,6 @@ const newTask = {
   related: related.optional(),
 }
 
-type ToolResult = { content: { type: 'text'; text: string }[]; isError?: boolean }
-
-async function run(
-  rpc: TaskRpc,
-  method: string,
-  params: Record<string, unknown>,
-): Promise<ToolResult> {
-  try {
-    const result = await rpc(method, params)
-    return { content: [{ type: 'text', text: JSON.stringify(result ?? { ok: true }) }] }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return { content: [{ type: 'text', text: message }], isError: true }
-  }
-}
-
 const LIST_DESCRIPTION =
   "List this project's tasks (GitHub or Linear issues) as number, key (#12 or ENG-12), title, " +
   'status, priority, labels and updatedAt; use get_task for the description. Covers open and ' +
@@ -64,7 +46,7 @@ const LIST_DESCRIPTION =
   '(todo, in-progress, in-review, done), unless you filter by status. Highest priority first. ' +
   'Use search to check for an existing task before creating one.'
 
-function registerReadTools(server: McpServer, rpc: TaskRpc): void {
+function registerReadTools(server: McpServer, rpc: DugoutRpc): void {
   server.registerTool(
     'list_tasks',
     {
@@ -88,7 +70,7 @@ function registerReadTools(server: McpServer, rpc: TaskRpc): void {
   )
 }
 
-function registerWriteTools(server: McpServer, rpc: TaskRpc): void {
+function registerWriteTools(server: McpServer, rpc: DugoutRpc): void {
   server.registerTool(
     'create_task',
     {
@@ -142,13 +124,10 @@ function registerWriteTools(server: McpServer, rpc: TaskRpc): void {
 }
 
 /**
- * The "dugout" MCP server: lets an agent read and update its project's tasks, wherever they
- * live (GitHub Issues or Linear). It never sees a token or API key; every call goes through
- * Dugout.
+ * Tools to read and update the project's tasks, wherever they live (GitHub Issues or Linear).
+ * The agent never sees a token or API key; every call goes through Dugout.
  */
-export function createTaskServer(rpc: TaskRpc): McpServer {
-  const server = new McpServer({ name: 'dugout', version: '1.1.0' })
+export function registerTaskTools(server: McpServer, rpc: DugoutRpc): void {
   registerReadTools(server, rpc)
   registerWriteTools(server, rpc)
-  return server
 }

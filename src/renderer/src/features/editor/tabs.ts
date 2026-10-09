@@ -1,6 +1,7 @@
 import type { CompareTarget } from '@shared/compare'
 
-export type EditorTabKind = 'file' | 'diff' | 'compare' | 'agent-settings' | 'task' | 'usage'
+export type EditorTabKind =
+  'file' | 'diff' | 'compare' | 'agent-settings' | 'task' | 'usage' | 'context'
 
 export interface EditorTab {
   readonly id: string
@@ -19,6 +20,9 @@ export interface EditorTab {
   readonly taskNumber?: number
   readonly taskKey?: string
 }
+
+/** A project's one Context tab. */
+export const CONTEXT_TAB_ID = 'context'
 
 /** One tab per task, so opening a task again focuses its tab. */
 export const taskTabId = (number: number): string => `task:${number}`

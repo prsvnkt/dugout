@@ -113,10 +113,15 @@ function fire(event, matchValue, extra = {}) {
 
 /**
  * How the fake `claude` reads its arguments: hooks from the `--settings` file, the MCP server from
- * `--mcp-config`, the session from `--resume`.
+ * `--mcp-config`, the session from `--resume`. `claude -p <prompt>` (headless, e.g. to build a
+ * codemap) prints a canned answer and exits.
  */
 const CLAUDE_ARGS_SOURCE =
   String.raw`
+if (process.argv[2] === '-p') {
+  process.stdout.write('# Codemap\n\n- src/: the fake app (asked: ' + process.argv[3].split(' ')[0] + ')\n')
+  process.exit(0)
+}
 const argValue = (flag) => {
   const index = process.argv.indexOf(flag)
   return index === -1 ? undefined : process.argv[index + 1]
@@ -275,8 +280,9 @@ function fire(event, matchValue, extra = {}) {
  * A stand-in for an agent CLI that runs Dugout's hook commands exactly as the real one would,
  * driven by lines typed into the terminal:
  * prompt | ask [command…] | ask-edit [file] | tool [command…] | notify-idle | stop | stop-later |
- * exit | agent-comment | edit | raw-keys | subagent-start <id> <type> | subagent-stop <id> <type> |
- * usage <input> <output> (writes a reply with that usage to the transcript, then stops)
+ * exit | agent-comment | agent-note | agent-context | edit | raw-keys | subagent-start <id> <type> |
+ * subagent-stop <id> <type> | usage <input> <output> (writes a reply with that usage to the
+ * transcript, then stops)
  * (`ask` requests approval for a Bash command, `npm install` by default; like the real CLIs it
  * sends no tool id. `tool` finishes a Bash call with a fresh tool id, as PostToolUse does.)
  * (`raw-keys` puts the TTY in raw mode and prints every later input chunk as `keys=<json>`.)
@@ -328,6 +334,9 @@ const actions = {
   },
   'agent-comment': () =>
     void callDugoutTool('comment_on_task', { number: 1, body: 'Progress from the agent' }),
+  'agent-note': () =>
+    void callDugoutTool('add_note', { title: 'Tests need Docker', body: 'Start Docker before npm test.' }),
+  'agent-context': () => void callDugoutTool('list_context', {}),
   // Leaves changes in the working directory: one file of its own and one both agents edit.
   edit: () => {
     writeFileSync(AGENT_NAME + '.txt', 'by ' + AGENT_NAME + '\n')

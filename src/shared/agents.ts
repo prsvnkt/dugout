@@ -16,6 +16,8 @@ export interface AgentCapabilities {
   readonly canResume: boolean
   /** Dugout reads its token usage from the transcript its hooks point to (decision 046). */
   readonly hasUsage: boolean
+  /** Has a one-shot, non-interactive mode Dugout can run (e.g. to build a codemap). */
+  readonly canRunHeadless: boolean
 }
 
 export interface AgentInfo {
@@ -37,7 +39,13 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
     productName: 'Claude Code',
     cliName: 'Claude Code',
     installCommand: 'npm install -g @anthropic-ai/claude-code',
-    capabilities: { hasStatus: true, hasMcp: true, canResume: true, hasUsage: true },
+    capabilities: {
+      hasStatus: true,
+      hasMcp: true,
+      canResume: true,
+      hasUsage: true,
+      canRunHeadless: true,
+    },
   },
   codex: {
     kind: 'codex',
@@ -45,7 +53,13 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
     productName: 'Codex',
     cliName: 'Codex CLI',
     installCommand: 'npm install -g @openai/codex',
-    capabilities: { hasStatus: true, hasMcp: true, canResume: true, hasUsage: true },
+    capabilities: {
+      hasStatus: true,
+      hasMcp: true,
+      canResume: true,
+      hasUsage: true,
+      canRunHeadless: false,
+    },
   },
   opencode: {
     kind: 'opencode',
@@ -53,7 +67,13 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
     productName: 'OpenCode',
     cliName: 'OpenCode',
     installCommand: 'npm install -g opencode-ai',
-    capabilities: { hasStatus: true, hasMcp: true, canResume: true, hasUsage: false },
+    capabilities: {
+      hasStatus: true,
+      hasMcp: true,
+      canResume: true,
+      hasUsage: false,
+      canRunHeadless: false,
+    },
   },
 }
 
