@@ -1132,6 +1132,43 @@ agent read a secret and post it as a comment, with nobody asked.
   instructions. A closing tag inside the description is defused so it cannot end the block early.
   This lowers the odds an agent follows planted text; the permission prompt is what enforces it.
 
+## 060 — Test and dev environment overrides are gated in the packaged app (2026-10-09)
+
+(Numbers 054–059 are taken by parallel branches; this one is 060 on purpose.)
+
+**Context.** Variables meant for e2e tests and `npm run dev` were read unconditionally, so the
+installed app honoured them too: `DUGOUT_GITHUB_BASE_URL` / `DUGOUT_LINEAR_BASE_URL` (where the
+GitHub token and Linear key are sent), `DUGOUT_INSECURE_TOKEN_STORAGE_FOR_TESTS` (plaintext
+instead of Keychain), `DUGOUT_USER_DATA_DIR`, `DUGOUT_HOME_DIR`, `DUGOUT_OPEN_COMMAND`,
+`DUGOUT_GITHUB_CLIENT_ID`, `DUGOUT_<AGENT>_COMMAND` and `ELECTRON_RENDERER_URL` (loads any page
+with the privileged preload). An agent with a shell could `launchctl setenv` one of them and the
+next Dock launch would send the token elsewhere or hand a remote page the whole IPC (#61).
+
+**Decision.**
+
+- **One reader.** `src/main/devOverrides.ts` `readOverrides(env, { isPackaged })` reads every
+  override into a frozen, typed object; `index.ts` and `window.ts` take their values from it and
+  never read those variables from `process.env`.
+- **Packaged builds ignore them all** unless `DUGOUT_E2E=1` is also set. That flag is how
+  `npm run test:e2e:packaged` keeps testing the real artefact with its temp data folder, fake
+  agent CLIs, GitHub / Linear stubs and plaintext tokens; `launchApp` in `tests/e2e/helpers.ts`
+  sets it on every launch. Unpackaged (dev) runs behave as before.
+- **`ELECTRON_RENDERER_URL` is never honoured when packaged**, flag or not; the packaged e2e
+  run loads the bundled renderer anyway.
+- **Base URLs are validated in every mode:** `https://…`, or `http://` on `127.0.0.1` /
+  `localhost`, without credentials. Anything else (`http://evil`, `http://10.0.0.1`) is ignored.
+- **Visible:** when any override is set, main logs one `console.warn` line naming the active and
+  the ignored ones.
+- `DUGOUT_GITHUB_CLIENT_ID` is gated too; a fork that wants its own OAuth app changes the
+  constant in `services/github/config.ts`.
+- Not overrides, so not gated: `CLAUDE_CONFIG_DIR` / `CODEX_HOME` (the agent CLIs' own variables,
+  which they honour themselves) and the environment passed through to shells and agents.
+
+**Why not a build-time switch.** Compiling the overrides out of release builds would mean
+`test:e2e:packaged` tests a different binary from the one shipped. `DUGOUT_E2E` stops a single
+planted variable from working and makes any override visible; it does not stop an attacker who
+can set several variables (see `docs/known-issues.md`).
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1174,4 +1211,5 @@ agent read a secret and post it as a comment, with nobody asked.
 25. **Done since:** a task queue that starts the next task when an agent slot frees up ✅.
 26. **Done since:** agents ask before writing to tasks; only read and propose tools are
     pre-approved ✅.
-27. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+27. **Done since:** test and dev environment overrides are ignored by the packaged app ✅.
+28. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

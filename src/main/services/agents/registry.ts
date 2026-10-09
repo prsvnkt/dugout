@@ -15,13 +15,16 @@ export function agentAdapter(kind: AgentKind): AgentAdapter {
   return AGENT_ADAPTERS[kind]
 }
 
-/** The command each agent runs: its default, or the override in `env` (tests use fakes). */
+/**
+ * The command each agent runs: its default, or an override (tests use fakes). Overrides come
+ * from `readOverrides`, which reads each adapter's `commandVariable`.
+ */
 export function agentCommands(
-  env: Readonly<Record<string, string | undefined>>,
+  overrides: Readonly<Partial<Record<AgentKind, string>>>,
 ): Record<AgentKind, string> {
   const entries = Object.values(AGENT_ADAPTERS).map(
     (adapter) =>
-      [adapter.info.kind, env[adapter.commandVariable] ?? adapter.defaultCommand] as const,
+      [adapter.info.kind, overrides[adapter.info.kind] ?? adapter.defaultCommand] as const,
   )
   return Object.fromEntries(entries) as Record<AgentKind, string>
 }

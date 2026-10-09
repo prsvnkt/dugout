@@ -2,6 +2,21 @@
 
 Limitations we have accepted for now and intend to revisit. Remove an entry when it is fixed.
 
+## Packaged app: DUGOUT_E2E is a gate, not a boundary
+
+- **Area:** `src/main/devOverrides.ts`, `tests/e2e/helpers.ts`
+- **Found:** 2026-10-09, fixing #61 (decision 060)
+
+**What happens:** The packaged app ignores every test override unless `DUGOUT_E2E=1` is set, but
+that flag is an environment variable too. Something running as the user that can
+`launchctl setenv` both `DUGOUT_E2E=1` and, say, `DUGOUT_GITHUB_BASE_URL=https://attacker` still
+redirects the GitHub token on the next launch (base URLs may be any `https://` host). The
+`console.warn` line at startup is only visible in Console.app or a terminal.
+
+**Likely fix:** build the packaged e2e app with a build-time flag (or Electron fuse) so release
+builds contain no override code, and test that build; or allow only loopback base URLs when
+packaged.
+
 ## Project context: codemap only with Claude; stale pins show on reload
 
 - **Area:** `src/main/services/context/`, `src/renderer/src/features/context/`

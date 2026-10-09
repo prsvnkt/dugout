@@ -5,9 +5,13 @@ export interface LinearConfig {
   readonly webOrigin: string
 }
 
-/** DUGOUT_LINEAR_BASE_URL points both the API and issue pages at one server (e2e stubs). */
-export function linearConfig(env: Readonly<Record<string, string | undefined>>): LinearConfig {
-  const base = env.DUGOUT_LINEAR_BASE_URL?.replace(/\/$/, '')
+export interface LinearOverrides {
+  /** One server for both the API and issue pages (e2e stubs); validated by `readOverrides`. */
+  readonly linearBaseUrl?: string
+}
+
+export function linearConfig(overrides: LinearOverrides): LinearConfig {
+  const base = overrides.linearBaseUrl
   return {
     apiUrl: base ? `${base}/graphql` : 'https://api.linear.app/graphql',
     webOrigin: base ?? 'https://linear.app',

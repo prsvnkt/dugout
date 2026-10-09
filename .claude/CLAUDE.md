@@ -64,6 +64,7 @@ src/
     mcp/        The "dugout" MCP server agents use for tasks and project context (separate build
                 entry: mcp.js).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
+    devOverrides.ts  Every test/dev env override, ignored by a packaged build (decision 060).
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
               `agents.ts` is the agent registry the UI reads (labels, capabilities).
@@ -159,6 +160,10 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 - **Tests never touch real app data:** set `DUGOUT_USER_DATA_DIR` and `DUGOUT_HOME_DIR` (the
   welcome screen searches the home folder for repos); the e2e helpers set both. Tests that click
   "Open in…" set `DUGOUT_OPEN_COMMAND` to a fake `open`, so no real app launches.
+- **Env overrides are read only in `main/devOverrides.ts`** (decision 060). A packaged build
+  ignores every `DUGOUT_*` override unless `DUGOUT_E2E=1` is set (`launchApp` sets it), never
+  honours `ELECTRON_RENDERER_URL`, and base URLs must be `https://` or loopback `http://`.
+  Add a new override there, never as a `process.env` read elsewhere.
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.
 - **Renderer packages are devDependencies on purpose:** Vite bundles them; only main-process

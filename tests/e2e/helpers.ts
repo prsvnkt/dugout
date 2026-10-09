@@ -38,6 +38,8 @@ export async function launchApp(
     ...(packagedApp ? { executablePath: packagedApp, args: [] } : { args: ['.'] }),
     env: {
       ...process.env,
+      // A packaged app ignores every DUGOUT_* override without this flag (decision 060).
+      DUGOUT_E2E: '1',
       DUGOUT_USER_DATA_DIR: userDataDir,
       // The welcome screen searches the home folder for repos; never the real one in tests.
       DUGOUT_HOME_DIR: makeTempDir('dugout-home-'),

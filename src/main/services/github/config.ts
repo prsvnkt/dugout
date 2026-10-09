@@ -1,7 +1,7 @@
 /**
  * Client ID of the "Dugout" GitHub OAuth App (Device Flow enabled). OAuth client IDs are public
- * identifiers, not secrets, and the device flow needs no client secret. Forks can use their own
- * app via DUGOUT_GITHUB_CLIENT_ID.
+ * identifiers, not secrets, and the device flow needs no client secret. Forks change this
+ * constant to use their own app (DUGOUT_GITHUB_CLIENT_ID only works in dev and e2e runs).
  */
 const GITHUB_CLIENT_ID = 'Ov23libOb8Uedg6F3xsu'
 
@@ -13,11 +13,16 @@ export interface GitHubConfig {
   readonly apiBaseUrl: string
 }
 
-/** DUGOUT_GITHUB_BASE_URL points both web and API at one server (used by e2e stubs). */
-export function gitHubConfig(env: Readonly<Record<string, string | undefined>>): GitHubConfig {
-  const base = env.DUGOUT_GITHUB_BASE_URL?.replace(/\/$/, '')
+export interface GitHubOverrides {
+  /** One server for both web and API (e2e stubs); already validated by `readOverrides`. */
+  readonly githubBaseUrl?: string
+  readonly githubClientId?: string
+}
+
+export function gitHubConfig(overrides: GitHubOverrides): GitHubConfig {
+  const base = overrides.githubBaseUrl
   return {
-    clientId: env.DUGOUT_GITHUB_CLIENT_ID ?? GITHUB_CLIENT_ID,
+    clientId: overrides.githubClientId ?? GITHUB_CLIENT_ID,
     webBaseUrl: base ?? 'https://github.com',
     apiBaseUrl: base ? `${base}/api` : 'https://api.github.com',
   }

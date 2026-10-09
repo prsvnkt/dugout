@@ -72,6 +72,7 @@ import type { UsageService } from './services/usage/UsageService'
 import { createUsageReporter, type TranscriptHint } from './services/usage/usageReporter'
 import { SHARED_CONTEXT_DIR } from '@shared/context'
 import { createMainWindow } from './window'
+import { describeOverrides, readOverrides } from './devOverrides'
 import { applyAppIcon } from './appIcon'
 
 const PROJECTS_FILE = 'projects.json'
@@ -89,21 +90,29 @@ const PROPOSED_DIR = 'proposed'
 const APPLICATIONS_DIR = '/Applications'
 
 /**
+ * Test and dev overrides from the environment. A packaged app ignores them unless DUGOUT_E2E=1
+ * (decision 060); read them nowhere else.
+ */
+const overrides = readOverrides(process.env, { isPackaged: app.isPackaged })
+const overridesNotice = describeOverrides(overrides)
+if (overridesNotice) console.warn(overridesNotice)
+const commands = agentCommands(overrides.agentCommands)
+
+/**
  * safeStorage is Keychain-backed on macOS. E2E tests opt into a plaintext stand-in so they never
  * trigger Keychain prompts; the variable name makes the trade-off explicit.
  */
-const tokenEncryption: Encryption =
-  process.env.DUGOUT_INSECURE_TOKEN_STORAGE_FOR_TESTS === '1'
-    ? {
-        isAvailable: () => true,
-        encrypt: (text) => Buffer.from(text, 'utf8'),
-        decrypt: (data) => data.toString('utf8'),
-      }
-    : {
-        isAvailable: () => safeStorage.isEncryptionAvailable(),
-        encrypt: (text) => safeStorage.encryptString(text),
-        decrypt: (data) => safeStorage.decryptString(data),
-      }
+const tokenEncryption: Encryption = overrides.insecureTokenStorage
+  ? {
+      isAvailable: () => true,
+      encrypt: (text) => Buffer.from(text, 'utf8'),
+      decrypt: (data) => data.toString('utf8'),
+    }
+  : {
+      isAvailable: () => safeStorage.isEncryptionAvailable(),
+      encrypt: (text) => safeStorage.encryptString(text),
+      decrypt: (data) => safeStorage.decryptString(data),
+    }
 
 function broadcast(channel: string, ...args: unknown[]): void {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, ...args)
@@ -114,7 +123,7 @@ const WORKTREE_ID_BYTES = 3
 // to "Dugout Dev" so `npm run dev` never shares projects or the hook socket with the installed app.
 const DEV_DATA_FOLDER = 'Dugout Dev'
 const userDataOverride =
-  process.env.DUGOUT_USER_DATA_DIR ??
+  overrides.userDataDir ??
   (app.isPackaged ? undefined : join(app.getPath('appData'), DEV_DATA_FOLDER))
 if (userDataOverride) app.setPath('userData', userDataOverride)
 
@@ -213,7 +222,7 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
   try {
     return await setupAgentHooks({
       dataDir,
-      commands: agentCommands(process.env),
+      commands,
       onSignal: (terminalId, signal, details) => {
         terminalManager?.applyHookSignal(terminalId, signal, details)
         const { transcriptPath, sessionId } = details
@@ -287,7 +296,7 @@ async function start(): Promise<void> {
   checkRunner = checks
 
   // Tests point this at a temp folder so they never search the real home folder.
-  const homeDir = process.env.DUGOUT_HOME_DIR ?? homedir()
+  const homeDir = overrides.homeDir ?? homedir()
   usageService = await startUsage(dataDir, homeDir)
   if (usageService) {
     reportTranscript = createUsageReporter({
@@ -300,7 +309,7 @@ async function start(): Promise<void> {
   registerUsageIpc(usageService)
   registerTimelineIpc(setupTimeline({ homeDir, env: process.env }))
   registerProjectIpc(projectStore)
-  const github = gitHubConfig(process.env)
+  const github = gitHubConfig(overrides)
   const githubApi = new GitHubApi({ fetch, apiBaseUrl: github.apiBaseUrl })
   const githubAuth = new GitHubAuth({
     isConfigured: github.clientId !== '',
@@ -338,7 +347,7 @@ async function start(): Promise<void> {
     baseDir: join(dataDir, WORKTREES_DIR),
     createId: () => randomBytes(WORKTREE_ID_BYTES).toString('hex'),
   })
-  const linear = linearConfig(process.env)
+  const linear = linearConfig(overrides)
   const linearIssues = new LinearIssues({ fetch, apiUrl: linear.apiUrl })
   const linearAuth = new LinearAuth({
     store: new LinearKeyStore({
@@ -429,11 +438,7 @@ async function start(): Promise<void> {
     projects: projectStore,
     store: contextStore,
     buildCodemap: (agent, root) =>
-      buildCodemap(
-        { adapter: agentAdapter, commands: agentCommands(process.env), run: runHeadless },
-        agent,
-        root,
-      ),
+      buildCodemap({ adapter: agentAdapter, commands, run: runHeadless }, agent, root),
   })
   const settings = new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) })
   registerCloneIpc(git, settings)
@@ -443,7 +448,7 @@ async function start(): Promise<void> {
     worktrees,
     new OpenInService({
       applicationDirs: [APPLICATIONS_DIR, join(homedir(), APPLICATIONS_DIR)],
-      runOpen: execFileRunner(process.env.DUGOUT_OPEN_COMMAND ?? DEFAULT_OPEN_COMMAND),
+      runOpen: execFileRunner(overrides.openCommand ?? DEFAULT_OPEN_COMMAND),
       settings,
     }),
   )
@@ -451,15 +456,16 @@ async function start(): Promise<void> {
     settings,
     homeDir,
     runInLoginShell: loginShellRunner(process.env),
-    agentCommands: agentCommands(process.env),
+    agentCommands: commands,
   })
   registerWorkspaceIpc(new LayoutStore({ filePath: join(dataDir, WORKSPACE_FILE) }), projectStore)
   registerDialogIpc()
   installMenu(sendCommand, !app.isPackaged)
-  guardUnsavedChanges(createMainWindow())
+  guardUnsavedChanges(createMainWindow(overrides.rendererUrl))
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) guardUnsavedChanges(createMainWindow())
+    if (BrowserWindow.getAllWindows().length === 0)
+      guardUnsavedChanges(createMainWindow(overrides.rendererUrl))
   })
 }
 
