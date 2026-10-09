@@ -9,14 +9,8 @@ import {
   makeTempDir,
   recordTerminalOutput,
   stubFolderPicker,
+  GIT_IDENTITY,
 } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'T',
-  GIT_AUTHOR_EMAIL: 't@example.com',
-  GIT_COMMITTER_NAME: 'T',
-  GIT_COMMITTER_EMAIL: 't@example.com',
-}
 
 const LOG = [
   '2026-10-09T10:00:00.0000000Z ##[group]Run npm test',
@@ -68,7 +62,7 @@ test.beforeEach(async () => {
   const root = join(makeTempDir(), 'app')
   mkdirSync(root)
   const git = (...args: string[]) =>
-    execFileSync('git', args, { cwd: root, env: { ...process.env, ...IDENTITY } })
+    execFileSync('git', args, { cwd: root, env: { ...process.env, ...GIT_IDENTITY } })
   git('init', '-q', '-b', 'main')
   writeFileSync(join(root, 'readme.md'), '# app\n')
   git('add', '.')
@@ -77,7 +71,7 @@ test.beforeEach(async () => {
   git('checkout', '-q', '-b', 'feat/login')
 
   app = await launchApp(makeTempDir(), {
-    ...IDENTITY,
+    ...GIT_IDENTITY,
     ...gitHubTestEnv(stub.baseUrl),
     DUGOUT_CLAUDE_COMMAND: makeFakeClaude(),
   })
