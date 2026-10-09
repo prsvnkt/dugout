@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { AgentSettingsView } from '@renderer/features/agentConfig/AgentSettingsView'
 import { CompareView } from '@renderer/features/compare/CompareView'
 import { FileTypeIcon } from '@renderer/features/explorer/FileTypeIcon'
+import { ReviewComments } from '@renderer/features/reviewComments/ReviewComments'
 import { TaskDetailView } from '@renderer/features/tasks/TaskDetailView'
 import { Icon } from '@renderer/lib/Icon'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
@@ -16,6 +17,9 @@ import styles from './EditorArea.module.css'
 const EditorSurface = lazy(() => import('./monaco/EditorSurface'))
 /** Task tabs are named "#n title"; long titles are cut (the tooltip has the full one). */
 const MAX_TASK_TAB_LABEL = 40
+
+const DIFF_COMMENT_HINT =
+  'Comment for the agent: select lines on the right, then press ⌘⇧M or right-click › Add Review Comment.'
 
 function tabLabel(tab: EditorTab): string {
   if (tab.kind === 'task' && tab.path.length > MAX_TASK_TAB_LABEL) {
@@ -167,12 +171,19 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
       ) : (
         <Suspense fallback={<p className={styles.notice}>Loading editor…</p>}>
           <EditorSurface
+            projectId={projectId}
             tab={active}
             fileKey={fileKey}
             modelRevision={buffer?.revision ?? 0}
             diff={diffs[active.id]}
           />
         </Suspense>
+      )}
+      {active.kind === 'diff' && (
+        <ReviewComments
+          targets={[{ checkout: { projectId, worktreePath: active.worktreePath }, label: null }]}
+          hint={DIFF_COMMENT_HINT}
+        />
       )}
     </section>
   )

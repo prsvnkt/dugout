@@ -8,6 +8,7 @@ import { dugout } from '@renderer/lib/dugout'
 import { isAgentKind, type TerminalExit, type TerminalKind } from '@shared/terminal'
 import { XTERM_OPTIONS } from './xtermOptions'
 import { agentKeyOverride } from './agentKeys'
+import { registerPaste } from './terminalInput'
 import {
   applySubagentUpdate,
   clearFinished,
@@ -142,6 +143,7 @@ export function useTerminal(
         dugout.terminal.onAgentSession((sourceId, next) => {
           if (sourceId === id) setSessionId(next)
         }),
+        registerPaste(id, (text) => terminal.paste(text)),
         () => input.dispose(),
         () => resize.dispose(),
       )

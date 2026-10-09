@@ -1,0 +1,167 @@
+/* Sits under a diff: a slim hint when empty, growing (and scrolling) with comments. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  max-height: 40%;
+  margin-top: auto;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--divider);
+  background: var(--bg-panel);
+  font-size: 12px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.location {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.code {
+  max-height: 96px;
+  margin: 0;
+  overflow: auto;
+  padding: var(--space-1) var(--space-2);
+  border-left: 2px solid var(--accent);
+  background: var(--bg-canvas);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  white-space: pre;
+}
+
+.input {
+  resize: vertical;
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.actions,
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.actions .hint,
+.note {
+  flex: 1;
+  color: var(--text-muted);
+}
+
+.count {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.primary,
+.secondary {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  white-space: nowrap;
+}
+
+.primary {
+  margin-left: auto;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.primary:disabled {
+  opacity: 0.5;
+}
+
+.secondary {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.actions .primary {
+  margin-left: 0;
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.iconButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.error {
+  margin: 0;
+  color: var(--status-error);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comment {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--border);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.iconButton:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}

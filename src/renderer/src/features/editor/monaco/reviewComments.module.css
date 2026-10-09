@@ -1,0 +1,9 @@
+/* Lines with a pending review comment: a tint across the line and a bar in the gutter. */
+.commentedLine {
+  background: var(--bg-elevated);
+}
+
+.commentMark {
+  margin-left: 3px;
+  border-left: 3px solid var(--accent);
+}
