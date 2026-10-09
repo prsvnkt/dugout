@@ -21,6 +21,8 @@ export class NodePtyBackend implements TerminalBackend {
       write: (data) => ptyProcess.write(data),
       resize: (cols, rows) => ptyProcess.resize(cols, rows),
       kill: () => ptyProcess.kill(),
+      pause: () => ptyProcess.pause(),
+      resume: () => ptyProcess.resume(),
     }
   }
 }

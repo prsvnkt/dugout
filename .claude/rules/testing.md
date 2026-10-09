@@ -1,6 +1,9 @@
 ---
 paths:
   - 'src/**/*.test.ts'
+  - 'src/**/*.test.tsx'
+  - 'vitest.config.ts'
+  - 'playwright.config.ts'
   - 'tests/**'
   - 'src/main/services/**'
   - 'src/shared/**'
@@ -23,4 +26,12 @@ paths:
 - E2E tests never run a real agent CLI (they need auth). Use plain shells, or the fakes in
   `tests/e2e/helpers.ts` (`makeFakeClaude` / `Codex` / `OpenCode`, via `DUGOUT_<AGENT>_COMMAND`),
   which run the generated hooks or the real OpenCode plugin.
-- Coverage target is 80%+ for `src/main` and `src/shared` (`npm run test:coverage`).
+- Coverage target is 80% statements and lines, 75% branches and functions. `vitest.config.ts`
+  `coverage.thresholds` enforces it for `src/main` and `src/shared`, and a lower whole-codebase
+  floor (currently 61 / 63 / 55 / 64%) that includes renderer `.ts` logic; React views (`.tsx`)
+  are left to e2e. `npm run check` (and so CI) fails below either. Raise the floor as tests land,
+  never lower it. Unit tests may be `*.test.ts` or `*.test.tsx`.
+- E2E: `launchApp` gives each app temp `CLAUDE_CONFIG_DIR` / `CODEX_HOME` folders. A failing
+  test leaves a trace and screenshots in `test-results/`. Wait on state, never on time:
+  e.g. `expect.poll(() => savedPanes(userDataDir))` for the debounced layout save. Commits use
+  `GIT_IDENTITY` from `helpers.ts`.

@@ -46,6 +46,25 @@ describe('opencodeAdapter', () => {
     expect(files.contents.size).toBe(0)
   })
 
+  test('asks before every dugout tool except the read and propose ones', () => {
+    const files = memoryFiles()
+    const launch = opencodeAdapter.launch(launchContext({ mcp: { server: MCP_ENTRY, files } }))
+    const permission = inlineConfig(launch.env).permission as Record<string, string>
+    expect(Object.entries(permission)).toEqual([
+      ['dugout_*', 'ask'],
+      ['dugout_list_tasks', 'allow'],
+      ['dugout_get_task', 'allow'],
+      ['dugout_list_context', 'allow'],
+      ['dugout_get_context', 'allow'],
+      ['dugout_search_context', 'allow'],
+      ['dugout_add_note', 'allow'],
+    ])
+  })
+
+  test('sets no permissions without the dugout server', () => {
+    expect(inlineConfig(opencodeAdapter.launch(launchContext()).env).permission).toBeUndefined()
+  })
+
   test('prepare writes the status plugin', async () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'dugout-opencode-'))
     await opencodeAdapter.prepare?.(dataDir)

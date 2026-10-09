@@ -13,5 +13,9 @@ export default defineConfig({
   workers: MAX_WORKERS,
   // Retry once on CI only; locally a flake should stay visible.
   retries: process.env.CI ? 1 : 0,
+  // A stray test.only would silently skip the rest of the suite on CI.
+  forbidOnly: !!process.env.CI,
   reporter: 'list',
+  // Keep a trace and a screenshot of each failing test in test-results/ (CI uploads it).
+  use: { trace: 'retain-on-failure', screenshot: 'only-on-failure' },
 })

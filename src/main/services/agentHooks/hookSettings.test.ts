@@ -61,8 +61,23 @@ describe('buildHookSettings', () => {
     expect(command('UserPromptSubmit')).not.toContain('--data-binary')
   })
 
-  test("pre-approves Dugout's own task tools", () => {
-    expect(settings.permissions.allow).toEqual(['mcp__dugout'])
+  test("pre-approves only Dugout's read and propose tools, never the whole server", () => {
+    expect([...settings.permissions.allow].sort()).toEqual([
+      'mcp__dugout__add_note',
+      'mcp__dugout__get_context',
+      'mcp__dugout__get_task',
+      'mcp__dugout__list_context',
+      'mcp__dugout__list_tasks',
+      'mcp__dugout__search_context',
+    ])
+  })
+
+  test('leaves task writes to the permission prompt', () => {
+    for (const tool of ['create_task', 'create_tasks', 'update_task', 'comment_on_task']) {
+      expect(settings.permissions.allow).not.toContain(`mcp__dugout__${tool}`)
+    }
+    expect(settings.permissions.allow).not.toContain('mcp__dugout')
+    expect(settings.permissions.allow.some((rule) => rule.includes('*'))).toBe(false)
   })
 
   test('does nothing outside a Dugout terminal', () => {
