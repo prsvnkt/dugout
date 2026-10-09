@@ -9,21 +9,25 @@ import {
   type SubagentUpdate,
 } from '@shared/agentStatus'
 import { sessionIdSchema } from '@shared/ipc/contract'
+import type { ToolCallPreview } from '@shared/toolCall'
+import { toolCallPreview, toolCallRef, type ToolCallRef, type ToolPayload } from './toolCall'
 
 /** Details a hook payload may carry along with its signal. */
 export interface HookDetails {
   readonly sessionId?: string
   /** Why the agent is waiting, or what it just finished; short, for the inbox. */
   readonly detail?: string
+  /** The tool call a permission request is about, or that finished. */
+  readonly toolCall?: ToolCallRef
+  /** The whole tool call waiting for approval (permission requests only). */
+  readonly preview?: ToolCallPreview
 }
 
 const MAX_DETAIL_LENGTH = 140
 
-interface HookPayload {
+interface HookPayload extends ToolPayload {
   session_id?: unknown
   hook_event_name?: unknown
-  tool_name?: unknown
-  tool_input?: { command?: unknown; file_path?: unknown; url?: unknown } | null
   message?: unknown
   last_assistant_message?: unknown
   agent_id?: unknown
@@ -46,7 +50,11 @@ function detailOf(payload: HookPayload): string | undefined {
   switch (payload.hook_event_name) {
     case 'PermissionRequest': {
       const tool = asText(payload.tool_name)
-      const input = payload.tool_input
+      const input = payload.tool_input as {
+        command?: unknown
+        file_path?: unknown
+        url?: unknown
+      } | null
       const target = asText(input?.command) ?? asText(input?.file_path) ?? asText(input?.url)
       return tool ? shorten(target ? `${tool}: ${target}` : tool) : undefined
     }
@@ -76,8 +84,10 @@ export interface HookServerDeps {
 const ROUTE = /^\/hooks\/([\w-]{1,64})\/([a-z-]{1,32})$/
 const RPC_ROUTE = /^\/rpc\/([\w-]{1,64})$/
 const SOCKET_MODE = 0o600
-/** Hook payloads are small JSON objects; anything bigger is not from our hooks. */
+/** Task calls and subagent payloads are small JSON objects; anything bigger is not ours. */
 const MAX_BODY_BYTES = 64 * 1024
+/** Status payloads can be large: PostToolUse includes the tool's whole output. */
+const MAX_HOOK_BODY_BYTES = 4 * 1024 * 1024
 
 function isHookSignal(value: string): value is HookSignal {
   return (HOOK_SIGNALS as readonly string[]).includes(value)
@@ -124,7 +134,7 @@ export class HookServer {
     const match = req.method === 'POST' ? ROUTE.exec(req.url ?? '') : null
     const [, terminalId, signal] = match ?? []
     if (terminalId && signal && isSubagentSignal(signal)) {
-      return readBody(req, (body) => {
+      return readBody(req, MAX_BODY_BYTES, (body) => {
         if (body === null) return respond(res, 413)
         const update = parseSubagent(signal, body)
         if (update) this.deps.onSubagent(terminalId, update)
@@ -135,7 +145,7 @@ export class HookServer {
       req.resume()
       return respond(res, 404)
     }
-    readBody(req, (body) => {
+    readBody(req, MAX_HOOK_BODY_BYTES, (body) => {
       if (body === null) return respond(res, 413)
       this.deps.onSignal(terminalId, signal, parseDetails(body))
       respond(res, 204)
@@ -143,7 +153,7 @@ export class HookServer {
   }
 
   private handleRpc(terminalId: string, req: IncomingMessage, res: ServerResponse): void {
-    readBody(req, (body) => {
+    readBody(req, MAX_BODY_BYTES, (body) => {
       if (body === null) return respond(res, 413)
       let call: { method?: unknown; params?: unknown }
       try {
@@ -169,6 +179,21 @@ export class HookServer {
   }
 }
 
+/** Events about one tool call: the request to approve it, and it finishing either way. */
+const TOOL_EVENTS: ReadonlySet<unknown> = new Set([
+  'PermissionRequest',
+  'PostToolUse',
+  'PostToolUseFailure',
+])
+
+function toolDetails(payload: HookPayload): Pick<HookDetails, 'toolCall' | 'preview'> {
+  if (!TOOL_EVENTS.has(payload.hook_event_name)) return {}
+  const toolCall = toolCallRef(payload)
+  if (!toolCall) return {}
+  const preview = payload.hook_event_name === 'PermissionRequest' ? toolCallPreview(payload) : null
+  return { toolCall, ...(preview && { preview }) }
+}
+
 function parseDetails(body: string): HookDetails {
   if (!body) return {}
   try {
@@ -178,6 +203,7 @@ function parseDetails(body: string): HookDetails {
     return {
       ...(sessionId.success && { sessionId: sessionId.data }),
       ...(detail && { detail }),
+      ...toolDetails(payload),
     }
   } catch {
     return {}
@@ -202,14 +228,18 @@ function parseSubagent(signal: SubagentSignal, body: string): SubagentUpdate | n
   return { id, type, state: 'done', ...(detail && { detail }) }
 }
 
-/** Reads a request body up to MAX_BODY_BYTES; null when it is larger. */
-function readBody(req: IncomingMessage, done: (body: string | null) => void): void {
+/** Reads a request body up to `maxBytes`; null when it is larger. */
+function readBody(
+  req: IncomingMessage,
+  maxBytes: number,
+  done: (body: string | null) => void,
+): void {
   const chunks: Buffer[] = []
   let size = 0
   let isTooLarge = false
   req.on('data', (chunk: Buffer) => {
     size += chunk.length
-    if (size > MAX_BODY_BYTES) isTooLarge = true
+    if (size > maxBytes) isTooLarge = true
     else chunks.push(chunk)
   })
   req.on('end', () => done(isTooLarge ? null : Buffer.concat(chunks).toString('utf8')))

@@ -2,6 +2,13 @@ import { describe, expect, test } from 'vitest'
 import type { Project } from '@shared/project'
 import { inboxEntries } from './inbox'
 
+const npmInstall = {
+  kind: 'command',
+  tool: 'Bash',
+  command: 'npm install',
+  description: null,
+} as const
+
 const project = (id: string, name: string): Project => ({
   id,
   name,
@@ -32,9 +39,9 @@ describe('inboxEntries', () => {
       layouts,
       activities: { a: 'done', b: 'needs-input', c: 'done', d: 'running' },
       details: {
-        a: { detail: 'Done A', since: 1 },
-        b: { detail: 'Bash: npm install', since: 2 },
-        c: { detail: 'Done C', since: 3 },
+        a: { detail: 'Done A', approvals: [], since: 1 },
+        b: { detail: 'Bash: npm install', approvals: [npmInstall], since: 2 },
+        c: { detail: 'Done C', approvals: [], since: 3 },
       },
     })
 
@@ -49,7 +56,18 @@ describe('inboxEntries', () => {
       agentLabel: 'Claude',
       taskNumber: 12,
       detail: 'Bash: npm install',
+      approvals: [npmInstall],
     })
+  })
+
+  test('only agents that need you show tool calls waiting for approval', () => {
+    const entries = inboxEntries({
+      projects,
+      layouts,
+      activities: { a: 'done' },
+      details: { a: { detail: 'Done A', approvals: [npmInstall], since: 1 } },
+    })
+    expect(entries[0]?.approvals).toEqual([])
   })
 
   test('is empty when no agent needs attention', () => {

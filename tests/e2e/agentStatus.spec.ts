@@ -106,6 +106,67 @@ test('a turn that finishes in a background project shows as Done until viewed', 
   await expect(sidebarItem('alpha')).not.toContainText('Done')
 })
 
+test('parallel tool calls keep "Needs you" until every approval has finished', async () => {
+  // Arrange: two calls wait for approval in one turn
+  await addProject('alpha')
+  await clickMenuItem(app, 'File', 'New Claude Agent')
+  await expect(paneHeader()).toContainText('Ready')
+  await send('prompt')
+  await send('ask npm install')
+  await send('ask npm test')
+  await expect(paneHeader()).toContainText('Needs you')
+
+  // Act: a call that needed no approval finishes, then one of the approved ones
+  await send('tool ls')
+  await send('tool npm install')
+
+  // Assert: still waiting, now only for the other call
+  await expect(paneHeader()).toContainText('Needs you')
+  await clickMenuItem(app, 'View', 'Show Inbox')
+  const waiting = page.getByRole('dialog', { name: 'Inbox' }).getByTestId('tool-call')
+  await expect(waiting).toHaveCount(1)
+  await expect(waiting).toContainText('npm test')
+  await page.keyboard.press('Escape')
+
+  await send('tool npm test')
+  await expect(paneHeader()).toContainText('Working')
+})
+
+test('the inbox shows the full tool call and Return jumps to the agent, ready to answer', async () => {
+  // Arrange: in alpha, an agent asks to run a long command and to edit a file; then go to beta
+  const longCommand = `npm run build -- ${Array.from({ length: 30 }, (_, i) => `--flag-${i}`).join(' ')}`
+  await addProject('alpha')
+  await clickMenuItem(app, 'File', 'New Claude Agent')
+  await expect(paneHeader()).toContainText('Ready')
+  await send(`ask ${longCommand}`)
+  await send('ask-edit src/login.ts')
+  await expect(paneHeader()).toContainText('Needs you')
+  await addProject('beta')
+  await expect(page.getByRole('contentinfo')).toContainText('beta')
+
+  // Act: open the inbox from the keyboard
+  await clickMenuItem(app, 'View', 'Show Inbox')
+  const inbox = page.getByRole('dialog', { name: 'Inbox' })
+  const entry = inbox.getByRole('button', { name: /alpha · Claude: Bash: npm run build/ })
+
+  // Assert: the whole command, and the edit as a diff
+  await expect(entry).toBeFocused()
+  await expect(entry.getByTestId('tool-call').first()).toContainText(longCommand)
+  const diff = entry.getByTestId('tool-diff')
+  await expect(diff).toContainText('const timeout = 1000')
+  await expect(diff).toContainText('const timeout = 5000')
+  await expect(entry).toContainText('src/login.ts')
+
+  // Act: one key goes to the agent
+  await page.keyboard.press('Enter')
+
+  // Assert: back in alpha, and typing goes straight to that agent's prompt
+  await expect(inbox).toBeHidden()
+  await expect(page.getByRole('contentinfo')).toContainText('alpha')
+  await page.keyboard.type('prompt\n')
+  await expect(paneHeader()).toContainText('Working')
+})
+
 test('the inbox lists agents that need you across projects and jumps to them', async () => {
   // Arrange: an agent in alpha asks for approval, then we switch to beta
   await addProject('alpha')
@@ -120,7 +181,7 @@ test('the inbox lists agents that need you across projects and jumps to them', a
   const inboxButton = page.getByRole('banner').getByRole('button', { name: /^Inbox, 1 need you/ })
   await inboxButton.click()
   const inbox = page.getByRole('dialog', { name: 'Inbox' })
-  await expect(inbox.getByRole('region', { name: 'Needs you' })).toContainText('Bash: npm install')
+  await expect(inbox.getByRole('region', { name: 'Needs you' })).toContainText('npm install')
   await inbox.getByRole('button', { name: /alpha · Claude: Bash: npm install/ }).click()
 
   // Assert: back in alpha, focused on that agent

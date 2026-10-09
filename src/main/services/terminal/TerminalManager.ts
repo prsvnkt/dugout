@@ -6,7 +6,9 @@ import {
   type TerminalId,
   type TerminalKind,
 } from '@shared/terminal'
+import type { ToolCallPreview } from '@shared/toolCall'
 import type { HookDetails } from '../agentHooks/HookServer'
+import { NO_APPROVALS, trackApprovals, type PendingApproval } from '../agentHooks/pendingApprovals'
 import type { AgentHooksConfig } from '../agentHooks/setupAgentHooks'
 import type { AgentStatusChange } from '../notifications/AgentNotifier'
 import type { TerminalBackend, TerminalProcess } from './TerminalBackend'
@@ -15,7 +17,13 @@ import { buildLaunchSpec, buildTerminalEnv, resolveShell, type Env } from './lau
 export interface TerminalEvents {
   onData(id: TerminalId, data: string): void
   onExit(id: TerminalId, exit: TerminalExit): void
-  onAgentStatus?(id: TerminalId, status: AgentStatus, detail?: string): void
+  /** `approvals`: the tool calls waiting for the user, oldest first (empty unless needs-input). */
+  onAgentStatus?(
+    id: TerminalId,
+    status: AgentStatus,
+    detail: string | undefined,
+    approvals: readonly ToolCallPreview[],
+  ): void
   /** The Claude session id, reported when it starts or changes (e.g. after /clear). */
   onAgentSession?(id: TerminalId, sessionId: string): void
   /** A subagent of this terminal's agent started or stopped. */
@@ -45,6 +53,8 @@ interface ManagedTerminal {
   readonly reportedSessionId: string | null
   /** The detail that came with the latest status. */
   readonly detail: string | null
+  /** Tool calls the agent asked to have approved that have not finished yet. */
+  readonly approvals: readonly PendingApproval[]
 }
 
 export const DEFAULT_CLAUDE_COMMAND = 'claude'
@@ -54,6 +64,7 @@ const CONVERSATION_STATUSES: ReadonlySet<AgentStatus> = new Set(['working', 'nee
 const SIGNAL_STATUS: Readonly<Record<HookSignal, AgentStatus>> = {
   ready: 'idle',
   working: 'working',
+  'tool-done': 'working',
   'needs-input': 'needs-input',
   done: 'done',
 }
@@ -125,6 +136,7 @@ export class TerminalManager {
       hasConversation: request.resumeSessionId !== undefined,
       reportedSessionId: request.resumeSessionId ?? null,
       detail: null,
+      approvals: NO_APPROVALS,
     })
     return id
   }
@@ -164,23 +176,33 @@ export class TerminalManager {
     const terminal = this.terminals.get(id)
     if (!terminal || terminal.agentStatus === null) return false
 
+    const approvals = trackApprovals(terminal.approvals, signal, details)
+    // While a tool call waits for approval, the agent needs you, whatever else finishes.
+    const waiting = approvals[0]
+    const status = waiting ? 'needs-input' : SIGNAL_STATUS[signal]
+    const detail = waiting ? (waiting.detail ?? undefined) : details.detail
     const next = {
-      ...nextAgentState(terminal, SIGNAL_STATUS[signal], details.sessionId),
-      detail: details.detail ?? null,
+      ...nextAgentState(terminal, status, details.sessionId),
+      detail: detail ?? null,
+      approvals,
     }
     this.terminals.set(id, next)
 
     if (next.reportedSessionId !== terminal.reportedSessionId && next.reportedSessionId) {
       terminal.events.onAgentSession?.(id, next.reportedSessionId)
     }
-    const isNewDetail = details.detail !== undefined && details.detail !== terminal.detail
-    if ((next.agentStatus !== terminal.agentStatus || isNewDetail) && next.agentStatus) {
-      terminal.events.onAgentStatus?.(id, next.agentStatus, details.detail)
+    const isNewStatus = next.agentStatus !== terminal.agentStatus
+    const isNewDetail = detail !== undefined && detail !== terminal.detail
+    if (isNewStatus || isNewDetail || approvals !== terminal.approvals) {
+      const previews = approvals.map((approval) => approval.preview)
+      terminal.events.onAgentStatus?.(id, status, detail, previews)
+    }
+    if (isNewStatus || isNewDetail) {
       this.deps.onAgentStatusChange?.({
         terminalId: id,
         projectId: terminal.projectId,
-        status: next.agentStatus,
-        ...(details.detail && { detail: details.detail }),
+        status,
+        ...(detail && { detail }),
       })
     }
     return true

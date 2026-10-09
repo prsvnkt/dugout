@@ -41,7 +41,8 @@ src/
   main/       Electron main process (Node). Owns PTYs, git, filesystem, dialogs.
     ipc/        One register*Ipc.ts per domain. Validates every payload with zod.
     services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
-                git/ (review panel, PR URLs), agentHooks/ (Claude + Codex status, subagents, session ids),
+                git/ (review panel, PR URLs), agentHooks/ (Claude + Codex status, pending approvals,
+                subagents, session ids),
                 worktrees/ (isolated sessions), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API),
                 settings/ (app preferences: default agent, clone folder),

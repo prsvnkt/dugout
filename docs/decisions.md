@@ -49,7 +49,8 @@ between launches are deferred.
 ## 008 — Agent status from hooks over a private socket (2026-10-05)
 
 Claude terminals start as `claude --settings <userData>/claude-hooks.json`. Its async command
-hooks `curl` a signal (`ready`, `working`, `needs-input`, `done`) to an HTTP server on a Unix
+hooks `curl` a signal (`ready`, `working`, `tool-done`, `needs-input`, `done`; see decision 036
+for how pending approvals keep `needs-input`) to an HTTP server on a Unix
 socket (mode 0600) with a per-launch bearer token; the terminal id, socket, token and settings
 path reach the shell as `DUGOUT_*` env vars. Hooks are no-ops outside Dugout, time out after 2s
 and always succeed, so they can never disturb Claude. "Done" clears once the user views the pane.
@@ -171,10 +172,12 @@ are behind `TaskService`, so Jira or local storage can be added later.
 Hooks for ready, needs-input and done forward their payload, and the hook server extracts a
 short detail (≤140 chars): "Tool: command/file" for permission requests, the notification
 message, or the first line of the agent's last message on Stop. The detail travels with the
-status (also used as the notification body); the renderer keeps `{ detail, since }` per pane.
-The title-bar Inbox (⇧⌘I) lists every agent pane in any project that needs you (first) or has
-an unseen Done, newest first; clicking one selects the project and focuses the pane. The list is
-derived (pure `inboxEntries`), not stored.
+status (also used as the notification body); the renderer keeps `{ detail, approvals, since }`
+per pane. The title-bar Inbox (⇧⌘I) lists every agent pane in any project that needs you (first)
+or has an unseen Done, newest first; clicking one selects the project and focuses the pane. The
+list is derived (pure `inboxEntries`), not stored. Since decision 036, an entry that waits for
+approval shows the whole tool call instead of the short detail, and Return on an entry puts the
+keyboard in that agent's terminal.
 
 ## 020 — Pull request and CI status in the git panel (2026-10-06)
 
@@ -466,6 +469,37 @@ chevrons-right, close with an X, menus open with a chevron-down, and the two han
 (Agents list, explorer folders) moved to the same set. Text that only contains a glyph (status
 marks like "✓ Approved", "Start agent ▾") stays text.
 
+## 036 — Pending approvals by tool call; the inbox shows them in full (2026-10-09)
+
+**Context.** The inbox showed a ≤140-char detail (decision 019), so deciding whether to approve
+meant switching to the agent to read the command or diff. Worse, status was simply the last
+signal: when tools ran in parallel and only some needed approval, a `PostToolUse` from a
+finished one sent `working` and hid "Needs you" while another still waited.
+
+**Decision.** `PostToolUse` (and Claude's `PostToolUseFailure`) now send their own signal,
+`tool-done`, with the payload; `UserPromptSubmit` keeps `working`. `TerminalManager` keeps each
+terminal's pending approvals (`agentHooks/pendingApprovals.ts`): a `PermissionRequest` adds one,
+the `tool-done` for that call removes it, and a prompt, Stop or new session clears them all. While
+any is pending the status stays `needs-input`, and its detail is the oldest pending call's. Calls
+are matched by `tool_use_id`, but neither CLI sends that id with `PermissionRequest` (checked in
+Claude Code 2.1.295 and codex-cli 0.161), so a request without one is matched to its finish by
+tool and main argument (command, file path or URL, else the whole input); identical parallel
+calls each need their own finish. A `tool-done` we cannot identify changes nothing, so the worst
+case is a "Needs you" that lasts until the turn ends, never one that hides. Status payloads may
+be up to 4 MB (they include the tool's output); task calls and subagents keep 64 KB.
+
+The permission request also carries a preview of the whole call (`@shared/toolCall`): a command
+with its description, an edit as the file and its replacements (Edit, MultiEdit, Write,
+NotebookEdit), or any other tool's arguments; each text is clipped at 8,000 characters and says
+so. It reaches the renderer with the status. Inbox entries that need you show every pending call:
+the command in full, or the file path with a small diff (changed lines with two lines of context,
+at most 40). Opening the inbox puts the keyboard on the first entry, ↑/↓ move between entries,
+and Return (or a click) jumps to the agent with the keyboard in its terminal, ready for its
+prompt. Jumping uses `revealPane`, which also refocuses an agent that is already focused; the
+Agents list and notification clicks use it too.
+
+Changing the `PostToolUse` hook command means Codex asks once more to trust Dugout's hooks.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -486,3 +520,5 @@ marks like "✓ Approved", "Start agent ▾") stays text.
 9. **Done since:** Agents list in the sidebar ✅, with each agent's subagents ✅, readable
    terminals and visible dividers ✅, leaner task tools for agents (search, priority, related,
    batch create) ✅, icons for the rail and icon buttons ✅.
+10. **Done since:** the inbox shows pending tool calls in full and jumps straight to the agent ✅,
+    with approvals tracked per tool call ✅.

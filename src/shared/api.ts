@@ -6,6 +6,7 @@ import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
 import type { GitBranch, GitStatus } from './git'
 import type { PullRequestStatus } from './pullRequest'
+import type { ToolCallPreview } from './toolCall'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
   ProjectAddRequest,
@@ -36,10 +37,17 @@ export interface DugoutApi {
     kill(id: TerminalId): void
     onData(listener: (id: TerminalId, data: string) => void): Unsubscribe
     onExit(listener: (id: TerminalId, exit: TerminalExit) => void): Unsubscribe
-    /** Status of Claude terminals, reported by Claude Code hooks. */
-    /** `detail`: why the agent is waiting or what it finished, when known. */
+    /**
+     * Status of agent terminals, reported by their hooks. `detail`: why the agent is waiting or
+     * what it finished, when known. `approvals`: the tool calls waiting for the user's approval.
+     */
     onAgentStatus(
-      listener: (id: TerminalId, status: AgentStatus, detail?: string) => void,
+      listener: (
+        id: TerminalId,
+        status: AgentStatus,
+        detail: string | undefined,
+        approvals: readonly ToolCallPreview[],
+      ) => void,
     ): Unsubscribe
     /** Claude session ids, used to resume conversations after a restart. */
     onAgentSession(listener: (id: TerminalId, sessionId: string) => void): Unsubscribe

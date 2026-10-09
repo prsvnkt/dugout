@@ -6,8 +6,11 @@ export const AGENT_STATUSES = ['starting', 'idle', 'working', 'needs-input', 'do
  */
 export type AgentStatus = (typeof AGENT_STATUSES)[number]
 
-/** Signals the hook commands send. Our own vocabulary, decoupled from hook event names. */
-export const HOOK_SIGNALS = ['ready', 'working', 'needs-input', 'done'] as const
+/**
+ * Signals the hook commands send. Our own vocabulary, decoupled from hook event names.
+ * `working` starts a turn (a prompt); `tool-done` is one tool call finishing within it.
+ */
+export const HOOK_SIGNALS = ['ready', 'working', 'tool-done', 'needs-input', 'done'] as const
 
 export type HookSignal = (typeof HOOK_SIGNALS)[number]
 

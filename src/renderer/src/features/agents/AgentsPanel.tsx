@@ -81,7 +81,7 @@ export function AgentsPanel({ project }: { project: Project }) {
   const activities = useWorkspaceStore((state) => state.activities)
   const details = useWorkspaceStore((state) => state.details)
   const subagents = useWorkspaceStore((state) => state.subagents)
-  const focusPane = useWorkspaceStore((state) => state.focusPane)
+  const revealPane = useWorkspaceStore((state) => state.revealPane)
   const isCollapsed = useAgentsStore((state) => state.isCollapsed)
   const toggleCollapsed = useAgentsStore((state) => state.toggleCollapsed)
   const entries = useMemo(
@@ -115,7 +115,7 @@ export function AgentsPanel({ project }: { project: Project }) {
                 <AgentRow
                   key={entry.paneId}
                   entry={entry}
-                  onSelect={() => focusPane(project.id, entry.paneId)}
+                  onSelect={() => revealPane(project.id, entry.paneId)}
                 />
               ))}
             </ul>

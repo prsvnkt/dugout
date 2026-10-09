@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ProjectId } from '@shared/project'
 import type { TerminalId, TerminalKind } from '@shared/terminal'
+import type { ToolCallPreview } from '@shared/toolCall'
 import type { GitCheckout, Worktree } from '@shared/worktree'
 import { useMemo } from 'react'
 import type { WorkspaceSnapshot } from '@shared/ipc/contract'
@@ -54,9 +55,18 @@ interface WorkspaceState {
   resumeSession(projectId: ProjectId, sessionId: string): void
   closeFocusedPane(projectId: ProjectId): void
   focusPane(projectId: ProjectId, paneId: PaneId): void
+  /** Focuses a pane and puts the keyboard in its terminal, even if it was focused already. */
+  revealPane(projectId: ProjectId, paneId: PaneId): void
+  /** Bumped by `revealPane`, so a pane that is already focused still takes the keyboard. */
+  readonly focusRequests: Readonly<Record<PaneId, number>>
   /** What each agent pane is asking or finished, and since when (for the inbox). */
   readonly details: Readonly<Record<PaneId, PaneDetail>>
-  setActivity(paneId: PaneId, activity: PaneActivity, detail?: string | null): void
+  setActivity(
+    paneId: PaneId,
+    activity: PaneActivity,
+    detail?: string | null,
+    approvals?: readonly ToolCallPreview[],
+  ): void
   /** Each agent pane's subagents, for the Agents list. */
   readonly subagents: Readonly<Record<PaneId, readonly Subagent[]>>
   setSubagents(paneId: PaneId, subagents: readonly Subagent[]): void
@@ -70,12 +80,15 @@ export type FocusArea = 'editor' | 'terminal'
 
 export interface PaneDetail {
   readonly detail: string | null
+  /** The tool calls waiting for approval, in full, oldest first. */
+  readonly approvals: readonly ToolCallPreview[]
   /** Epoch ms when the pane entered its current activity. */
   readonly since: number
 }
 
 const createPaneId = () => crypto.randomUUID()
 const NO_RECENT: readonly RecentSession[] = []
+const NO_APPROVALS: readonly ToolCallPreview[] = []
 
 function withoutKeys<V>(record: Readonly<Record<string, V>>, keys: readonly string[]) {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !keys.includes(key)))
@@ -215,18 +228,26 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       const pane = get().layouts[projectId]?.panes.find((candidate) => candidate.id === paneId)
       if (pane) get().selectCheckout(projectId, pane.worktree?.path ?? null)
     },
+    revealPane: (projectId, paneId) => {
+      get().focusPane(projectId, paneId)
+      set((state) => ({
+        focusRequests: { ...state.focusRequests, [paneId]: (state.focusRequests[paneId] ?? 0) + 1 },
+      }))
+    },
+    focusRequests: {},
     details: {},
-    setActivity: (paneId, activity, detail = null) =>
+    setActivity: (paneId, activity, detail = null, approvals = NO_APPROVALS) =>
       set((state) => {
         const isNewActivity = state.activities[paneId] !== activity
         const current = state.details[paneId]
-        if (!isNewActivity && current?.detail === detail) return state
+        const isSame = current?.detail === detail && current.approvals === approvals
+        if (!isNewActivity && isSame) return state
         const since = isNewActivity || !current ? Date.now() : current.since
         return {
           activities: isNewActivity
             ? { ...state.activities, [paneId]: activity }
             : state.activities,
-          details: { ...state.details, [paneId]: { detail, since } },
+          details: { ...state.details, [paneId]: { detail, approvals, since } },
         }
       }),
     subagents: {},

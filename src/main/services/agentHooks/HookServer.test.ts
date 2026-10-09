@@ -132,7 +132,47 @@ describe('HookServer', () => {
     ],
   ])('extracts a short detail from %o', async (payload, detail) => {
     await post(socketPath, '/hooks/t/done', TOKEN, JSON.stringify(payload))
-    expect(onSignal).toHaveBeenCalledWith('t', 'done', { detail })
+    expect(onSignal.mock.calls[0]?.[2]).toMatchObject({ detail })
+  })
+
+  test('a permission request carries the whole tool call it waits for', async () => {
+    // Arrange
+    const payload = {
+      hook_event_name: 'PermissionRequest',
+      tool_name: 'Bash',
+      tool_input: { command: 'npm install', description: 'Install deps' },
+    }
+
+    // Act
+    await post(socketPath, '/hooks/t/needs-input', TOKEN, JSON.stringify(payload))
+
+    // Assert
+    expect(onSignal).toHaveBeenCalledWith('t', 'needs-input', {
+      detail: 'Bash: npm install',
+      toolCall: { toolUseId: null, key: 'Bash\u0000npm install' },
+      preview: {
+        kind: 'command',
+        tool: 'Bash',
+        command: 'npm install',
+        description: 'Install deps',
+      },
+    })
+  })
+
+  test('a finished tool reports its id, even with a large output', async () => {
+    const payload = {
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      tool_use_id: 'toolu_1',
+      tool_input: { command: 'npm install' },
+      tool_response: { stdout: 'x'.repeat(500 * 1024) },
+    }
+
+    expect(await post(socketPath, '/hooks/t/tool-done', TOKEN, JSON.stringify(payload))).toBe(204)
+
+    expect(onSignal).toHaveBeenCalledWith('t', 'tool-done', {
+      toolCall: { toolUseId: 'toolu_1', key: 'Bash\u0000npm install' },
+    })
   })
 
   test('truncates long details', async () => {
@@ -143,8 +183,9 @@ describe('HookServer', () => {
   })
 
   test('rejects oversized payloads', async () => {
-    const huge = 'x'.repeat(200 * 1024)
+    const huge = 'x'.repeat(5 * 1024 * 1024)
     expect(await post(socketPath, '/hooks/t/ready', TOKEN, huge)).toBe(413)
+    expect(await post(socketPath, '/rpc/t', TOKEN, 'x'.repeat(200 * 1024))).toBe(413)
     expect(onSignal).not.toHaveBeenCalled()
   })
 
