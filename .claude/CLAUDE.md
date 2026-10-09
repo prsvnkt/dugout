@@ -69,6 +69,7 @@ src/
                 entry: mcp.js).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
+              api.ts builds it from an injected ipcRenderer (unit-tested); index.ts exposes it.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
               `agents.ts` is the agent registry the UI reads (labels, capabilities).
   renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.

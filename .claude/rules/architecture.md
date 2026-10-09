@@ -16,7 +16,9 @@
 3. Domain logic in `src/main/services/<domain>/`, behind an interface when it wraps a process or
    library, with its dependencies injected so it is unit-testable without Electron.
 4. A thin `src/main/ipc/register<Domain>Ipc.ts` that validates payloads and calls the service.
-5. Map the methods in `src/preload/index.ts`.
+5. Map the methods in `createDugoutApi` (`src/preload/api.ts`) and add them to its table test.
+   `register<Domain>Ipc` takes an optional `IpcMainLike` last, so its test passes `FakeIpcMain`
+   (`src/main/ipc/fakeIpcMain.ts`) instead of mocking Electron.
 6. UI in `src/renderer/src/features/<domain>/`.
 
 ## Design rules
