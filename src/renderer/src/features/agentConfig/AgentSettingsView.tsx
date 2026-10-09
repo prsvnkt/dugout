@@ -6,6 +6,8 @@ import { CheckCommandSection } from './CheckCommandSection'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { MaxAgentsSection } from './MaxAgentsSection'
 import { PresetList } from './PresetList'
+import { ServerApprovalSection } from './ServerApprovalSection'
+import { serverCommand } from './serverSummary'
 import { sharingText } from './sharingText'
 import { draftFromServer, EMPTY_DRAFT } from './serverDraft'
 import { ServerForm } from './ServerForm'
@@ -20,13 +22,10 @@ interface AgentSettingsViewProps {
 /** `null` while browsing; the server's name when editing it; `''` when adding one. */
 type Editing = string | null
 
-function summary(server: McpServer): string {
-  return server.type === 'stdio' ? [server.command, ...server.args].join(' ') : server.url
-}
-
 function ServerRow(props: {
   server: McpServer
   sharing: CodexSharing | undefined
+  isApproved: boolean
   isBusy: boolean
   onEdit(): void
   onRemove(): void
@@ -38,13 +37,13 @@ function ServerRow(props: {
       <div className={styles.serverMain}>
         <span className={styles.serverName}>{server.name}</span>
         <span className={styles.badge}>{server.type}</span>
-        <code className={styles.summary}>{summary(server)}</code>
+        <code className={styles.summary}>{serverCommand(server)}</code>
       </div>
       <p
         className={styles.sharing}
         title={sharing?.isShared === false ? sharing.reason : undefined}
       >
-        {sharingText(sharing)}
+        {sharingText(sharing, props.isApproved)}
       </p>
       <div className={styles.rowActions}>
         <button onClick={props.onEdit} disabled={props.isBusy} aria-label={`Edit ${server.name}`}>
@@ -72,7 +71,7 @@ interface SectionProps {
 }
 
 function McpSection({ projectId, agent }: SectionProps) {
-  const { config, error, isBusy, reload, saveServers } = agent
+  const { config, error, isBusy, reload, saveServers, approveServers } = agent
   const openFile = useEditorStore((state) => state.openFile)
   const [editing, setEditing] = useState<Editing>(null)
   if (!config) return <p className={styles.muted}>{error ?? 'Loading…'}</p>
@@ -87,7 +86,8 @@ function McpSection({ projectId, agent }: SectionProps) {
       </div>
     )
   }
-  const { servers, codex } = config.mcp
+  const { servers, codex, approval } = config.mcp
+  const toApprove = servers.filter((server) => codex[server.name]?.isShared)
   const save = (next: readonly McpServer[]) =>
     void saveServers(next).then((isSaved) => {
       if (isSaved) setEditing(null)
@@ -113,6 +113,7 @@ function McpSection({ projectId, agent }: SectionProps) {
               key={server.name}
               server={server}
               sharing={codex[server.name]}
+              isApproved={approval.isApproved}
               isBusy={isBusy}
               onEdit={() => setEditing(server.name)}
               onRemove={() => save(servers.filter((other) => other !== server))}
@@ -144,6 +145,15 @@ function McpSection({ projectId, agent }: SectionProps) {
             Open .mcp.json
           </button>
         </div>
+      )}
+      {editing === null && (
+        <ServerApprovalSection
+          servers={toApprove}
+          approval={approval}
+          isBusy={isBusy}
+          onApprove={() => void approveServers(approval.hash)}
+          onRevoke={() => void approveServers(null)}
+        />
       )}
       {editing === null && (
         <PresetList
@@ -215,8 +225,9 @@ export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
       <section className={styles.section} aria-labelledby="agent-settings-mcp">
         <h2 id="agent-settings-mcp">MCP servers</h2>
         <p className={styles.muted}>
-          From .mcp.json at the project root. Claude Code loads them itself; Codex agents get the
-          ones Codex can run. OpenCode agents get only Dugout&apos;s task tools for now.
+          From .mcp.json at the project root. Claude Code loads them itself and asks before it runs
+          them; Codex agents get the ones Codex can run, once you approve them below. OpenCode
+          agents get only Dugout&apos;s task tools for now.
         </p>
         <McpSection projectId={projectId} agent={agent} />
       </section>

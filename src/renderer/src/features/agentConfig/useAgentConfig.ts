@@ -47,5 +47,9 @@ export function useAgentConfig(projectId: ProjectId) {
   const linkInstructions = () =>
     run(async () => unwrap(await dugout.agentConfig.linkInstructions(projectId)))
 
-  return { config, error, isBusy, reload, saveServers, linkInstructions }
+  /** Approves the servers as last read (refused if the file changed since), or revokes with null. */
+  const approveServers = (hash: string | null) =>
+    run(async () => unwrap(await dugout.agentConfig.approveServers(projectId, hash)))
+
+  return { config, error, isBusy, reload, saveServers, linkInstructions, approveServers }
 }

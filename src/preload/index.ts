@@ -17,6 +17,8 @@ const api: DugoutApi = {
     write: (id, data) => ipcRenderer.send(IpcChannel.terminalWrite, { id, data }),
     resize: (id, cols, rows) => ipcRenderer.send(IpcChannel.terminalResize, { id, cols, rows }),
     kill: (id) => ipcRenderer.send(IpcChannel.terminalKill, { id }),
+    pause: (id) => ipcRenderer.send(IpcChannel.terminalPause, { id }),
+    resume: (id) => ipcRenderer.send(IpcChannel.terminalResume, { id }),
     onData: (listener) => subscribe(IpcChannel.terminalData, listener),
     onExit: (listener) => subscribe(IpcChannel.terminalExit, listener),
     onAgentStatus: (listener) => subscribe(IpcChannel.terminalAgentStatus, listener),
@@ -24,6 +26,7 @@ const api: DugoutApi = {
     onAgentSubagent: (listener) => subscribe(IpcChannel.terminalAgentSubagent, listener),
     onCheckStatus: (listener) => subscribe(IpcChannel.terminalCheckStatus, listener),
     onAgentUsage: (listener) => subscribe(IpcChannel.terminalAgentUsage, listener),
+    withheldServers: (id) => ipcRenderer.invoke(IpcChannel.terminalWithheldServers, { id }),
   },
   projects: {
     list: () => ipcRenderer.invoke(IpcChannel.projectList),
@@ -135,6 +138,8 @@ const api: DugoutApi = {
       ipcRenderer.invoke(IpcChannel.agentConfigSaveMcp, { projectId, servers, version }),
     linkInstructions: (projectId) =>
       ipcRenderer.invoke(IpcChannel.agentConfigLinkInstructions, { projectId }),
+    approveServers: (projectId, hash) =>
+      ipcRenderer.invoke(IpcChannel.agentConfigApproveServers, { projectId, hash }),
   },
   context: {
     read: (projectId) => ipcRenderer.invoke(IpcChannel.contextRead, { projectId }),

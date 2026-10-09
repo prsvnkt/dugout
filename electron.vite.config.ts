@@ -26,5 +26,10 @@ export default defineConfig({
       alias: { ...sharedAlias, '@renderer': resolve('src/renderer/src') },
     },
     plugins: [react()],
+    // Packaging (decision 052): electron-vite leaves every bundle unminified. Minify the
+    // renderer, the bulk of the app (Monaco, xterm, React). Main and preload stay readable:
+    // they are small, and their stack traces land in logs and bug reports as they are. No
+    // sourcemaps: there is no crash-reporting pipeline to symbolicate them yet.
+    build: { minify: 'esbuild' },
   },
 })

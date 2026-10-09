@@ -6,7 +6,11 @@ directories:
   buildResources: resources
 files:
   - out/**
+  # `npm run demo:gif` records into out/demo/, which no build empties.
+  - '!out/demo/**'
   - package.json
+# node-pty ships N-API prebuilds (ABI-stable, any Electron), so skip the rebuild (decision 052).
+npmRebuild: false
 # node-pty's native module and spawn-helper must run from real files, not from inside app.asar.
 asarUnpack:
   - node_modules/node-pty/**
