@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BookOpen, CircleDot, X } from 'lucide-react'
+import { BookOpen, CircleDot, ListTree, X } from 'lucide-react'
 import type { ProjectId } from '@shared/project'
 import { displayTaskKey } from '@shared/tasks'
 import { splitPath } from '@renderer/features/git/changeKind'
@@ -10,6 +10,7 @@ import { ContextView } from '@renderer/features/context/ContextView'
 import { FileTypeIcon } from '@renderer/features/explorer/FileTypeIcon'
 import { ReviewComments } from '@renderer/features/reviewComments/ReviewComments'
 import { TaskDetailView } from '@renderer/features/tasks/TaskDetailView'
+import { TimelineView } from '@renderer/features/timeline/TimelineView'
 import { UsageView } from '@renderer/features/usage/UsageView'
 import { Icon } from '@renderer/lib/Icon'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
@@ -31,6 +32,7 @@ const VIEW_TABS: ReadonlySet<EditorTab['kind']> = new Set([
   'task',
   'usage',
   'context',
+  'timeline',
 ])
 
 function tabLabel(tab: EditorTab): string {
@@ -148,6 +150,7 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
                 )}
                 {tab.kind === 'task' && <Icon icon={CircleDot} />}
                 {tab.kind === 'context' && <Icon icon={BookOpen} />}
+                {tab.kind === 'timeline' && <Icon icon={ListTree} />}
                 {tab.kind === 'diff' && (
                   <span className={styles.diffMark} aria-hidden>
                     Δ
@@ -180,6 +183,8 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
         <UsageView projectId={projectId} />
       ) : isContext ? (
         <ContextView projectId={projectId} />
+      ) : active.kind === 'timeline' && active.timeline ? (
+        <TimelineView key={active.id} projectId={projectId} target={active.timeline} />
       ) : isTask && active.taskNumber !== undefined ? (
         <TaskDetailView
           key={active.id}

@@ -96,5 +96,6 @@ export const IpcChannel = {
   welcomeCheckAgents: 'welcome:check-agents',
   usageProject: 'usage:project',
   usageChanged: 'usage:changed',
+  timelineSession: 'timeline:session',
   appCommand: 'app:command',
 } as const

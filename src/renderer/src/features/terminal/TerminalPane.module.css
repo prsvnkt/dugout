@@ -87,7 +87,8 @@
   white-space: nowrap;
 }
 
-.close {
+.close,
+.iconButton {
   width: 22px;
   height: 22px;
   padding: 0;
@@ -97,7 +98,8 @@
   color: var(--text-muted);
 }
 
-.close:hover {
+.close:hover,
+.iconButton:hover {
   background: var(--bg-elevated);
   color: var(--text-primary);
 }

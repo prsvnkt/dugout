@@ -473,6 +473,7 @@ export const mcpServerSchema = z.discriminatedUnion('type', [
 ])
 export const agentConfigRequestSchema = z.object({ projectId })
 export const usageProjectRequestSchema = z.object({ projectId })
+export const timelineSessionRequestSchema = z.object({ agent: z.enum(AGENT_KINDS), sessionId })
 export const agentConfigSaveMcpRequestSchema = z.object({
   projectId,
   version: z.string().max(128),

@@ -154,6 +154,10 @@ const api: DugoutApi = {
     project: (projectId) => ipcRenderer.invoke(IpcChannel.usageProject, { projectId }),
     onChange: (listener) => subscribe(IpcChannel.usageChanged, listener),
   },
+  timeline: {
+    session: (agent, sessionId) =>
+      ipcRenderer.invoke(IpcChannel.timelineSession, { agent, sessionId }),
+  },
   workspace: {
     load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),
     save: (snapshot) => ipcRenderer.invoke(IpcChannel.workspaceSave, snapshot),

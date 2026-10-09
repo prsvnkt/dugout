@@ -1,7 +1,14 @@
+import type { AgentKind } from '@shared/agents'
 import type { CompareTarget } from '@shared/compare'
 
 export type EditorTabKind =
-  'file' | 'diff' | 'compare' | 'agent-settings' | 'task' | 'usage' | 'context'
+  'file' | 'diff' | 'compare' | 'agent-settings' | 'task' | 'usage' | 'context' | 'timeline'
+
+/** The agent session a timeline tab shows (decision 048). */
+export interface TimelineTarget {
+  readonly agent: AgentKind
+  readonly sessionId: string
+}
 
 export interface EditorTab {
   readonly id: string
@@ -19,6 +26,8 @@ export interface EditorTab {
   /** Task tabs: the task's number, and how its source writes it ("#12", "ENG-12"). */
   readonly taskNumber?: number
   readonly taskKey?: string
+  /** Timeline tabs: the session they show. */
+  readonly timeline?: TimelineTarget
 }
 
 /** A project's one Context tab. */
@@ -26,6 +35,8 @@ export const CONTEXT_TAB_ID = 'context'
 
 /** One tab per task, so opening a task again focuses its tab. */
 export const taskTabId = (number: number): string => `task:${number}`
+/** One tab per session, so opening its timeline again focuses that tab. */
+export const timelineTabId = (sessionId: string): string => `timeline:${sessionId}`
 
 export interface TabsState {
   readonly tabs: readonly EditorTab[]

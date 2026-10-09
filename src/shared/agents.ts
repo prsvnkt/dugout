@@ -18,6 +18,8 @@ export interface AgentCapabilities {
   readonly hasUsage: boolean
   /** Has a one-shot, non-interactive mode Dugout can run (e.g. to build a codemap). */
   readonly canRunHeadless: boolean
+  /** Dugout can show a timeline of a session from its transcript (decision 048). */
+  readonly hasTimeline: boolean
 }
 
 export interface AgentInfo {
@@ -45,6 +47,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       canResume: true,
       hasUsage: true,
       canRunHeadless: true,
+      hasTimeline: true,
     },
   },
   codex: {
@@ -59,6 +62,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       canResume: true,
       hasUsage: true,
       canRunHeadless: false,
+      hasTimeline: true,
     },
   },
   opencode: {
@@ -73,6 +77,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       canResume: true,
       hasUsage: false,
       canRunHeadless: false,
+      hasTimeline: false,
     },
   },
 }
