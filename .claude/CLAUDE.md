@@ -20,15 +20,16 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 
 ## Commands
 
-| Command            | What it does                                   |
-| ------------------ | ---------------------------------------------- |
-| `npm run dev`      | Run the app with hot reload                    |
-| `npm run check`    | Typecheck + lint + format check + unit tests   |
-| `npm test`         | Unit tests (Vitest)                            |
-| `npm run test:e2e` | Build, then drive the real app with Playwright |
-| `npm run build`    | Typecheck and production build into `out/`     |
-| `npm run dist`     | Package the macOS app (DMG, zip) into `dist/`  |
-| `npm run demo:gif` | Record raw demo footage (`scripts/demo/`)      |
+| Command                 | What it does                                                         |
+| ----------------------- | -------------------------------------------------------------------- |
+| `npm run dev`           | Run the app with hot reload                                          |
+| `npm run check`         | Typecheck + lint + format check + unit tests with the coverage floor |
+| `npm test`              | Unit tests (Vitest), without coverage                                |
+| `npm run test:coverage` | Unit tests with coverage (`coverage/`), failing below the floor      |
+| `npm run test:e2e`      | Build, then drive the real app with Playwright                       |
+| `npm run build`         | Typecheck and production build into `out/`                           |
+| `npm run dist`          | Package the macOS app (DMG, zip) into `dist/`                        |
+| `npm run demo:gif`      | Record raw demo footage (`scripts/demo/`)                            |
 
 **Definition of done:** `npm run check` and `npm run test:e2e` both pass, and the docs are
 updated as `.claude/rules/docs.md` describes. CI (`.github/workflows/ci.yml`) runs both checks on

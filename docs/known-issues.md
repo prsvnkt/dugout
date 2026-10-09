@@ -76,6 +76,10 @@ never opened) in otherwise unrelated specs, plus "errors not part of any test" f
 teardown; an immediate rerun passed. This is app launch, not shells, so the profile fix below
 would not cover it; consider retrying once locally too.
 
+**Debugging a failure:** since 2026-10-09 `playwright.config.ts` keeps a trace (`trace.zip`, open
+with `npx playwright show-trace`) and a screenshot of each window for every failing test, in its
+folder under `test-results/`, which CI uploads on failure.
+
 **If it recurs:** start test shells with a minimal profile (e.g. `ZDOTDIR` pointing at an empty
 folder) so tests do not depend on the developer's shell setup.
 

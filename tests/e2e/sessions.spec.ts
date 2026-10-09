@@ -7,6 +7,7 @@ import {
   makeGitRepo,
   makeTempDir,
   recordTerminalOutput,
+  savedPanes,
 } from './helpers'
 
 let app: ElectronApplication
@@ -54,8 +55,10 @@ test('panes are restored on relaunch and Claude resumes its conversation', async
   await workspace().getByTestId('terminal').first().click()
   await page.keyboard.type('prompt\n')
   await expect(paneRegions().first()).toContainText('Working')
-  // Give the debounced layout save time to run.
-  await page.waitForTimeout(1_000)
+  // Wait for the debounced layout save to record both panes and the session.
+  await expect
+    .poll(() => savedPanes(userDataDir))
+    .toEqual([{ kind: 'claude', sessionId }, { kind: 'shell' }])
 
   // Act
   await app.close()
@@ -74,7 +77,7 @@ test('a Claude pane that was never prompted restarts fresh after relaunch', asyn
   await clickMenuItem(app, 'File', 'New Claude Agent')
   await expect.poll(firstRun).toContain('resume=none')
   await expect(paneRegions()).toContainText('Ready')
-  await page.waitForTimeout(1_000)
+  await expect.poll(() => savedPanes(userDataDir)).toEqual([{ kind: 'claude' }])
 
   await app.close()
   await start()
