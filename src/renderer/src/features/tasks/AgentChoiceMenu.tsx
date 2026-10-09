@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { AgentKind } from '@shared/agents'
 import { Icon } from '@renderer/lib/Icon'
+import { useMenuKeys } from '@renderer/lib/useArrowNavigation'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import type { TaskStartOption } from './taskStartOptions'
 import styles from './TaskDetailView.module.css'
@@ -21,11 +22,15 @@ export function AgentChoiceMenu(props: AgentChoiceMenuProps) {
   const { label, title, options, isPrimary = false, disabled, onChoose } = props
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLSpanElement>(null)
   const close = useCallback(() => setIsOpen(false), [])
-  useDismiss(ref, isOpen, close)
+  useDismiss(ref, isOpen, close, triggerRef)
+  const onMenuKeyDown = useMenuKeys(menuRef, isOpen)
   return (
     <span className={styles.startMenu} ref={ref}>
       <button
+        ref={triggerRef}
         className={isPrimary ? `${styles.button} ${styles.primary}` : styles.button}
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
@@ -37,7 +42,13 @@ export function AgentChoiceMenu(props: AgentChoiceMenuProps) {
         <Icon icon={ChevronDown} />
       </button>
       {isOpen && (
-        <span className={styles.menu} role="menu">
+        <span
+          className={styles.menu}
+          role="menu"
+          aria-label={label}
+          ref={menuRef}
+          onKeyDown={onMenuKeyDown}
+        >
           {options.map((option) => (
             <button
               key={option.label}

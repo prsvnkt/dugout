@@ -5,6 +5,8 @@ import styles from './GitHub.module.css'
 
 const COPIED_FEEDBACK_MS = 1_500
 
+type CopyState = 'idle' | 'copied' | 'failed'
+
 /** Only seen in builds without a client ID, e.g. a fork that cleared it. */
 function Unconfigured() {
   return (
@@ -26,7 +28,7 @@ function Unconfigured() {
 export function SignInDialog() {
   const { auth, isDialogOpen, startError, closeDialog, signIn } = useAuthStore()
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const [isCopied, setIsCopied] = useState(false)
+  const [copyState, setCopyState] = useState<CopyState>('idle')
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -36,14 +38,19 @@ export function SignInDialog() {
   }, [isDialogOpen])
 
   useEffect(() => {
-    if (!isCopied) return
-    const timer = window.setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_MS)
+    if (copyState !== 'copied') return
+    const timer = window.setTimeout(() => setCopyState('idle'), COPIED_FEEDBACK_MS)
     return () => window.clearTimeout(timer)
-  }, [isCopied])
+  }, [copyState])
 
   const copyCode = async (code: string) => {
-    await navigator.clipboard.writeText(code)
-    setIsCopied(true)
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopyState('copied')
+    } catch (error: unknown) {
+      console.warn('[github] could not copy the sign-in code', error)
+      setCopyState('failed')
+    }
   }
 
   const error = startError ?? (auth.status === 'signed-out' ? auth.error : undefined)
@@ -66,9 +73,14 @@ export function SignInDialog() {
                 {auth.prompt.userCode}
               </code>
               <button onClick={() => void copyCode(auth.prompt.userCode)}>
-                {isCopied ? 'Copied' : 'Copy'}
+                {copyState === 'copied' ? 'Copied' : 'Copy'}
               </button>
             </div>
+            {copyState === 'failed' && (
+              <p className={styles.error} role="alert">
+                Copy failed. Select the code and copy it yourself.
+              </p>
+            )}
             <button
               className={styles.primary}
               onClick={() => void dugout.github.openVerificationPage()}
