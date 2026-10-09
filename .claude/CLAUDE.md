@@ -20,6 +20,8 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 
 ## Commands
 
+Needs Node 24+, see `.nvmrc` (Electron 44 bundles Node 24; `@types/node` follows it).
+
 | Command            | What it does                                   |
 | ------------------ | ---------------------------------------------- |
 | `npm run dev`      | Run the app with hot reload                    |
@@ -159,3 +161,6 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   "Open in…" set `DUGOUT_OPEN_COMMAND` to a fake `open`, so no real app launches.
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.
+- **`overrides` in package.json pins `dompurify` to 3.4.16:** `monaco-editor@0.57.0` pins 3.4.15,
+  which has an advisory. Drop the override once monaco's own dependency moves past 3.4.15.
+  Dependabot does not bump `overrides`: check them on every monaco upgrade (`npm ls dompurify`).

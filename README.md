@@ -18,7 +18,7 @@ resumable sessions, task tools); more agents will get the same support one by on
 
 ## Getting started
 
-Requires macOS and Node 22+, plus the CLI of each agent you want to run on your shell's PATH,
+Requires macOS and Node 24+ (see `.nvmrc`), plus the CLI of each agent you want to run on your shell's PATH,
 for example [Claude Code](https://docs.claude.com/en/docs/claude-code),
 [Codex](https://github.com/openai/codex) or [OpenCode](https://opencode.ai).
 

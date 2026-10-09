@@ -13,7 +13,7 @@ Thanks for your interest! Dugout is a small project, so the process is light.
 
 ## Setup
 
-Requires macOS, Node 24 (see `.nvmrc`) and git.
+Requires macOS, Node 24+ (see `.nvmrc`) and git.
 
 ```sh
 npm install
