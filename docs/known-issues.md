@@ -250,3 +250,20 @@ ENG-123" in a pull request closes the issue only when the Linear GitHub integrat
 
 **Likely fix:** a key per project if anyone needs two workspaces; fetch comment counts lazily for
 visible cards; follow moved issues by their UUID.
+
+## Git panel push skips pre-push hooks; repo http settings and filters still apply
+
+- **Area:** `src/main/services/git/` (decision 052)
+- **Found:** 2026-10-09, while hardening Dugout-run git
+
+**What happens:** Push and "Create PR" run no repository hooks, so a `pre-push` check
+(and Git LFS's `pre-push`, which uploads LFS objects) does not run; push from a terminal in
+an LFS repo. A remote's custom `uploadpack` / `receivepack` (e.g. git installed elsewhere on an
+SSH server) is ignored. A repo's own `.git/config` can still set `http.proxy` with
+`http.sslVerify=false` or its own `http.sslCAInfo`, which could intercept the token on push or
+fetch to GitHub. Clean/smudge filters and diff textconv drivers named in `.git/config` still run
+during status and diffs (Git LFS needs them).
+
+**Likely fix:** run Git LFS's upload (`git lfs pre-push`) without the token in its env, or ask
+before pushing when the repo has a `pre-push` hook; for push and fetch, override `http.*` for the
+GitHub host from Dugout's side (repo config can name a longer URL, so `-c` alone is not enough).
