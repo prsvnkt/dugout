@@ -30,8 +30,18 @@ describe('visibleRows', () => {
       'docs',
       'readme.md',
     ])
-    expect(rows[0]).toEqual({ path: 'src', isDir: true, isExpanded: true, parent: '' })
-    expect(rows[1]?.parent).toBe('src')
+    expect(rows[0]).toEqual({
+      path: 'src',
+      entry: ENTRIES[''][0],
+      isDir: true,
+      isExpanded: true,
+      parent: '',
+      depth: 0,
+      posInSet: 1,
+      setSize: 3,
+    })
+    expect(rows[1]).toMatchObject({ parent: 'src', depth: 1, posInSet: 1, setSize: 2 })
+    expect(rows[4]).toMatchObject({ path: 'readme.md', depth: 0, posInSet: 3, setSize: 3 })
   })
 
   test('an open folder that has not loaded yet shows no children', () => {

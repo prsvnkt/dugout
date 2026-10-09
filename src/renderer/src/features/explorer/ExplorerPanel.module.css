@@ -45,22 +45,21 @@
   overflow: auto;
 }
 
-.list {
-  margin: 0;
-  padding: 0 6px;
-  list-style: none;
+/* Sized to the whole list so the scrollbar is right; only a window of rows is inside it. */
+.rows {
+  position: relative;
+  margin: 0 6px;
 }
 
-.list .list {
-  padding: 0;
-}
-
+/* Each row sits at translateY(index × ROW_HEIGHT_PX), both set by FileTree (decision 062). */
 .row {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   align-items: center;
   gap: var(--space-1);
   width: 100%;
-  height: 24px;
   padding-right: var(--space-2);
   border: none;
   border-radius: var(--radius-sm);
