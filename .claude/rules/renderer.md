@@ -15,5 +15,7 @@ paths:
   named imports from `lucide-react`. Never text glyphs (`+`, `×`, `»`, `⌄`) as button icons.
 - Talk to main only through `dugout` from `@renderer/lib/dugout`. Never use `window.dugout` directly.
 - Components stay presentational where possible; side effects live in `use*` hooks with cleanup.
+- Async loads go through `lib/useRequest` (loading / loaded / failed, late results ignored);
+  no hand-rolled `isCancelled` + `.then(result => …)` effects.
 - Show user-friendly errors in the UI; log details with `console.warn`/`console.error` only.
 - Keyboard first: every action should be reachable without the mouse, with visible focus.
