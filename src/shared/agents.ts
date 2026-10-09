@@ -20,6 +20,11 @@ export interface AgentCapabilities {
   readonly canRunHeadless: boolean
   /** Dugout can show a timeline of a session from its transcript (decision 048). */
   readonly hasTimeline: boolean
+  /**
+   * Dugout passes it the project's `.mcp.json` servers itself and the CLI does not ask before
+   * running them, so they wait for the user's approval in Dugout (decision 057).
+   */
+  readonly needsMcpApproval: boolean
 }
 
 export interface AgentInfo {
@@ -48,6 +53,8 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       hasUsage: true,
       canRunHeadless: true,
       hasTimeline: true,
+      // Claude Code asks before it starts the servers in .mcp.json.
+      needsMcpApproval: false,
     },
   },
   codex: {
@@ -63,6 +70,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       hasUsage: true,
       canRunHeadless: false,
       hasTimeline: true,
+      needsMcpApproval: true,
     },
   },
   opencode: {
@@ -78,6 +86,8 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       hasUsage: false,
       canRunHeadless: false,
       hasTimeline: false,
+      // Does not get .mcp.json servers yet (known issues).
+      needsMcpApproval: false,
     },
   },
 }

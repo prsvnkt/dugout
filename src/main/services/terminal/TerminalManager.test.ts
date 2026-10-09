@@ -1,4 +1,8 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { readProjectServers } from '../agentConfig/serverApproval'
 import type { TerminalExit } from '@shared/terminal'
 import { EMPTY_TOTALS } from '@shared/usage'
 import type { SpawnOptions, TerminalBackend, TerminalProcess } from './TerminalBackend'
@@ -9,6 +13,7 @@ class FakeProcess implements TerminalProcess {
   readonly written: string[] = []
   size: { cols: number; rows: number }
   isKilled = false
+  isPaused = false
   private dataListener: ((data: string) => void) | undefined
   private exitListener: ((exit: TerminalExit) => void) | undefined
 
@@ -36,6 +41,14 @@ class FakeProcess implements TerminalProcess {
 
   kill() {
     this.isKilled = true
+  }
+
+  pause() {
+    this.isPaused = true
+  }
+
+  resume() {
+    this.isPaused = false
   }
 
   emitData(data: string) {
@@ -147,6 +160,26 @@ describe('TerminalManager', () => {
     expect(ctx.manager.write('missing', 'x')).toBe(false)
     expect(ctx.manager.resize('missing', 80, 24)).toBe(false)
     expect(ctx.manager.kill('missing')).toBe(false)
+    expect(ctx.manager.pause('missing')).toBe(false)
+    expect(ctx.manager.resume('missing')).toBe(false)
+  })
+
+  test('pause and resume forward to the process, for output flow control', () => {
+    const id = ctx.manager.create(request, ctx.events)
+
+    expect(ctx.manager.pause(id)).toBe(true)
+    expect(ctx.spawned[0]?.isPaused).toBe(true)
+    expect(ctx.manager.resume(id)).toBe(true)
+    expect(ctx.spawned[0]?.isPaused).toBe(false)
+  })
+
+  test('pause and resume are no-ops once the terminal has exited', () => {
+    const id = ctx.manager.create(request, ctx.events)
+    ctx.spawned[0]?.emitExit({ exitCode: 0 })
+
+    expect(ctx.manager.pause(id)).toBe(false)
+    expect(ctx.manager.resume(id)).toBe(false)
+    expect(ctx.spawned[0]?.isPaused).toBe(false)
   })
 
   test('notifies and forgets a terminal when its process exits', () => {
@@ -560,7 +593,7 @@ describe('TerminalManager pending approvals', () => {
 })
 
 describe('TerminalManager codex terminals', () => {
-  function setupCodex() {
+  function setupCodex(approved: Record<string, string> = {}) {
     const spawned: FakeProcess[] = []
     const written: string[] = []
     const manager = new TerminalManager({
@@ -588,10 +621,45 @@ describe('TerminalManager codex terminals', () => {
           },
         },
       },
+      approvedProjectServers: (projectId) => approved[projectId],
     })
     const events = { onData: vi.fn(), onExit: vi.fn(), onAgentStatus: vi.fn() }
     return { manager, spawned, written, events }
   }
+
+  function checkoutWithServer(): string {
+    const cwd = mkdtempSync(join(tmpdir(), 'dugout-terminal-'))
+    const server = { command: 'run-local', args: ['--stdio'] }
+    writeFileSync(join(cwd, '.mcp.json'), JSON.stringify({ mcpServers: { local: server } }))
+    return cwd
+  }
+
+  const projectServers = (env: Record<string, string> | undefined) =>
+    Object.values(env ?? {}).filter((value) => value.startsWith('mcp_servers.local='))
+
+  test("keeps a project's unapproved .mcp.json servers from Codex, and remembers them", () => {
+    const cwd = checkoutWithServer()
+    const { manager, spawned, events } = setupCodex()
+
+    const id = manager.create({ ...request, kind: 'codex', cwd }, events)
+
+    expect(projectServers(spawned[0]?.options.env)).toEqual([])
+    expect(manager.withheldServers(id)).toEqual({
+      servers: [{ name: 'local', type: 'stdio', command: 'run-local', args: ['--stdio'], env: {} }],
+      hash: readProjectServers(cwd)?.hash,
+    })
+  })
+
+  test('gives Codex the servers its project approved', () => {
+    const cwd = checkoutWithServer()
+    const hash = readProjectServers(cwd)?.hash ?? ''
+    const { manager, spawned, events } = setupCodex({ [request.projectId]: hash })
+
+    const id = manager.create({ ...request, kind: 'codex', cwd }, events)
+
+    expect(projectServers(spawned[0]?.options.env)).toHaveLength(1)
+    expect(manager.withheldServers(id)).toBeNull()
+  })
 
   test('passes each config override in its own variable and tracks status like Claude', () => {
     const { manager, spawned, written, events } = setupCodex()
@@ -675,6 +743,20 @@ describe('TerminalManager worktree setup', () => {
     expect(manager.write(id, 'hi')).toBe(true)
     expect(spawned[1]?.written).toEqual(['hi'])
     expect(manager.agentStatus(id)).toBe('starting')
+  })
+
+  test('keeps output paused when the agent replaces a paused setup', () => {
+    // Arrange
+    const { manager, spawned, id } = withSetup()
+    manager.pause(id)
+
+    // Act
+    spawned[0]?.emitExit({ exitCode: 0 })
+
+    // Assert
+    expect(spawned[1]?.isPaused).toBe(true)
+    manager.resume(id)
+    expect(spawned[1]?.isPaused).toBe(false)
   })
 
   test('shows the failure and ends the terminal when the setup fails', () => {

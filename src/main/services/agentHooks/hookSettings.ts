@@ -1,4 +1,5 @@
 import type { HookSignal, SubagentSignal } from '@shared/agentStatus'
+import { PRE_APPROVED_TOOLS } from '../../mcp/toolAccess'
 
 /** Every signal a hook command can send. */
 export type AnySignal = HookSignal | SubagentSignal
@@ -45,8 +46,12 @@ export interface HookSettings {
   readonly permissions: { readonly allow: readonly string[] }
 }
 
-/** Dugout's own MCP tools only touch the project's tasks, so agents may use them freely. */
-const ALLOWED_TOOLS = ['mcp__dugout']
+/**
+ * Only Dugout's read and propose tools run without a prompt (decision 053). Task writes post to
+ * GitHub or Linear with the user's account, and a task's description (written by anyone who can
+ * open an issue) is the agent's first prompt, so writes go through Claude's permission prompt.
+ */
+const ALLOWED_TOOLS = PRE_APPROVED_TOOLS.map((tool) => `mcp__dugout__${tool}`)
 
 /**
  * Signals that forward the hook's JSON payload (stdin): the session id (ready), the tool call

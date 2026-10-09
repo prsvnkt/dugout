@@ -32,6 +32,10 @@ test.afterEach(async () => {
 
 const settings = () => page.getByRole('region', { name: 'Agent settings' })
 const mcpJson = () => JSON.parse(readFileSync(join(repo, '.mcp.json'), 'utf8'))
+/** The fake codex's line when it got Dugout's server and no project servers (the PTY adds \r). */
+const ONLY_DUGOUT = 'mcp=dugout\r'
+const withheldNotice = () =>
+  page.getByRole('complementary', { name: 'Project MCP servers waiting for approval' }).last()
 
 test('edits .mcp.json servers that Codex panes then receive', async () => {
   await clickMenuItem(app, 'View', 'Agent Settings')
@@ -47,7 +51,7 @@ test('edits .mcp.json servers that Codex panes then receive', async () => {
   await form.getByRole('button', { name: 'Save server' }).click()
 
   await expect(settings().getByRole('listitem', { name: 'MCP server docs' })).toContainText(
-    'Claude and Codex',
+    'Claude, and Codex once approved',
   )
   expect(mcpJson().mcpServers.docs).toEqual({
     type: 'http',
@@ -63,10 +67,54 @@ test('edits .mcp.json servers that Codex panes then receive', async () => {
   await expect(form.getByRole('note')).toContainText('API_KEY looks like a secret')
   await form.getByRole('button', { name: 'Cancel' }).click()
 
-  // A new Codex pane gets the project's server next to Dugout's own
+  // Until approved, a new Codex pane gets only Dugout's own server, and says what it left out
   const output = await recordTerminalOutput(page)
   await clickMenuItem(app, 'File', 'New Codex Agent')
+  await expect.poll(output).toContain(ONLY_DUGOUT)
+  const notice = withheldNotice()
+  await expect(notice).toContainText(
+    '1 project MCP server from .mcp.json is not shared with Codex until you approve it.',
+  )
+  await expect(notice).toContainText('https://docs.example.com/mcp')
+
+  // Approved in Agent settings, the next Codex pane gets it next to Dugout's own
+  await clickMenuItem(app, 'View', 'Agent Settings')
+  const approval = settings().getByRole('region', { name: 'Approval for Codex' })
+  await expect(approval.getByRole('listitem', { name: 'Server to approve docs' })).toContainText(
+    'headers: Authorization',
+  )
+  await approval.getByRole('button', { name: 'Approve for Codex' }).click()
+  await expect(approval).toContainText('Approved for Codex')
+  await expect(settings().getByRole('listitem', { name: 'MCP server docs' })).toContainText(
+    'Claude and Codex',
+  )
+  await clickMenuItem(app, 'File', 'New Codex Agent')
   await expect.poll(output).toContain('mcp=dugout,docs')
+})
+
+test("approves a repo's committed .mcp.json from the Codex pane's notice", async () => {
+  const hostile = { command: 'sh', args: ['-c', 'echo pwned'] }
+  writeFileSync(join(repo, '.mcp.json'), JSON.stringify({ mcpServers: { tools: hostile } }))
+  const output = await recordTerminalOutput(page)
+
+  await clickMenuItem(app, 'File', 'New Codex Agent')
+
+  await expect.poll(output).toContain(ONLY_DUGOUT)
+  const notice = withheldNotice()
+  await expect(notice.getByRole('listitem', { name: 'Server to approve tools' })).toContainText(
+    'sh -c echo pwned',
+  )
+  await notice.getByRole('button', { name: 'Approve for Codex' }).click()
+  await expect(notice).toContainText('Approved. Restart this agent')
+  await clickMenuItem(app, 'File', 'New Codex Agent')
+  await expect.poll(output).toContain('mcp=dugout,tools')
+
+  // Changing the file takes the approval away again
+  const changed = { ...hostile, args: ['-c', 'echo changed'] }
+  writeFileSync(join(repo, '.mcp.json'), JSON.stringify({ mcpServers: { tools: changed } }))
+  await clickMenuItem(app, 'File', 'New Codex Agent')
+  await expect(page.getByRole('complementary', { name: /waiting for approval/ })).toHaveCount(2)
+  await expect(withheldNotice()).toContainText('sh -c echo changed')
 })
 
 test('adds an MCP server from a preset in one click', async () => {
