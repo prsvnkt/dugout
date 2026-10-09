@@ -47,6 +47,11 @@ const FAILED = new Set([
 ])
 const STATE_ORDER: readonly CheckState[] = ['failing', 'pending', 'passing', 'skipped']
 
+/** A check run conclusion or commit status state that counts as failing. */
+export function isFailed(conclusion: string | null): boolean {
+  return conclusion !== null && FAILED.has(conclusion)
+}
+
 function pullState(pull: PullResponse): PullRequestState {
   if (pull.merged_at) return 'merged'
   if (pull.state === 'closed') return 'closed'
@@ -69,12 +74,12 @@ function reviewDecision(reviews: readonly ReviewResponse[]): ReviewState {
 function runState(run: CheckRunResponse): CheckState {
   if (run.status !== 'completed') return 'pending'
   if (run.conclusion === 'skipped') return 'skipped'
-  return run.conclusion && FAILED.has(run.conclusion) ? 'failing' : 'passing'
+  return isFailed(run.conclusion) ? 'failing' : 'passing'
 }
 
 function statusState(status: StatusResponse): CheckState {
   if (status.state === 'pending') return 'pending'
-  return FAILED.has(status.state) ? 'failing' : 'passing'
+  return isFailed(status.state) ? 'failing' : 'passing'
 }
 
 function summarise(runs: CheckRun[]): ChecksSummary {

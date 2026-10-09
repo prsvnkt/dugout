@@ -34,6 +34,8 @@ export const IpcChannel = {
   gitPush: 'git:push',
   gitOpenPullRequest: 'git:open-pull-request',
   gitPullRequestStatus: 'git:pr-status',
+  gitPullRequestReviewThreads: 'git:pr-review-threads',
+  gitPullRequestFailingChecks: 'git:pr-failing-checks',
   gitOpenUrl: 'git:open-url',
   previewDeployment: 'preview:deployment',
   previewAssignPort: 'preview:assign-port',

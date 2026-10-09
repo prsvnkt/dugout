@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Trash2 } from 'lucide-react'
-import { useShallow } from 'zustand/react/shallow'
 import { AGENT_LABEL } from '@shared/terminal'
 import { useDefaultAgentStore } from '@renderer/features/start/defaultAgentStore'
-import { EMPTY_LAYOUT } from '@renderer/features/workspace/layout'
-import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { Icon } from '@renderer/lib/Icon'
 import { CommentDraftForm } from './CommentDraftForm'
-import { chooseDelivery, type Delivery } from './delivery'
 import { deliverComments } from './deliverComments'
+import { useDelivery } from './useDelivery'
 import { lineLabel } from './reviewPrompt'
 import {
   isSameCheckout,
@@ -23,19 +20,6 @@ export interface CommentTarget {
   readonly checkout: CommentCheckout
   /** Names the checkout when the panel shows more than one (e.g. "Claude"). */
   readonly label: string | null
-}
-
-function useDelivery(checkout: CommentCheckout): Delivery {
-  return useWorkspaceStore(
-    useShallow((state) =>
-      chooseDelivery({
-        layout: state.layouts[checkout.projectId] ?? EMPTY_LAYOUT,
-        activities: state.activities,
-        terminalIds: state.terminalIds,
-        worktreePath: checkout.worktreePath,
-      }),
-    ),
-  )
 }
 
 function CommentRow({ comment }: { comment: ReviewComment }) {

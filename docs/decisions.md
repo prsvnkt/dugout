@@ -696,6 +696,41 @@ and per file in Compare for worktrees beyond the two compared.
 It is advisory only: nothing is blocked, merged or changed. Files are compared whole (not line
 ranges) and agents in the main checkout are not tracked; see `docs/known-issues.md`.
 
+## 045 — PR review comments and failing CI go to the agent (2026-10-09)
+
+**Context.** The git panel showed a branch's PR, review decision and checks (decision 020), but
+acting on them meant opening GitHub, copying comments or logs and pasting them into an agent
+(issue #21).
+
+**Decision.** While the PR is open (or draft), its "Pull request" block has two buttons.
+"Address review comments" fetches the unresolved review threads; "Fix failing CI" (shown only
+while checks fail) fetches the failing checks. Either is turned into one prompt and delivered
+exactly like review comments from the diff (decision 041): typed into the agent working on that
+checkout, or the default agent is started there with it as its first prompt. A line under the
+buttons says what was sent, that there was nothing to send, or why it could not be sent.
+
+- **Review threads come from GraphQL** (`reviewThreads`, first 100 threads × 20 comments), since
+  REST review comments do not say whether a thread is resolved. It is one `POST /graphql`
+  through the existing `githubJson` helper; nothing else changed. Outdated threads are kept,
+  with their original lines and an "(outdated)" note; resolved ones are dropped. The prompt lists
+  `path:line` (or `path:start-end`) and then each comment as `author: text`.
+- **Failing CI** is the failing check runs and commit statuses on the PR head (same rules as
+  decision 020). For the first 5 runs it adds the run's title/summary, up to 10 failure/warning
+  annotations (notices are noise), and for GitHub Actions the end of the job log: lines up to the
+  last `##[error]` (cleanup steps come after it), at most 40, each clipped to 300 characters,
+  without colours, timestamps or group markers. Other check providers and statuses get their
+  title and link only.
+- **Trimmed to fit.** Each comment or summary is clipped at 1,500 characters, and the whole
+  prompt fits the 10,000-character first-prompt limit: entries that do not fit are counted
+  ("… and 3 more on GitHub.") rather than cut mid-way (`git/pullRequestPrompt.ts`).
+- **Token stays in main** (decision 015). The renderer asks with the checkout and PR number;
+  main resolves the repo from the checkout's remote and calls GitHub (`GitHubPullFeedback`).
+  Job logs are a redirect to a signed download URL; `fetch` drops the token on that
+  cross-origin hop.
+- **Open questions, answered simply:** nothing is posted back to GitHub (no replies, no resolving
+  threads); the agent can do that itself. The buttons do not pre-count comments, so "Address
+  review comments" can answer "No unresolved review comments."
+
 ## 049 — Preview URLs and dev servers per worktree (2026-10-09)
 
 **Context.** Checking UI changes an agent made meant starting a dev server by hand in the right
@@ -758,4 +793,6 @@ worktree on a free port, or hunting for the deploy preview (issue #28).
 15. **Done since:** warnings when parallel agents change the same files ✅.
 16. **Done since:** agent CLIs behind adapters with capabilities ✅, OpenCode ✅.
 17. **Done since:** preview deployment URLs and per-worktree dev servers in the git panel ✅.
-18. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+18. **Done since:** PR review comments and failing CI handed to the agent from the Pull request
+    block ✅.
+19. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

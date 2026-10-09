@@ -174,3 +174,15 @@ port, so after a relaunch it comes back as a plain shell and the Preview block o
 again.
 
 **Likely fix:** save `devServer` with the pane and rerun it on restore (asking for a fresh port).
+
+## PR feedback for agents is capped and Actions-only for logs
+
+- **Area:** `src/main/services/github/GitHubPullFeedback.ts` (decision 045)
+- **Found:** 2026-10-09, while building "Address review comments" / "Fix failing CI"
+
+**What happens:** only the first 100 review threads (20 comments each) are read, with no
+pagination, and only GitHub Actions checks get a log tail; other CI providers (and commit
+statuses) contribute just their title and link. Details are fetched for the first 5 failing runs.
+
+**Likely fix:** paginate `reviewThreads` when a PR exceeds 100 threads, and read logs from other
+providers' `details_url` if a common format turns up.

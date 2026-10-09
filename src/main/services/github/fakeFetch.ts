@@ -6,7 +6,9 @@ export interface RecordedRequest {
   readonly body: string
 }
 
-type Reply = { status?: number; json: unknown } | (() => { status?: number; json: unknown })
+/** A JSON reply, or a plain-text one (e.g. a job log) when `text` is set. */
+type ReplyBody = { status?: number; json?: unknown; text?: string }
+type Reply = ReplyBody | (() => ReplyBody)
 
 export function fakeFetch(routes: Record<string, Reply[]>) {
   const requests: RecordedRequest[] = []
@@ -24,6 +26,12 @@ export function fakeFetch(routes: Record<string, Reply[]>) {
     const next = queue && queue.length > 1 ? queue.shift() : queue?.[0]
     if (!next) return new Response('not found', { status: 404 })
     const reply = typeof next === 'function' ? next() : next
+    if (reply.text !== undefined) {
+      return new Response(reply.text, {
+        status: reply.status ?? 200,
+        headers: { 'content-type': 'text/plain' },
+      })
+    }
     return new Response(JSON.stringify(reply.json), {
       status: reply.status ?? 200,
       headers: { 'content-type': 'application/json' },

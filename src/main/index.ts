@@ -31,6 +31,7 @@ import { DeviceFlowClient } from './services/github/DeviceFlowClient'
 import { GitHubApi } from './services/github/GitHubApi'
 import { GitHubAuth } from './services/github/GitHubAuth'
 import { GitHubDeployments } from './services/github/GitHubDeployments'
+import { GitHubPullFeedback } from './services/github/GitHubPullFeedback'
 import { GitHubPulls } from './services/github/GitHubPulls'
 import { gitCredentialConfig } from './services/github/gitCredentials'
 import { TokenStore, type Encryption } from './services/github/TokenStore'
@@ -261,6 +262,7 @@ async function start(): Promise<void> {
   registerPullRequestIpc({
     ...githubBranch,
     pulls: new GitHubPulls({ fetch, apiBaseUrl: github.apiBaseUrl }),
+    feedback: new GitHubPullFeedback({ fetch, apiBaseUrl: github.apiBaseUrl }),
     openExternal: (url) => shell.openExternal(url),
   })
   registerPreviewIpc({

@@ -40,7 +40,25 @@ export interface StubPullRequest {
   readonly branch: string
   readonly number: number
   readonly title: string
-  readonly checks: { name: string; conclusion: 'success' | 'failure' | null }[]
+  readonly checks: StubCheck[]
+  /** Review threads, served by the GraphQL `reviewThreads` query. */
+  readonly reviewThreads?: StubReviewThread[]
+}
+
+export interface StubCheck {
+  readonly name: string
+  readonly conclusion: 'success' | 'failure' | null
+  readonly summary?: string
+  readonly annotations?: { path: string; line: number; message: string }[]
+  /** The GitHub Actions job log (served through a redirect, like GitHub does). */
+  readonly log?: string
+}
+
+export interface StubReviewThread {
+  readonly path: string
+  readonly line: number
+  readonly isResolved: boolean
+  readonly comments: { author: string; body: string }[]
 }
 
 /** A tiny stand-in for github.com + api.github.com: device flow, refresh, /user, /user/repos. */
@@ -100,11 +118,25 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
         polls += 1
         return json(polls < 2 ? { error: 'authorization_pending' } : tokenResponse())
       }
+      // Job logs live on blob storage: a signed URL that needs no token.
+      const logFile = /^\/job-logs\/(\d+)\.txt$/.exec(url.pathname)
+      if (logFile) {
+        res.writeHead(200, { 'content-type': 'text/plain' })
+        return res.end(checkByJobId(Number(logFile[1]))?.log ?? '')
+      }
       const authorized = req.headers.authorization === `Bearer ${accessToken()}`
       if (url.pathname.startsWith('/api/') && !authorized)
         return json({ message: 'Bad credentials' }, 401)
       if (url.pathname === '/api/user') {
         return json({ login: 'octocat', name: 'The Octocat', avatar_url: AVATAR })
+      }
+      if (url.pathname === '/api/graphql' && req.method === 'POST') {
+        return json(reviewThreadsResponse())
+      }
+      const jobLog = /^\/api\/repos\/octocat\/app\/actions\/jobs\/(\d+)\/logs$/.exec(url.pathname)
+      if (jobLog && checkByJobId(Number(jobLog[1]))?.log !== undefined) {
+        res.writeHead(302, { location: `${origin}/job-logs/${jobLog[1]}.txt` })
+        return res.end()
       }
       const repoRoute = /^\/api\/repos\/octocat\/app\/(.+)$/.exec(url.pathname)
       if (repoRoute?.[1]) {
@@ -125,6 +157,30 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
       }
       json({ message: 'Not found' }, 404)
     })
+  })
+  /** Check runs are numbered from 1 in the order given; Actions job ids equal check run ids. */
+  const checkByJobId = (id: number) => options.pullRequest?.checks[id - 1]
+  const reviewThreadsResponse = () => ({
+    data: {
+      repository: {
+        pullRequest: {
+          reviewThreads: {
+            nodes: (options.pullRequest?.reviewThreads ?? []).map((thread) => ({
+              isResolved: thread.isResolved,
+              isOutdated: false,
+              path: thread.path,
+              line: thread.line,
+              startLine: null,
+              originalLine: thread.line,
+              originalStartLine: null,
+              comments: {
+                nodes: thread.comments.map((c) => ({ author: { login: c.author }, body: c.body })),
+              },
+            })),
+          },
+        },
+      },
+    },
   })
   type Json = (body: unknown, status?: number) => void
   const toIssue = (issue: StubIssue, origin: string) => ({
@@ -167,17 +223,33 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
           : [],
       )
     }
+    if (pr && path === `pulls/${pr.number}`) return json({ head: { sha: 'stubsha' } })
     if (pr && path === `pulls/${pr.number}/reviews`)
       return json([{ user: { login: 'ann' }, state: 'APPROVED' }])
     if (pr && path === 'commits/stubsha/check-runs') {
       return json({
-        check_runs: pr.checks.map((check) => ({
+        check_runs: pr.checks.map((check, index) => ({
+          id: index + 1,
           name: check.name,
           status: check.conclusion ? 'completed' : 'in_progress',
           conclusion: check.conclusion,
           html_url: `${origin}/octocat/app/runs/${check.name}`,
+          output: { title: check.summary ?? null, summary: null },
+          app: { slug: 'github-actions' },
         })),
       })
+    }
+    const annotationsRoute = /^check-runs\/(\d+)\/annotations$/.exec(path)
+    if (annotationsRoute) {
+      const check = checkByJobId(Number(annotationsRoute[1]))
+      return json(
+        (check?.annotations ?? []).map((a) => ({
+          path: a.path,
+          start_line: a.line,
+          annotation_level: 'failure',
+          message: a.message,
+        })),
+      )
     }
     if (pr && path === 'commits/stubsha/status') return json({ statuses: [] })
     const deployment = options.deployment
