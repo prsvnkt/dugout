@@ -28,6 +28,9 @@ paths:
   To react to a new hook event, add a `HOOK_BINDINGS` entry and a unit test.
 - Hook commands must stay async, time-limited, silent and `|| true`; they run inside the user's
   Claude session and must never slow or break it.
+- A new worktree's setup command (decision 038) runs in its first agent's terminal as a separate
+  process before the agent (`TerminalManager.runSetup`), for every adapter alike; the agent
+  starts only on exit code 0. Never splice the command into a launch line; it goes in an env var.
 - `DUGOUT_*` variables are per-terminal: stripped from the inherited env, then set explicitly.
 - xterm sends `\r` for both Enter and Shift+Enter. Agent terminals remap Shift+Enter to `\n`
   (a new line in Claude Code, Codex and OpenCode) in `agentKeys.ts`; shells keep xterm's default.

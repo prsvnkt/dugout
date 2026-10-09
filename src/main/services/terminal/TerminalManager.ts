@@ -42,8 +42,37 @@ export interface TerminalManagerDeps {
   readonly onAgentStatusChange?: (change: AgentStatusChange) => void
 }
 
+/** A new worktree's setup command, as `WorktreeManager.claimSetup` hands it out. */
+export interface TerminalSetup {
+  readonly command: string
+  /** Called once the setup ends; false when it failed or the terminal closed first. */
+  finish(isSuccess: boolean): void
+}
+
+type Spawn = (commandLine: string | undefined, env?: Record<string, string>) => TerminalProcess
+
+interface SetupNext {
+  startAgent(): TerminalProcess
+  finish(exit: TerminalExit): void
+  onData(id: TerminalId, data: string): void
+}
+
+/** Runs the setup in the user's shell, as if typed there; plain "$VAR"s only (decision 013). */
+const SETUP_COMMAND_LINE = 'echo "$DUGOUT_SETUP_BANNER" && eval "$DUGOUT_SETUP_COMMAND"'
+const DIM = '\x1b[2m'
+const RED = '\x1b[31m'
+const RESET = '\x1b[0m'
+
+function setupFailedMessage(exit: TerminalExit): string {
+  const reason = exit.signal ? `was stopped (signal ${exit.signal})` : `exit code ${exit.exitCode}`
+  return `\r\n${RED}Worktree setup failed (${reason}).${RESET} Restart to run it again.\r\n`
+}
+
 interface ManagedTerminal {
+  /** The agent or shell; during a worktree setup, the setup command. */
   readonly process: TerminalProcess
+  /** Latest size, for an agent that starts after a worktree setup. */
+  readonly size: { readonly cols: number; readonly rows: number }
   readonly kind: TerminalKind
   readonly projectId: string
   readonly events: TerminalEvents
@@ -80,41 +109,49 @@ export class TerminalManager {
     return this.terminals.size
   }
 
-  create(request: TerminalCreateRequest, events: TerminalEvents): TerminalId {
+  /** `setup`: a new worktree's setup command, run in this terminal before the agent starts. */
+  create(
+    request: TerminalCreateRequest,
+    events: TerminalEvents,
+    setup?: TerminalSetup,
+  ): TerminalId {
     const id = this.deps.createId()
     const adapter = isAgentKind(request.kind) ? agentAdapter(request.kind) : null
     const hooks = adapter ? this.deps.agentHooks : undefined
     const launch = adapter && hooks ? this.launchAgent(id, adapter, hooks, request) : null
     const commandLine = adapter ? (launch?.commandLine ?? adapter.defaultCommand) : undefined
-    const process = this.deps.backend.spawn({
-      ...buildLaunchSpec(resolveShell(this.deps.env), commandLine),
-      cwd: request.cwd,
-      env: {
-        ...buildTerminalEnv(this.deps.env),
-        ...launch?.env,
-        ...(request.port !== undefined && { PORT: String(request.port) }),
-      },
-      cols: request.cols,
-      rows: request.rows,
-    })
-
-    process.onData((data) => events.onData(id, data))
-    process.onExit((exit) => {
-      const wasAgent = this.terminals.get(id)?.agentStatus != null
-      this.terminals.delete(id)
+    const env = {
+      ...buildTerminalEnv(this.deps.env),
+      ...launch?.env,
+      ...(request.port !== undefined && { PORT: String(request.port) }),
+    }
+    const spawn: Spawn = (line, extraEnv = {}) => {
+      const size = this.terminals.get(id)?.size ?? { cols: request.cols, rows: request.rows }
+      const process = this.deps.backend.spawn({
+        ...buildLaunchSpec(resolveShell(this.deps.env), line),
+        cwd: request.cwd,
+        env: { ...env, ...extraEnv },
+        ...size,
+      })
+      process.onData((data) => events.onData(id, data))
+      return process
+    }
+    const finish = (exit: TerminalExit) => {
       launch?.dispose?.()
-      events.onExit(id, exit)
-      if (wasAgent) {
-        this.deps.onAgentStatusChange?.({
-          terminalId: id,
-          projectId: request.projectId,
-          status: null,
-        })
-      }
-    })
+      this.handleExit(id, request.projectId, events, exit)
+    }
+    const startAgent = () => {
+      const process = spawn(commandLine)
+      process.onExit(finish)
+      return process
+    }
+    const process = setup
+      ? this.runSetup(id, setup, spawn, { startAgent, finish, onData: events.onData })
+      : startAgent()
     const hasStatus = launch !== null && adapter?.info.capabilities.hasStatus === true
     this.terminals.set(id, {
       process,
+      size: { cols: request.cols, rows: request.rows },
       kind: request.kind,
       projectId: request.projectId,
       events,
@@ -126,6 +163,42 @@ export class TerminalManager {
       approvals: NO_APPROVALS,
     })
     return id
+  }
+
+  private handleExit(
+    id: TerminalId,
+    projectId: string,
+    events: TerminalEvents,
+    exit: TerminalExit,
+  ): void {
+    const wasAgent = this.terminals.get(id)?.agentStatus != null
+    this.terminals.delete(id)
+    events.onExit(id, exit)
+    if (wasAgent) this.deps.onAgentStatusChange?.({ terminalId: id, projectId, status: null })
+  }
+
+  /**
+   * Runs the setup command in the terminal (shown as it runs), then swaps in the agent if it
+   * succeeded. On failure, or if the terminal is closed first, the terminal exits as it is.
+   */
+  private runSetup(id: TerminalId, setup: TerminalSetup, spawn: Spawn, next: SetupNext) {
+    const process = spawn(SETUP_COMMAND_LINE, {
+      DUGOUT_SETUP_COMMAND: setup.command,
+      DUGOUT_SETUP_BANNER: `${DIM}Worktree setup: ${setup.command}${RESET}`,
+    })
+    process.onExit((exit) => {
+      const terminal = this.terminals.get(id)
+      const isOpen = terminal !== undefined && terminal.process === process
+      const isSuccess = isOpen && exit.exitCode === 0 && !exit.signal
+      setup.finish(isSuccess)
+      if (isSuccess) {
+        this.terminals.set(id, { ...terminal, process: next.startAgent() })
+        return
+      }
+      if (isOpen) next.onData(id, setupFailedMessage(exit))
+      next.finish(exit)
+    })
+    return process
   }
 
   /** The adapter's launch plus the variables every agent gets: hooks, resume id, first prompt. */
@@ -172,7 +245,12 @@ export class TerminalManager {
   }
 
   resize(id: TerminalId, cols: number, rows: number): boolean {
-    return this.withProcess(id, (process) => process.resize(cols, rows))
+    const terminal = this.terminals.get(id)
+    if (!terminal) return false
+    // Kept for the agent that follows a worktree setup in the same terminal.
+    this.terminals.set(id, { ...terminal, size: { cols, rows } })
+    terminal.process.resize(cols, rows)
+    return true
   }
 
   kill(id: TerminalId): boolean {

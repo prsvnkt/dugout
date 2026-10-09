@@ -31,6 +31,12 @@ import {
 } from '../preview'
 import { MAX_CHECK_COMMAND_LENGTH } from '../checks'
 import { AGENT_KINDS, TERMINAL_KINDS } from '../terminal'
+import {
+  isSafeCopyPattern,
+  MAX_COPY_PATTERN_LENGTH,
+  MAX_COPY_PATTERNS,
+  MAX_SETUP_COMMAND_LENGTH,
+} from '../worktreeSetup'
 
 /** Schemas for IPC payloads. Main validates every incoming payload; never trust the renderer. */
 
@@ -117,6 +123,33 @@ export const projectSetCheckCommandRequestSchema = z.object({
   command: checkCommand.nullable(),
 })
 
+/** Files to copy into new worktrees and the command to run there (decision 038). */
+export const worktreeSetupSchema = z.object({
+  copy: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(MAX_COPY_PATTERN_LENGTH)
+        .refine(isSafeCopyPattern, 'Copy patterns must stay inside the repository'),
+    )
+    .max(MAX_COPY_PATTERNS),
+  command: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MAX_SETUP_COMMAND_LENGTH)
+    .refine(isOneLineCommand, 'The setup command must be one line')
+    .optional(),
+})
+
+/** null (or a setup that copies and runs nothing) turns worktree setup off. */
+export const projectSetWorktreeSetupRequestSchema = z.object({
+  id: projectId,
+  setup: worktreeSetupSchema.nullable(),
+})
+
 export const taskSourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('github') }),
   z.object({ kind: z.literal('linear'), teamKey: z.string().regex(LINEAR_TEAM_KEY_PATTERN) }),
@@ -131,6 +164,7 @@ export const projectSchema = z.object({
   createdAt: z.iso.datetime(),
   devCommand: devCommand.min(1).optional(),
   checkCommand: checkCommand.optional(),
+  worktreeSetup: worktreeSetupSchema.optional(),
   taskSource: taskSourceSchema.optional(),
 })
 
@@ -153,6 +187,7 @@ export type ProjectAddRequest = z.infer<typeof projectAddRequestSchema>
 export type ProjectRemoveRequest = z.infer<typeof projectRemoveRequestSchema>
 export type ProjectSetDevCommandRequest = z.infer<typeof projectSetDevCommandRequestSchema>
 export type ProjectSetCheckCommandRequest = z.infer<typeof projectSetCheckCommandRequestSchema>
+export type ProjectSetWorktreeSetupRequest = z.infer<typeof projectSetWorktreeSetupRequestSchema>
 export type ProjectsFile = z.infer<typeof projectsFileSchema>
 
 /** A path inside a repository: relative, with no `..` segments, so it cannot escape it. */

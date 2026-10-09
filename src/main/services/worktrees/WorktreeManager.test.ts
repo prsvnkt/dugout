@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
 import type { Project } from '@shared/project'
+import { FileService } from '../files/FileService'
 import { GitService } from '../git/GitService'
 import { WorktreeManager } from './WorktreeManager'
 
@@ -25,6 +26,8 @@ function makeProject(withCommit = true): Project {
   }
   return { id: 'proj-1', name: 'app', rootPath, color: 'teal', createdAt: '2026-10-05T00:00:00Z' }
 }
+
+const files = new FileService({ git: new GitService({ env: ENV }) })
 
 function commitIn(cwd: string, message: string): void {
   execFileSync('git', ['commit', '-q', '--allow-empty', '-m', message], { cwd, env: ENV })
@@ -50,6 +53,7 @@ describe('WorktreeManager', () => {
     nextId = 0
     manager = new WorktreeManager({
       git: new GitService({ env: ENV }),
+      files,
       baseDir,
       createId: () => `s${++nextId}`,
     })
@@ -128,6 +132,7 @@ describe('WorktreeManager named worktrees', () => {
     let nextId = 0
     const manager = new WorktreeManager({
       git: new GitService({ env: ENV }),
+      files,
       baseDir,
       createId: () => `x${++nextId}`,
     })
@@ -146,6 +151,7 @@ describe('WorktreeManager leftover branches', () => {
     const baseDir = mkdtempSync(join(tmpdir(), 'dugout-wtm-left-'))
     const manager = new WorktreeManager({
       git: new GitService({ env: ENV }),
+      files,
       baseDir,
       createId: () => 'y1',
     })
@@ -157,5 +163,83 @@ describe('WorktreeManager leftover branches', () => {
     const again = await manager.create(project, { name: '7-task' })
 
     expect(again.branch).toBe('dugout/7-task-y1')
+  })
+})
+
+describe('WorktreeManager worktree setup', () => {
+  let manager: WorktreeManager
+  let project: Project
+
+  beforeEach(() => {
+    manager = new WorktreeManager({
+      git: new GitService({ env: ENV }),
+      files,
+      baseDir: mkdtempSync(join(tmpdir(), 'dugout-wtm-setup-')),
+      createId: () => 'z1',
+    })
+    const base = makeProject()
+    writeFileSync(join(base.rootPath, '.env'), 'TOKEN=local\n')
+    // Like most local files, ignored, so a worktree with a copy can still be removed.
+    writeFileSync(join(base.rootPath, '.gitignore'), '.env*\n')
+    execFileSync('git', ['add', '.gitignore'], { cwd: base.rootPath })
+    commitIn(base.rootPath, 'chore: ignore local files')
+    project = { ...base, worktreeSetup: { copy: ['.env*'], command: 'npm install' } }
+  })
+
+  test('copies the local files into a new worktree', async () => {
+    // Act
+    const worktree = await manager.create(project)
+
+    // Assert
+    expect(readFileSync(join(worktree.path, '.env'), 'utf8')).toBe('TOKEN=local\n')
+  })
+
+  test('hands the setup command to the first agent only', async () => {
+    // Arrange
+    const worktree = await manager.create(project)
+
+    // Act
+    const claimed = manager.claimSetup(worktree.path)
+
+    // Assert
+    expect(claimed?.command).toBe('npm install')
+    expect(manager.claimSetup(worktree.path)).toBeNull()
+    claimed?.finish(true)
+    expect(manager.claimSetup(worktree.path)).toBeNull()
+  })
+
+  test('offers a failed setup again, until the worktree is removed', async () => {
+    // Arrange
+    const worktree = await manager.create(project)
+
+    // Act
+    manager.claimSetup(worktree.path)?.finish(false)
+
+    // Assert
+    expect(manager.claimSetup(worktree.path)?.command).toBe('npm install')
+    manager.claimSetup(worktree.path)
+    await manager.remove(project, worktree.path)
+    expect(manager.claimSetup(worktree.path)).toBeNull()
+  })
+
+  test('has nothing to run without a setup command, or outside new worktrees', async () => {
+    // Arrange
+    const plain = { ...project, worktreeSetup: { copy: ['.env'] } }
+
+    // Act
+    const worktree = await manager.create(plain)
+
+    // Assert
+    expect(manager.claimSetup(worktree.path)).toBeNull()
+    expect(manager.claimSetup(project.rootPath)).toBeNull()
+  })
+
+  test('creates no worktree when a copy pattern matches a symlink', async () => {
+    // Arrange
+    symlinkSync('/etc/hosts', join(project.rootPath, '.env.hosts'))
+
+    // Act + Assert
+    await expect(manager.create(project)).rejects.toThrow(/symbolic link/)
+    expect(await manager.list(project)).toEqual([])
   })
 })

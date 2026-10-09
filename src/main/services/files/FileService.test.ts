@@ -150,3 +150,77 @@ describe('FileService.stat', () => {
     ])
   })
 })
+
+describe('FileService copying into a worktree', () => {
+  let from: string
+  let to: string
+
+  beforeEach(() => {
+    from = makeRepo()
+    to = realpathSync(mkdtempSync(join(tmpdir(), 'dugout-files-to-')))
+    writeFileSync(join(from, '.env'), 'SECRET=1\n')
+    writeFileSync(join(from, '.env.local'), 'LOCAL=1\n')
+    writeFileSync(join(from, 'readme.md'), 'hi\n')
+    mkdirSync(join(from, 'config', 'deep'), { recursive: true })
+    writeFileSync(join(from, 'config', 'app.json'), '{}\n')
+    writeFileSync(join(from, 'config', 'deep', 'x.json'), '[]\n')
+  })
+
+  test('finds files matching the globs, and every file in a matched folder', async () => {
+    // Act
+    const found = await files.findCopyable(from, ['.env*', 'config', 'missing/*'])
+
+    // Assert
+    expect(found).toEqual(['.env', '.env.local', 'config/app.json', 'config/deep/x.json'])
+  })
+
+  test('never matches inside .git', async () => {
+    expect(await files.findCopyable(from, ['**/HEAD', '.git'])).toEqual([])
+  })
+
+  test('refuses symlinks, whether matched or inside a matched folder', async () => {
+    // Arrange
+    symlinkSync('/etc/hosts', join(from, '.env.linked'))
+    symlinkSync('/etc', join(from, 'config', 'etc'))
+
+    // Act + Assert
+    await expect(files.findCopyable(from, ['.env*'])).rejects.toThrow(/\.env\.linked is a symbolic/)
+    await expect(files.findCopyable(from, ['config'])).rejects.toThrow(/config\/etc is a symbolic/)
+  })
+
+  test('refuses globs that match too many files', async () => {
+    // Arrange
+    mkdirSync(join(from, 'many'))
+    for (let i = 0; i <= 500; i += 1) writeFileSync(join(from, 'many', `${i}.txt`), '')
+
+    // Act + Assert
+    await expect(files.findCopyable(from, ['many'])).rejects.toThrow(/over 500 files/)
+  })
+
+  test('copies files to the same paths, keeping files that already exist', async () => {
+    // Arrange
+    writeFileSync(join(to, '.env.local'), 'TRACKED=1\n')
+
+    // Act
+    await files.copyFiles(from, to, ['.env', '.env.local', 'config/deep/x.json'])
+
+    // Assert
+    expect(readFileSync(join(to, '.env'), 'utf8')).toBe('SECRET=1\n')
+    expect(readFileSync(join(to, '.env.local'), 'utf8')).toBe('TRACKED=1\n')
+    expect(readFileSync(join(to, 'config', 'deep', 'x.json'), 'utf8')).toBe('[]\n')
+  })
+
+  test('never writes through a symlinked folder in the target', async () => {
+    // Arrange
+    const outside = realpathSync(mkdtempSync(join(tmpdir(), 'dugout-files-outside-')))
+    symlinkSync(outside, join(to, 'config'))
+
+    // Act + Assert
+    await expect(files.copyFiles(from, to, ['config/app.json'])).rejects.toThrow(/symbolic link/)
+    expect(() => statSync(join(outside, 'app.json'))).toThrow()
+  })
+
+  test('refuses paths outside either checkout', async () => {
+    await expect(files.copyFiles(from, to, ['../x'])).rejects.toThrow(/outside/)
+  })
+})

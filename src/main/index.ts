@@ -228,7 +228,6 @@ async function start(): Promise<void> {
   })
   checkRunner = checks
 
-  registerTerminalIpc(manager, checks)
   registerProjectIpc(projectStore)
   const github = gitHubConfig(process.env)
   const githubApi = new GitHubApi({ fetch, apiBaseUrl: github.apiBaseUrl })
@@ -261,8 +260,10 @@ async function start(): Promise<void> {
     credentials: async () =>
       gitCredentialConfig(await githubAuth.freshToken().catch(() => null), github.webBaseUrl),
   })
+  const files = new FileService({ git })
   const worktrees = new WorktreeManager({
     git,
+    files,
     baseDir: join(dataDir, WORKTREES_DIR),
     createId: () => randomBytes(WORKTREE_ID_BYTES).toString('hex'),
   })
@@ -276,6 +277,7 @@ async function start(): Promise<void> {
     viewer: (apiKey) => linearIssues.viewer(apiKey),
   })
   registerLinearIpc({ auth: linearAuth, issues: linearIssues })
+  registerTerminalIpc(manager, checks, worktrees)
   taskService = new TaskService({
     findProject: (id) => projectStore.list().find((project) => project.id === id),
     remoteUrl: (root) => git.remoteUrl(root),
@@ -337,7 +339,7 @@ async function start(): Promise<void> {
     webBaseUrl: github.webBaseUrl,
     openExternal: (url) => shell.openExternal(url),
   })
-  registerFileIpc(projectStore, worktrees, new FileService({ git }))
+  registerFileIpc(projectStore, worktrees, files)
   const settings = new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) })
   registerCloneIpc(git, settings)
   registerSettingsIpc(settings)

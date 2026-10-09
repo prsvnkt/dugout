@@ -15,18 +15,6 @@ A user's own `OPENCODE_CONFIG_CONTENT`, if they set one, is replaced by Dugout's
 becomes `{env:VAR}`), show them in Agent settings per agent, and merge an inherited
 `OPENCODE_CONFIG_CONTENT` instead of replacing it.
 
-## Worktrees start without untracked setup files
-
-- **Area:** worktree sessions (`src/main/services/worktrees/WorktreeManager.ts`)
-- **Found:** 2026-10-05, while building worktree sessions (decision 012)
-
-**What happens:** a new worktree is a clean checkout of HEAD, so untracked files such as
-`.env`, `node_modules/` or build output are missing. An agent may need to install dependencies
-or recreate local config before running the app or tests.
-
-**Likely fix:** an opt-in per-project list of files to copy (e.g. `.env*`) and an optional
-setup command run in the new worktree (e.g. `npm install`), shown in the pane while it runs.
-
 ## E2E tests can time out when the machine is busy
 
 - **Area:** `tests/e2e/` (Playwright, one Electron instance per worker)

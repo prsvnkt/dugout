@@ -29,6 +29,7 @@ import type { Task, TaskDetail, TaskSource } from './tasks'
 import type { TaskSession } from './taskSession'
 import type { AgentCliCheck, LocalRepo, RepoSearchScope } from './welcome'
 import type { GitCheckout, Worktree } from './worktree'
+import type { WorktreeSetup } from './worktreeSetup'
 
 export type Unsubscribe = () => void
 
@@ -70,6 +71,8 @@ export interface DugoutApi {
     setCheckCommand(id: ProjectId, command: string | null): Promise<Result<Project>>
     /** Chooses where the project's tasks live (GitHub Issues or a Linear team). */
     setTaskSource(projectId: ProjectId, source: TaskSource): Promise<Result<Project>>
+    /** Sets what new worktrees copy and run before their first agent; null turns it off. */
+    setWorktreeSetup(id: ProjectId, setup: WorktreeSetup | null): Promise<Result<Project>>
   }
   /** Preview deployments and local dev servers, for checking what an agent changed. */
   readonly preview: {

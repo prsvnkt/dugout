@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { gitHubTestEnv, startGitHubStub } from './githubStub'
 import {
+  clickMenuItem,
   launchApp,
   makeFakeClaude,
   makeFakeCodex,
@@ -182,4 +183,41 @@ test('runs Claude and Codex on one task and compares what each changed', async (
   await expect(compare.getByRole('button', { name: 'fake-codex.txt, Codex only' })).toBeVisible()
   await compare.getByRole('button', { name: 'shared.txt, both' }).click()
   await expect(compare.locator('.monaco-diff-editor')).toContainText('shared by fake-codex')
+})
+
+/** The setup starts a login shell of its own before the agent's, so allow for both. */
+const SETUP_THEN_AGENT_MS = 30_000
+
+test('Start agent sets up each task worktree before its agent starts', async () => {
+  // Arrange: a local file to copy, and a setup that proves it ran in each worktree
+  writeFileSync(join(repo, '.env'), 'TOKEN=local\n')
+  const output = await recordTerminalOutput(page)
+  await clickMenuItem(app, 'View', 'Agent Settings')
+  const setup = page.getByRole('form', { name: 'Worktree setup' })
+  await setup.getByLabel('Files to copy').fill('.env')
+  await setup.getByLabel('Setup command').fill('cp .env .env.from-setup')
+  await setup.getByRole('button', { name: 'Save worktree setup' }).click()
+  await expect(setup.getByRole('status')).toContainText('Saved')
+
+  // Act
+  await tasks().getByRole('button', { name: '#1 Fix login' }).click()
+  await detail().getByRole('button', { name: 'Start agent' }).click()
+  await detail().getByRole('menuitem', { name: 'Claude + Codex (compare)' }).click()
+
+  // Assert: both agents start after their setup, each in a worktree that has the files
+  await expect.poll(output, { timeout: SETUP_THEN_AGENT_MS }).toContain('fake-codex ready')
+  const panes = page.locator('[data-active="true"]').getByRole('region', { name: /terminal$/ })
+  await expect(panes.nth(0)).toContainText('Ready', { timeout: SETUP_THEN_AGENT_MS })
+  expect((await output()).split('Worktree setup: cp .env').length - 1).toBe(2)
+  const worktrees = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+    cwd: repo,
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter((line) => line.startsWith('worktree ') && !line.endsWith(repo))
+    .map((line) => line.slice('worktree '.length))
+  expect(worktrees).toHaveLength(2)
+  for (const worktree of worktrees) {
+    expect(readFileSync(join(worktree, '.env.from-setup'), 'utf8')).toBe('TOKEN=local\n')
+  }
 })

@@ -34,6 +34,8 @@ const api: DugoutApi = {
       ipcRenderer.invoke(IpcChannel.projectSetCheckCommand, { id, command }),
     setTaskSource: (projectId, source) =>
       ipcRenderer.invoke(IpcChannel.projectSetTaskSource, { projectId, source }),
+    setWorktreeSetup: (id, setup) =>
+      ipcRenderer.invoke(IpcChannel.projectSetWorktreeSetup, { id, setup }),
   },
   preview: {
     deployment: (checkout) => ipcRenderer.invoke(IpcChannel.previewDeployment, checkout),

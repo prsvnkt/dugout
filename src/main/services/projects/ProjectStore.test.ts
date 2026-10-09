@@ -145,6 +145,28 @@ describe('ProjectStore', () => {
     expect(ctx.store.list()).toEqual([])
   })
 
+  test('saves a worktree setup that survives a reload, and clears it again', async () => {
+    // Arrange
+    const project = await ctx.store.add({ rootPath: REPO })
+    const worktreeSetup = { copy: ['.env*'], command: 'npm install' }
+
+    // Act
+    const updated = await ctx.store.setWorktreeSetup(project.id, worktreeSetup)
+    const reloaded = setup(ctx.dir).store
+    await reloaded.load()
+
+    // Assert
+    expect(updated.worktreeSetup).toEqual(worktreeSetup)
+    expect(reloaded.list()[0]?.worktreeSetup).toEqual(worktreeSetup)
+    const cleared = await ctx.store.setWorktreeSetup(project.id, { copy: [] })
+    expect(cleared).not.toHaveProperty('worktreeSetup')
+    expect(await ctx.store.setWorktreeSetup(project.id, null)).toEqual(cleared)
+  })
+
+  test('refuses to set up an unknown project', async () => {
+    await expect(ctx.store.setWorktreeSetup('nope', null)).rejects.toThrow('Project not found.')
+  })
+
   test('writes the file atomically, leaving no temp files behind', async () => {
     await ctx.store.add({ rootPath: REPO })
     expect(readdirSync(ctx.dir)).toEqual(['projects.json'])

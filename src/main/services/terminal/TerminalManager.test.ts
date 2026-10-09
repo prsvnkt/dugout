@@ -595,3 +595,93 @@ describe('TerminalManager OpenCode terminals', () => {
     expect(manager.agentStatus(id)).toBe('idle')
   })
 })
+
+describe('TerminalManager worktree setup', () => {
+  function withSetup() {
+    const ctx = setupWithHooks()
+    const setup = { command: 'npm install', finish: vi.fn() }
+    const id = ctx.manager.create(request, ctx.events, setup)
+    return { ...ctx, setup, id }
+  }
+
+  test('runs the setup command in the terminal before the agent', () => {
+    // Act
+    const { spawned, events, id } = withSetup()
+    spawned[0]?.emitData('added 12 packages')
+
+    // Assert
+    expect(spawned).toHaveLength(1)
+    expect(spawned[0]?.options.args).toEqual([
+      '-l',
+      '-i',
+      '-c',
+      'echo "$DUGOUT_SETUP_BANNER" && eval "$DUGOUT_SETUP_COMMAND"',
+    ])
+    expect(spawned[0]?.options.env.DUGOUT_SETUP_COMMAND).toBe('npm install')
+    expect(spawned[0]?.options.cwd).toBe('/repo')
+    expect(events.onData).toHaveBeenCalledWith(id, 'added 12 packages')
+  })
+
+  test('starts the agent at the latest size once the setup succeeds', () => {
+    // Arrange
+    const { manager, spawned, events, setup, id } = withSetup()
+    manager.resize(id, 120, 40)
+
+    // Act
+    spawned[0]?.emitExit({ exitCode: 0 })
+    spawned[1]?.emitData('agent ready')
+
+    // Assert
+    expect(setup.finish).toHaveBeenCalledWith(true)
+    expect(events.onExit).not.toHaveBeenCalled()
+    expect(spawned[1]?.options.args.at(-1)).toContain('"$DUGOUT_CLAUDE_COMMAND"')
+    expect(spawned[1]?.options.env).not.toHaveProperty('DUGOUT_SETUP_COMMAND')
+    expect(spawned[1]?.options).toMatchObject({ cols: 120, rows: 40 })
+    expect(events.onData).toHaveBeenCalledWith(id, 'agent ready')
+    expect(manager.write(id, 'hi')).toBe(true)
+    expect(spawned[1]?.written).toEqual(['hi'])
+    expect(manager.agentStatus(id)).toBe('starting')
+  })
+
+  test('shows the failure and ends the terminal when the setup fails', () => {
+    // Arrange
+    const { manager, spawned, events, setup, id } = withSetup()
+
+    // Act
+    spawned[0]?.emitExit({ exitCode: 1 })
+
+    // Assert
+    expect(spawned).toHaveLength(1)
+    expect(setup.finish).toHaveBeenCalledWith(false)
+    expect(events.onData).toHaveBeenCalledWith(id, expect.stringContaining('setup failed'))
+    expect(events.onExit).toHaveBeenCalledWith(id, { exitCode: 1 })
+    expect(manager.size).toBe(0)
+  })
+
+  test('never starts the agent when the terminal is closed during setup', () => {
+    // Arrange
+    const { manager, spawned, setup, id } = withSetup()
+
+    // Act
+    manager.kill(id)
+    spawned[0]?.emitExit({ exitCode: 0, signal: 1 })
+
+    // Assert
+    expect(spawned[0]?.isKilled).toBe(true)
+    expect(spawned).toHaveLength(1)
+    expect(setup.finish).toHaveBeenCalledWith(false)
+  })
+
+  test('never starts the agent after killAll, even if the setup then exits cleanly', () => {
+    // Arrange
+    const { manager, spawned, setup } = withSetup()
+
+    // Act
+    manager.killAll()
+    spawned[0]?.emitExit({ exitCode: 0 })
+
+    // Assert
+    expect(spawned).toHaveLength(1)
+    expect(setup.finish).toHaveBeenCalledWith(false)
+  })
+})
