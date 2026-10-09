@@ -89,6 +89,27 @@
   white-space: nowrap;
 }
 
+.description {
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.presets {
+  margin-top: var(--space-6);
+}
+
+.presets h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .sharing {
   grid-column: 1;
   margin: 0;

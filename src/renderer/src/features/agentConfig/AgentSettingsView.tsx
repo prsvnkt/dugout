@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { CodexSharing, McpServer } from '@shared/agentConfig'
 import type { ProjectId } from '@shared/project'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
+import { PresetList } from './PresetList'
+import { sharingText } from './sharingText'
 import { draftFromServer, EMPTY_DRAFT } from './serverDraft'
 import { ServerForm } from './ServerForm'
 import { useAgentConfig } from './useAgentConfig'
@@ -38,7 +40,7 @@ function ServerRow(props: {
         className={styles.sharing}
         title={sharing?.isShared === false ? sharing.reason : undefined}
       >
-        {sharing?.isShared === false ? `Claude only: ${sharing.reason}` : 'Claude and Codex'}
+        {sharingText(sharing)}
       </p>
       <div className={styles.rowActions}>
         <button onClick={props.onEdit} disabled={props.isBusy} aria-label={`Edit ${server.name}`}>
@@ -138,6 +140,14 @@ function McpSection({ projectId, agent }: SectionProps) {
             Open .mcp.json
           </button>
         </div>
+      )}
+      {editing === null && (
+        <PresetList
+          takenNames={servers.map((server) => server.name)}
+          presetCodex={config.presetCodex}
+          isBusy={isBusy}
+          onAdd={(server) => save([...servers, server])}
+        />
       )}
     </>
   )

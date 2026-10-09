@@ -46,6 +46,8 @@ export interface AgentConfig {
       }
     | { readonly ok: false; readonly error: string }
   readonly instructions: InstructionsStatus
+  /** Whether Codex agents can use each preset (`MCP_PRESETS`), keyed by its server name. */
+  readonly presetCodex: Readonly<Record<string, CodexSharing>>
 }
 
 const SECRET_KEY = /token|secret|password|passwd|api[-_]?key|auth/i
