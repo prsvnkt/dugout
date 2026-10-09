@@ -446,6 +446,26 @@ and an empty list did not say what it covered.
 - The RPC dispatch moved from `main/index.ts` to `services/tasks/taskRpc.ts` (unit-tested); main
   still validates every call with `taskRpcSchemas` from the shared contract.
 
+## 035 — Lucide icons for the rail and icon buttons (2026-10-09)
+
+**Context.** The activity rail and the icon buttons in panel headers, tabs and rows used text
+characters (`≡ ± ☐ + » × ⌄ › ↻ ⊟ ↺`). They did not say what they opened (`☐` read as a
+checkbox), and sat at different weights and baselines depending on the font.
+
+**Decision.** One SVG set, [Lucide](https://lucide.dev) (`lucide-react`, ISC, pinned to an
+exact version), over a small custom set drawn like the logo: Lucide already has every icon
+needed, in one consistent 24px grid with round caps, which a custom set would have to match by
+hand for each new button; the logo's chunky filled shapes would not read at 14px anyway.
+Each icon is a named ESM import and the package has no side effects, so only the 16 icons
+used are bundled (the renderer bundle grew by about 12 kB, uncompressed).
+Every icon goes through `lib/Icon.tsx`: `currentColor` (hover, active and project-colour states
+keep working), two sizes (18px in the rail, 14px elsewhere), a 1.5px stroke at every size, and
+`aria-hidden`; buttons keep their `aria-label`s and `title`s. The rail maps Explorer → files,
+Git panel → git branch, Tasks → list with checks, New agent → plus. Panels hide with `»` →
+chevrons-right, close with an X, menus open with a chevron-down, and the two hand-drawn chevrons
+(Agents list, explorer folders) moved to the same set. Text that only contains a glyph (status
+marks like "✓ Approved", "Start agent ▾") stays text.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -465,4 +485,4 @@ and an empty list did not say what it covered.
    fetch from Source Control ✅.
 9. **Done since:** Agents list in the sidebar ✅, with each agent's subagents ✅, readable
    terminals and visible dividers ✅, leaner task tools for agents (search, priority, related,
-   batch create) ✅.
+   batch create) ✅, icons for the rail and icon buttons ✅.

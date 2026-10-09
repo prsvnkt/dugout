@@ -90,8 +90,6 @@
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
-  font-size: 16px;
-  line-height: 1;
 }
 
 .close:hover {

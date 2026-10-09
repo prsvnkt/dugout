@@ -1,4 +1,6 @@
+import { ChevronDown, ChevronRight, Cloud, GitBranch, GitFork, Plus } from 'lucide-react'
 import { formatAge } from '@renderer/lib/formatAge'
+import { Icon } from '@renderer/lib/Icon'
 import type { PickerItem } from './pickerSections'
 import styles from './BranchPicker.module.css'
 
@@ -16,20 +18,20 @@ function Content({ item }: { item: PickerItem }) {
     case 'create':
       return (
         <span className={styles.title}>
-          <span className={styles.glyph}>+</span> Create branch “{item.name}”
+          <Icon icon={Plus} className={styles.glyph} /> Create branch “{item.name}”
         </span>
       )
     case 'createFrom':
       return (
         <span className={styles.title}>
-          <span className={styles.glyph}>+</span> Create “{item.name}” from…
+          <Icon icon={Plus} className={styles.glyph} /> Create “{item.name}” from…
         </span>
       )
     case 'worktree':
       return (
         <>
           <span className={styles.title}>
-            <span className={styles.glyph}>⑂</span> New worktree session
+            <Icon icon={GitFork} className={styles.glyph} /> New worktree session
           </span>
           <span className={styles.detail}>An agent on its own branch; this checkout stays put</span>
         </>
@@ -37,7 +39,7 @@ function Content({ item }: { item: PickerItem }) {
     case 'sessions':
       return (
         <span className={styles.title}>
-          <span className={styles.glyph}>{item.isExpanded ? '▾' : '▸'}</span>
+          <Icon icon={item.isExpanded ? ChevronDown : ChevronRight} className={styles.glyph} />
           {item.isExpanded
             ? 'Hide agent session branches'
             : `${item.count} agent session ${item.count === 1 ? 'branch' : 'branches'}`}
@@ -49,7 +51,7 @@ function Content({ item }: { item: PickerItem }) {
       return (
         <>
           <span className={styles.title}>
-            <span className={styles.glyph}>{branch.kind === 'remote' ? '☁' : '⎇'}</span>
+            <Icon icon={branch.kind === 'remote' ? Cloud : GitBranch} className={styles.glyph} />
             <span className={styles.name}>{branch.name}</span>
             <span className={styles.age}>{formatAge(commit.date)}</span>
           </span>

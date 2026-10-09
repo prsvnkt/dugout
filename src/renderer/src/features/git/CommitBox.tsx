@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState, type KeyboardEvent } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { Icon } from '@renderer/lib/Icon'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import { commitPlan } from './commitPlan'
 import type { CommitOptions } from './gitStore'
@@ -18,7 +20,7 @@ interface CommitMenuProps {
   onChoose(andPush: boolean): void
 }
 
-/** ⌄ next to Commit: commit, or commit and push in one go. */
+/** The chevron next to Commit: commit, or commit and push in one go. */
 function CommitMenu({ disabled, onChoose }: CommitMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -40,7 +42,7 @@ function CommitMenu({ disabled, onChoose }: CommitMenuProps) {
         aria-label="More commit actions"
         title="More commit actions"
       >
-        <span aria-hidden>⌄</span>
+        <Icon icon={ChevronDown} />
       </button>
       {isOpen && (
         <div className={styles.commitMenu} role="menu">
@@ -56,7 +58,7 @@ function CommitMenu({ disabled, onChoose }: CommitMenuProps) {
   )
 }
 
-/** VS Code-style commit area: message, then a full-width Commit button with a ⌄ menu. */
+/** VS Code-style commit area: message, then a full-width Commit button with a chevron menu. */
 export function CommitBox(props: CommitBoxProps) {
   const { stagedCount, unstagedCount, branch, isBusy, onCommit } = props
   const [message, setMessage] = useState('')

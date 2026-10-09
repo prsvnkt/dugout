@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Minus, Plus, Undo2 } from 'lucide-react'
 import type { GitChangeKind, GitLineStats } from '@shared/git'
 import { CHANGE_LETTER, splitPath } from './changeKind'
 import { FileTypeIcon } from '@renderer/features/explorer/FileTypeIcon'
+import { Icon } from '@renderer/lib/Icon'
 import { diffBar } from './diffBar'
 import styles from './GitPanel.module.css'
 
@@ -92,7 +94,7 @@ export function FileRow(props: FileRowProps) {
               }
               title={discard.isArmed ? 'Click again to discard' : 'Discard changes'}
             >
-              {discard.isArmed ? 'Discard?' : '↺'}
+              {discard.isArmed ? 'Discard?' : <Icon icon={Undo2} />}
             </button>
           )}
           {onStage && (
@@ -103,7 +105,7 @@ export function FileRow(props: FileRowProps) {
               aria-label={`Stage ${path}`}
               title="Stage"
             >
-              +
+              <Icon icon={Plus} />
             </button>
           )}
           {onUnstage && (
@@ -114,7 +116,7 @@ export function FileRow(props: FileRowProps) {
               aria-label={`Unstage ${path}`}
               title="Unstage"
             >
-              −
+              <Icon icon={Minus} />
             </button>
           )}
         </span>

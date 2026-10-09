@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { ChevronRight, type LucideIcon } from 'lucide-react'
 import type { GitChangeKind, GitLineStats } from '@shared/git'
+import { Icon } from '@renderer/lib/Icon'
 import { FileRow } from './FileRow'
 import styles from './GitPanel.module.css'
 
@@ -24,8 +26,8 @@ interface ChangeSectionProps {
   readonly isBusy: boolean
   /** "Stage all" / "Unstage all": the accessible name of the hover action in the header. */
   readonly bulkLabel: string
-  /** Icon for the bulk action, like the row actions: "+" or "−". */
-  readonly bulkGlyph: string
+  /** Icon for the bulk action, like the row actions: plus or minus. */
+  readonly bulkIcon: LucideIcon
   onBulk(): void
   onSelect(path: string): void
   onStage?(path: string): void
@@ -35,7 +37,7 @@ interface ChangeSectionProps {
 
 /** A collapsible group of changes, like VS Code's "Staged Changes" / "Changes". */
 export function ChangeSection(props: ChangeSectionProps) {
-  const { title, entries, isStaged, selection, isBusy, bulkLabel, bulkGlyph, onBulk, onSelect } =
+  const { title, entries, isStaged, selection, isBusy, bulkLabel, bulkIcon, onBulk, onSelect } =
     props
   const [isOpen, setIsOpen] = useState(true)
   if (entries.length === 0) return null
@@ -48,9 +50,7 @@ export function ChangeSection(props: ChangeSectionProps) {
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
         >
-          <span className={styles.sectionChevron} aria-hidden>
-            ›
-          </span>
+          <Icon icon={ChevronRight} className={styles.sectionChevron} />
           <h3 className={styles.sectionTitle}>{title}</h3>
         </button>
         <button
@@ -60,7 +60,7 @@ export function ChangeSection(props: ChangeSectionProps) {
           aria-label={bulkLabel}
           title={bulkLabel}
         >
-          {bulkGlyph}
+          <Icon icon={bulkIcon} />
         </button>
         <span className={styles.countPill} aria-label={`${entries.length} files`}>
           {entries.length}

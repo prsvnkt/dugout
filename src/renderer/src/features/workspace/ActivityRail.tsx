@@ -1,17 +1,19 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { Files, GitBranch, ListChecks, Plus, type LucideIcon } from 'lucide-react'
 import type { Project } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
+import { Icon } from '@renderer/lib/Icon'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import { MAX_PANES_PER_PROJECT } from './layout'
 import { useProjectLayout } from './workspaceStore'
 import styles from './ActivityRail.module.css'
 
 interface RailButtonProps {
-  readonly glyph: string
+  readonly icon: LucideIcon
   readonly label: string
   readonly title: string
   readonly isActive: boolean
@@ -19,7 +21,7 @@ interface RailButtonProps {
   onClick(): void
 }
 
-function RailButton({ glyph, label, title, isActive, badge, onClick }: RailButtonProps) {
+function RailButton({ icon, label, title, isActive, badge, onClick }: RailButtonProps) {
   return (
     <button
       className={styles.button}
@@ -29,7 +31,7 @@ function RailButton({ glyph, label, title, isActive, badge, onClick }: RailButto
       title={title}
       onClick={onClick}
     >
-      <span aria-hidden>{glyph}</span>
+      <Icon icon={icon} size="rail" />
       {badge !== undefined && badge > 0 && (
         <span className={styles.badge} aria-hidden>
           {badge > 99 ? '99+' : badge}
@@ -74,7 +76,7 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
   return (
     <div className={styles.menuWrap} ref={wrapRef}>
       <RailButton
-        glyph="+"
+        icon={Plus}
         label="New agent"
         title="New agent"
         isActive={isOpen}
@@ -137,14 +139,14 @@ export function ActivityRail({ project, changeCount, onAdd }: ActivityRailProps)
   return (
     <nav className={styles.rail} aria-label="Activity">
       <RailButton
-        glyph="≡"
+        icon={Files}
         label={isExplorerOpen ? 'Hide Explorer' : 'Show Explorer'}
         title="Agents and files (⌘B)"
         isActive={isExplorerOpen}
         onClick={toggleExplorer}
       />
       <RailButton
-        glyph="±"
+        icon={GitBranch}
         label={isReviewOpen ? 'Hide Git panel' : 'Show Git panel'}
         title={changeCount > 0 ? `Changes · ${changeCount} (⇧⌘G)` : 'Changes (⇧⌘G)'}
         isActive={isReviewOpen}
@@ -152,7 +154,7 @@ export function ActivityRail({ project, changeCount, onAdd }: ActivityRailProps)
         onClick={() => togglePanelView('review')}
       />
       <RailButton
-        glyph="☐"
+        icon={ListChecks}
         label={isTasksOpen ? 'Hide Tasks' : 'Show Tasks'}
         title="Tasks"
         isActive={isTasksOpen}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { ChevronsRight, Plus } from 'lucide-react'
 import type { Project } from '@shared/project'
 import { TASK_STATUS_LABEL, type Task, type TaskStatus } from '@shared/tasks'
 import { isSignedIn, useAuthStore } from '@renderer/features/github/authStore'
@@ -12,6 +13,7 @@ import {
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { AGENT_LABEL, isAgentKind } from '@shared/terminal'
+import { Icon } from '@renderer/lib/Icon'
 import { TaskDetailView } from './TaskDetailView'
 import { useProjectTasks, useTaskStore } from './taskStore'
 import styles from './Tasks.module.css'
@@ -168,7 +170,7 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
       <span className={styles.heading}>Tasks</span>
       {signedIn && (
         <button onClick={() => setIsCreating(true)} title="New task" aria-label="New task">
-          +
+          <Icon icon={Plus} />
         </button>
       )}
       <button
@@ -176,7 +178,7 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
         title="Hide panel (⇧⌘G)"
         aria-label="Hide Tasks panel"
       >
-        »
+        <Icon icon={ChevronsRight} />
       </button>
     </header>
   )

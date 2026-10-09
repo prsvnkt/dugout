@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import { ChevronLeft } from 'lucide-react'
 import type { ProjectId } from '@shared/project'
 import { TASK_STATUS_LABEL, TASK_STATUSES, type TaskDetail, type TaskStatus } from '@shared/tasks'
 import type { AgentKind } from '@shared/terminal'
 import { dugout } from '@renderer/lib/dugout'
+import { Icon } from '@renderer/lib/Icon'
 import { useTaskStore } from './taskStore'
 import styles from './Tasks.module.css'
 
@@ -90,7 +92,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
           onClick={() => void select(projectId, null)}
           aria-label="Back to tasks"
         >
-          ‹
+          <Icon icon={ChevronLeft} />
         </button>
         <span className={styles.number}>#{task.number}</span>
         <h3 className={styles.detailTitle}>{task.title}</h3>

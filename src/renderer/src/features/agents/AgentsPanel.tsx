@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
+import { ChevronUp } from 'lucide-react'
 import type { Project } from '@shared/project'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
 import { ACTIVITY_LABEL, type PaneActivity } from '@renderer/features/workspace/paneActivity'
 import { useProjectLayout, useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
+import { Icon } from '@renderer/lib/Icon'
 import { agentEntries, type AgentEntry } from './agentList'
 import { useAgentsStore } from './agentsStore'
 import type { Subagent } from './subagents'
@@ -20,22 +22,6 @@ const SUBAGENT_LABEL: Readonly<Record<Subagent['state'], string>> = {
 function describeWork(entry: AgentEntry): string | null {
   if (entry.task) return `#${entry.task.number} ${entry.task.title}`
   return entry.title
-}
-
-/** Points up; CSS turns it down while the list is open (down = minimise). */
-function Arrow() {
-  return (
-    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
-      <path
-        d="M4 10l4-4 4 4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }
 
 function AgentRow({ entry, onSelect }: { entry: AgentEntry; onSelect(): void }) {
@@ -115,7 +101,8 @@ export function AgentsPanel({ project }: { project: Project }) {
           title={isCollapsed ? 'Show agents' : 'Minimise agents'}
           onClick={toggleCollapsed}
         >
-          <Arrow />
+          {/* Points up; CSS turns it down while the list is open (down = minimise). */}
+          <Icon icon={ChevronUp} />
         </button>
       </header>
       {!isCollapsed && (

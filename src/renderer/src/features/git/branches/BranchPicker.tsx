@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
 import type { GitCheckout } from '@shared/worktree'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
+import { Icon } from '@renderer/lib/Icon'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import { useGitStore } from '../gitStore'
 import { pickerSections, type PickerItem, type PickerMode } from './pickerSections'
@@ -131,9 +133,7 @@ export function BranchPicker({ checkout, currentBranch, children }: BranchPicker
         title="Switch or create a branch"
       >
         {children}
-        <span className={styles.caret} aria-hidden>
-          ⌄
-        </span>
+        <Icon icon={ChevronDown} className={styles.caret} />
       </button>
       {isOpen && (
         <div className={styles.popover} role="dialog" aria-label="Switch branch">
