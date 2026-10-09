@@ -11,8 +11,8 @@
   --border-strong: #d9dde3; /* inputs */
   --text-primary: #14171c;
   --text-secondary: #545b66;
-  --text-muted: #8a919c;
-  --text-faint: #a2a8b2; /* chevrons */
+  --text-muted: #666d79; /* text: 5.2:1 on --bg-app, 4.7:1 on --bg-elevated (WCAG AA) */
+  --text-faint: #a2a8b2; /* decorative glyphs only (chevrons, file icons), never text */
   --text-on-accent: #ffffff;
   --bg-overlay: rgb(20 23 28 / 35%);
   --shadow-dialog: 0 24px 48px -16px rgb(20 23 28 / 25%);

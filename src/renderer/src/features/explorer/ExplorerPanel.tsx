@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronRight, ChevronsDownUp, RefreshCw } from 'lucide-react'
 import type { DirEntry } from '@shared/files'
 import type { GitChangeKind } from '@shared/git'
@@ -11,6 +11,7 @@ import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore
 import { Icon } from '@renderer/lib/Icon'
 import { useCheckoutTree, useExplorerStore } from './explorerStore'
 import { FileTypeIcon } from './FileTypeIcon'
+import { tabStopPath, treeKeyMove, visibleRows } from './treeKeys'
 import styles from './ExplorerPanel.module.css'
 
 const INDENT_PX = 12
@@ -44,9 +45,13 @@ interface TreeLevelProps {
   readonly depth: number
   readonly marks: GitMarks
   readonly activePath: string | null
+  /** The one row in the Tab order (roving tabindex); arrows move it. */
+  readonly tabStop: string | null
+  onFocusPath(path: string): void
 }
 
-function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
+function TreeLevel(props: TreeLevelProps) {
+  const { project, dir, depth, marks, activePath, tabStop, onFocusPath } = props
   const checkout = useSelectedCheckout(project.id)
   const tree = useCheckoutTree(checkout)
   const toggleDir = useExplorerStore((state) => state.toggleDir)
@@ -62,6 +67,10 @@ function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
       <li key={entry.path} role="none">
         <button
           role="treeitem"
+          aria-level={depth + 1}
+          tabIndex={entry.path === tabStop ? 0 : -1}
+          data-path={entry.path}
+          onFocus={() => onFocusPath(entry.path)}
           aria-expanded={entry.kind === 'dir' ? isExpanded : undefined}
           aria-selected={entry.path === activePath}
           className={styles.row}
@@ -94,27 +103,65 @@ function TreeLevel({ project, dir, depth, marks, activePath }: TreeLevelProps) {
           )}
           {hasChangesInside && !change && <span className={styles.dot} aria-hidden />}
         </button>
-        {isExpanded && (
-          <TreeLevel
-            project={project}
-            dir={entry.path}
-            depth={depth + 1}
-            marks={marks}
-            activePath={activePath}
-          />
-        )}
+        {isExpanded && <TreeLevel {...props} dir={entry.path} depth={depth + 1} />}
       </li>
     )
   }
 
   return (
-    <ul
-      className={styles.list}
-      role={depth === 0 ? 'tree' : 'group'}
-      aria-label={depth === 0 ? 'Files' : undefined}
-    >
+    // The root list is plain: its rows belong straight to the `tree` around it.
+    <ul className={styles.list} role={depth === 0 ? 'none' : 'group'}>
       {entries.map(renderEntry)}
     </ul>
+  )
+}
+
+/** The tree's keyboard (APG tree view): which row takes Tab, and what the arrow keys do. */
+function useTreeKeys(project: Project, activePath: string | null) {
+  const checkout = useSelectedCheckout(project.id)
+  const tree = useCheckoutTree(checkout)
+  const toggleDir = useExplorerStore((state) => state.toggleDir)
+  const [focusedPath, setFocusedPath] = useState<string | null>(null)
+  const treeRef = useRef<HTMLDivElement>(null)
+  const rows = useMemo(() => visibleRows(tree.entries, tree.expanded), [tree])
+  const tabStop = tabStopPath(rows, [focusedPath, activePath])
+
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+    const move = treeKeyMove(rows, focusedPath, event.key)
+    if (!move) return
+    event.preventDefault()
+    if (move.kind === 'toggle') return void toggleDir(checkout, move.path)
+    treeRef.current?.querySelector<HTMLElement>(`[data-path="${CSS.escape(move.path)}"]`)?.focus()
+  }
+  return { treeRef, tabStop, onKeyDown, onFocusPath: setFocusedPath }
+}
+
+/** The root of the file tree: one `tree` that owns every level's keyboard. */
+function FileTree({
+  project,
+  marks,
+  activePath,
+}: Omit<TreeLevelProps, 'dir' | 'depth' | 'tabStop' | 'onFocusPath'>) {
+  const { treeRef, tabStop, onKeyDown, onFocusPath } = useTreeKeys(project, activePath)
+  return (
+    <div
+      className={styles.scroll}
+      role="tree"
+      aria-label="Files"
+      ref={treeRef}
+      onKeyDown={onKeyDown}
+    >
+      <TreeLevel
+        project={project}
+        dir=""
+        depth={0}
+        marks={marks}
+        activePath={activePath}
+        tabStop={tabStop}
+        onFocusPath={onFocusPath}
+      />
+    </div>
   )
 }
 
@@ -157,9 +204,7 @@ export function ExplorerPanel({ project }: { project: Project }) {
       {tree.error ? (
         <p className={styles.error}>{tree.error}</p>
       ) : (
-        <div className={styles.scroll}>
-          <TreeLevel project={project} dir="" depth={0} marks={marks} activePath={activePath} />
-        </div>
+        <FileTree project={project} marks={marks} activePath={activePath} />
       )}
     </aside>
   )

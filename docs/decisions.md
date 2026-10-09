@@ -1077,6 +1077,32 @@ in Linear (issue #27).
   Linear's 10,000-point query limit; comment counts are not fetched for lists (cards show them
   only for GitHub), since they would multiply the complexity of every 30-second refresh.
 
+## 052 — Keyboard patterns behind every ARIA role; muted text at AA contrast (2026-10-09)
+
+**Context.** An accessibility audit (#81) found roles that promised keyboard behaviour the UI did
+not have: editor tabs (`tablist`), the explorer (`tree`) and five menus (`menu`) had no arrow
+keys, menus did not take focus when opened or give it back when closed, and the close-project
+confirmation was a `role="dialog"` div with no focus trap. `--text-muted` (`#8a919c`) read at
+3.2:1 on white, under the 4.5:1 WCAG AA asks of text.
+
+**Decision.** Keep the roles and implement the WAI-ARIA APG pattern for each, with no new
+dependency. A pure `arrowTarget` (`lib/arrowNavigation.ts`: Arrow keys along an orientation,
+Home/End, wrap or not; no typeahead) drives a headless `useArrowNavigation` and `useMenuKeys`
+(`lib/useArrowNavigation.ts`). Editor tabs use roving tabindex with automatic activation and a
+`tabpanel`; Monaco no longer takes focus while a keyboard user is moving through the tabs. The
+tree keeps one row in the Tab order and handles Up/Down/Home/End and Right (open, then enter) /
+Left (close, then parent) through `explorer/treeKeys.ts`, with `aria-level` on each row. Menus
+focus their first item on open; `useDismiss` takes the trigger and returns focus to it when the
+popover closes with focus inside. The close-project confirmation is a native modal `<dialog>`
+(as the GitHub sign-in), and a failed close shows its error there.
+
+`--text-muted` is now `#666d79`: 5.2:1 on `--bg-app`, 5.0:1 on `--bg-canvas` and 4.7:1 on the
+`--bg-elevated` hover, still clearly lighter than `--text-secondary` (6.9:1). `--text-faint`
+(2.4:1) is for decorative glyphs only (chevrons, file icons); text that used it now uses
+`--text-muted`. The status dots `--status-idle` / `--status-exited` keep `#8a919c` (3.2:1, enough
+for a non-text mark that always sits beside words), and so does xterm's ANSI `brightWhite`, which
+`minimumContrastRatio` already raises (decision 033).
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1117,4 +1143,6 @@ in Linear (issue #27).
     and a headless codemap ✅.
 24. **Done since:** session timelines from Claude and Codex transcripts ✅.
 25. **Done since:** a task queue that starts the next task when an agent slot frees up ✅.
-26. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+26. **Done since:** keyboard navigation for editor tabs, the file tree and menus, and muted text
+    at WCAG AA contrast ✅.
+27. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

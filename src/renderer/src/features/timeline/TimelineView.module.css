@@ -150,7 +150,7 @@
 }
 
 .time {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 20px;
