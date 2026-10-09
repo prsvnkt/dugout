@@ -1,6 +1,6 @@
 /**
  * Chromium keeps only ~16 live WebGL contexts per renderer and silently drops the oldest
- * beyond that, so only panes of the visible project hold one (decision 052). Hidden panes use
+ * beyond that, so only panes of the visible project hold one (decision 056). Hidden panes use
  * xterm's DOM renderer, which costs little while `visibility: hidden` keeps them from painting.
  */
 export interface WebglRenderer {

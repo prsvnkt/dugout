@@ -12,6 +12,7 @@ import {
   TASK_STATUSES,
 } from '@shared/tasks'
 import { run, type DugoutRpc } from './rpcTool'
+import { toolAnnotations } from './toolAccess'
 
 // Dugout validates every call again in main; these schemas tell the agent what it may send.
 const number = z
@@ -50,6 +51,7 @@ function registerReadTools(server: McpServer, rpc: DugoutRpc): void {
   server.registerTool(
     'list_tasks',
     {
+      annotations: toolAnnotations('list_tasks'),
       description: LIST_DESCRIPTION,
       inputSchema: {
         status: status.optional(),
@@ -65,7 +67,11 @@ function registerReadTools(server: McpServer, rpc: DugoutRpc): void {
   )
   server.registerTool(
     'get_task',
-    { description: 'Read a task with its description and comments.', inputSchema: { number } },
+    {
+      annotations: toolAnnotations('get_task'),
+      description: 'Read a task with its description and comments.',
+      inputSchema: { number },
+    },
     (args) => run(rpc, 'get', args),
   )
 }
@@ -74,6 +80,7 @@ function registerWriteTools(server: McpServer, rpc: DugoutRpc): void {
   server.registerTool(
     'create_task',
     {
+      annotations: toolAnnotations('create_task'),
       description:
         'Create a new task, e.g. a follow-up you found while working. Returns its number, key, ' +
         'url and status. To file several at once, use create_tasks.',
@@ -84,6 +91,7 @@ function registerWriteTools(server: McpServer, rpc: DugoutRpc): void {
   server.registerTool(
     'create_tasks',
     {
+      annotations: toolAnnotations('create_tasks'),
       description:
         `Create up to ${MAX_TASK_BATCH} tasks in one call, in order. Returns each one's ` +
         'number, key, url and status. If one fails, the error says which were already created.',
@@ -94,6 +102,7 @@ function registerWriteTools(server: McpServer, rpc: DugoutRpc): void {
   server.registerTool(
     'update_task',
     {
+      annotations: toolAnnotations('update_task'),
       description:
         "Change a task's title, description, status (todo, in-progress, in-review, done), " +
         'priority or labels, or add related tasks. Returns its number, key, url and status.',
@@ -116,6 +125,7 @@ function registerWriteTools(server: McpServer, rpc: DugoutRpc): void {
   server.registerTool(
     'comment_on_task',
     {
+      annotations: toolAnnotations('comment_on_task'),
       description: 'Post a short progress note or question on a task.',
       inputSchema: { number, body: z.string().min(1).max(MAX_TASK_BODY_LENGTH) },
     },

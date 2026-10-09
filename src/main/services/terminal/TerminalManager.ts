@@ -102,7 +102,7 @@ interface ManagedTerminal {
   readonly detail: string | null
   /** Tool calls the agent asked to have approved that have not finished yet. */
   readonly approvals: readonly PendingApproval[]
-  /** The renderer asked to stop output until it catches up (decision 052). */
+  /** The renderer asked to stop output until it catches up (decision 056). */
   readonly isPaused: boolean
 }
 

@@ -29,11 +29,22 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME does not match package.json version ($expected)"
             exit 1
           fi
+      # postinstall's install-electron downloads the Electron binary (~110 MB) into this cache.
+      - uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/electron
+          key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
       - run: npm ci
+      # Tags are not protected, so a tag on a broken commit must fail here rather than ship.
+      # The e2e tests are left to CI on main: they would double the release time.
+      - run: npm run check
       - run: npm run dist -- --publish never
+      - name: Write SHA256SUMS
+        working-directory: dist
+        run: shasum -a 256 *.dmg *.zip > SHA256SUMS
       - name: Create a draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip
+          gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/SHA256SUMS
           --draft --generate-notes --title "Dugout $GITHUB_REF_NAME"

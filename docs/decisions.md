@@ -167,6 +167,9 @@ terminal's project and calls GitHub with the user's token — the agent never se
 `mcp__dugout`. The first prompt is placed before `--mcp-config`, which takes a list. Providers
 are behind `TaskService`, so Jira or local storage can be added later.
 
+_Superseded in part by 053: the hook settings no longer pre-approve the whole `mcp__dugout`
+server, only its read and propose tools; task writes ask first._
+
 ## 019 — "Needs you" inbox across projects (2026-10-06)
 
 Hooks for ready, needs-input and done forward their payload, and the hook server extracts a
@@ -1077,7 +1080,116 @@ in Linear (issue #27).
   Linear's 10,000-point query limit; comment counts are not fetched for lists (cards show them
   only for GitHub), since they would multiply the complexity of every 30-second refresh.
 
-## 052 — Terminal output flow control and visibility-gated WebGL (2026-10-09)
+## 052 — Packaging: minified bundles, renderer deps are devDependencies (2026-10-09)
+
+**Context.** The v0.4.0 DMG was 161 MB. electron-builder adds every production `dependency` to
+app.asar on top of the `files` list, so Monaco, React, xterm and the other renderer packages
+shipped twice: bundled in `out/renderer` and again as raw `node_modules` (~164 MB, Monaco alone
+102 MB). electron-vite also leaves every bundle unminified.
+
+**Decision.**
+
+- **`dependencies` holds only what main loads at runtime:** `node-pty`, `zod` and
+  `@modelcontextprotocol/sdk` (electron-vite externalises them from the main and MCP bundles).
+  Everything the renderer imports is a devDependency, since Vite bundles it.
+- **Minify the renderer only** (esbuild). Main and preload are a few hundred KB, and readable
+  stack traces in their logs are worth more than the bytes. No sourcemaps: nothing symbolicates
+  them yet; revisit with crash reporting.
+- **`npmRebuild: false`:** node-pty's N-API prebuilds run in any Electron, so the rebuild is
+  wasted work. The packaged e2e suite (`npm run test:e2e:packaged`) covers it.
+- **`!out/demo/**`** keeps `npm run demo:gif` footage out of the app.
+
+Result: app.asar 30 MB, DMG 134 MB (from 161 MB); the rest is Electron itself.
+
+## 053 — Agents get read-only Dugout tools pre-approved; writes prompt (2026-10-09)
+
+**Context.** Claude's hook settings allowed `mcp__dugout`, the whole server (decision 018), so
+`create_task`, `create_tasks`, `update_task` and `comment_on_task` ran without a prompt. Those
+post to GitHub Issues or Linear with the user's account, while a task's description, written by
+anyone who can open an issue on a public repo, is the agent's first prompt, and the task queue
+(decision 047) starts such agents unattended. Instructions planted in an issue could make an
+agent read a secret and post it as a comment, with nobody asked.
+
+**Decision.**
+
+- **One source of truth.** `src/main/mcp/toolAccess.ts` declares every "dugout" tool as `read`
+  (list/get tasks, list/get/search context), `propose` (`add_note`, which only creates a proposal
+  a person approves, decision 050) or `write` (the four task writes). A unit test fails if the
+  server offers a tool that is not declared there, so a new tool cannot be pre-approved by
+  accident; `write` is never pre-approved.
+- **Claude:** `permissions.allow` lists each read and propose tool as `mcp__dugout__<tool>`; writes
+  go through Claude Code's normal permission prompt (and Dugout's Needs you / inbox).
+- **Codex** had no pre-approval: Dugout sets no approval mode for the server, and Codex's default
+  (`auto`) asks for any MCP tool not marked read-only. The tools now carry MCP annotations from the
+  same declaration (`readOnlyHint` for reads; `add_note` is not destructive and stays inside
+  Dugout; writes reach outside it), so Codex runs reads and `add_note` without asking and still
+  asks before writes. No new `-c` keys: older Codex versions reject unknown MCP config fields.
+- **OpenCode** allowed every tool by default. Its inline config now adds permission rules
+  `"dugout_*": "ask"`, then `"allow"` for each read and propose tool (OpenCode names MCP tools
+  `<server>_<tool>` and the last matching rule wins), checked against OpenCode's source (Oct 2026).
+- **The first prompt** wraps the description in `<task-description>` … `</task-description>`,
+  after one sentence saying it was written by whoever filed the task and is data, not
+  instructions. A closing tag inside the description is defused so it cannot end the block early.
+  This lowers the odds an agent follows planted text; the permission prompt is what enforces it.
+
+## 054 — Dugout-run git ignores repo hooks and fsmonitor (2026-10-09)
+
+**Context.** Git runs commands that the repository itself names: hooks (`.git/hooks/*`, or
+`core.hooksPath`, e.g. `.husky/`), `core.fsmonitor`, `core.askPass`, `core.gitProxy`, and a
+remote's `uploadpack` / `receivepack`. Dugout runs `git status` every 3s and pushes with the
+GitHub token in `DUGOUT_GITHUB_TOKEN` (decision 015), so a hostile repo or branch could run
+commands in Dugout's main process without any click, and read the token from a `pre-push` hook
+when the user pushed or clicked Create PR. Agents run in their own terminals, where hooks
+are the user's business; this is about git Dugout runs on its own behalf.
+
+**Decision.**
+
+- **`runGit` hardens every call** (so no caller can forget): `-c core.fsmonitor=false`,
+  `-c core.hooksPath=/dev/null` (no hooks; git treats the missing files under it as no hook),
+  `-c core.askPass=` (a credential prompt fails instead of running a program, with
+  `GIT_TERMINAL_PROMPT=0`), `-c protocol.ext.allow=never`, and `GIT_PROXY_COMMAND=""` (set, it
+  wins over `core.gitProxy`). `-c` beats repo config and reaches the gits git starts itself.
+  `resolveRepoRoot` now goes through `runGit` too.
+- **Commit from the Git panel keeps the repo's hooks** (`hooks: 'repo'`): the user asked for the
+  commit, and expects their lint-staged or commit-msg hook to run as it would in their terminal.
+  Commit never carries credentials (only `runNetwork` adds them), so its hooks never see the
+  token; `runNetwork` forces `hooks: 'none'`.
+- **Network commands** (push, fetch, clone) also name git's default pack command
+  (`--receive-pack`, `--upload-pack`): for local and `file://` remotes it runs locally with the
+  token in its env, and git keeps the first `remote.<name>.uploadpack` it reads (the repo's), so
+  `-c` cannot override it. Push adds `--no-verify` as a second guard against `pre-push`, and push
+  and fetch skip submodules (whose config Dugout does not control). Fetch runs once per remote,
+  because `fetch --all` does not pass `--upload-pack` on; every remote is tried and failures are
+  reported together. It now also fetches remotes marked `skipFetchAll`.
+- **Already safe:** `core.sshCommand` loses to the `GIT_SSH_COMMAND` Dugout always sets;
+  `url.<base>.insteadOf` can only send git to another URL, where the token helper (scoped to the
+  GitHub host, decision 015) gives nothing away and the rules above still apply; repo
+  `credential.*.helper`s for the GitHub host are cleared by Dugout's own empty entry.
+- **Accepted** (see known issues): `pre-push` hooks, including Git LFS's, do not run when
+  pushing from the Git panel; repo `http.*` settings (proxy, TLS checks) still apply to pushes;
+  clean/smudge filters and textconv drivers from repo config still run.
+
+## 055 — Release: check before dist, SHA256SUMS (2026-10-09)
+
+**Context.** The Release workflow went straight from `npm ci` to `npm run dist`, and tags are
+not protected, so a tag on any commit could ship a build that never passed CI. Releases are
+ad-hoc signed (see known issues), so users had no way to check a download (issue #65).
+
+**Decision.**
+
+- **Check first.** The Release workflow runs `npm run check` before `dist`. The e2e tests are
+  not run there: they would double the release time, and the tagged commit is normally a merged
+  release PR that already passed them on `main`.
+- **Checksums.** After `dist`, the workflow writes `dist/SHA256SUMS` (basenames, from
+  `shasum -a 256` run inside `dist/`) and attaches it to the draft release with the DMG and zip.
+  The README tells users to run `shasum -a 256 -c SHA256SUMS --ignore-missing`.
+- **CI hygiene** (issue #84). CI and Release cache the Electron download
+  (`~/Library/Caches/electron`, keyed on `package-lock.json`), and the cosmetic
+  `brand-dev-electron.mjs` postinstall step is skipped when `CI` is set and only warns on failure.
+- **Not yet:** signing, Hardened Runtime, notarization and Electron fuses need a Developer ID;
+  they stay open in issue #65 and known issues.
+
+## 056 — Terminal output flow control and visibility-gated WebGL (2026-10-09)
 
 **Context.** Every pane in every project loaded xterm's WebGL renderer, hidden ones too, and
 Chromium keeps only ~16 live WebGL contexts per renderer: past that it drops the oldest, so a
@@ -1150,6 +1262,8 @@ drag sent one SIGWINCH per frame and the agent TUI flickered (#80).
     and a headless codemap ✅.
 24. **Done since:** session timelines from Claude and Codex transcripts ✅.
 25. **Done since:** a task queue that starts the next task when an agent slot frees up ✅.
-26. **Done since:** terminal output flow control, debounced resizes and WebGL only for visible
+26. **Done since:** agents ask before writing to tasks; only read and propose tools are
+    pre-approved ✅.
+27. **Done since:** terminal output flow control, debounced resizes and WebGL only for visible
     panes ✅.
-27. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+28. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

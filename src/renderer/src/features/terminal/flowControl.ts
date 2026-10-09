@@ -1,5 +1,5 @@
 /**
- * Backpressure for PTY output (decision 052). xterm parses writes asynchronously; without a
+ * Backpressure for PTY output (decision 056). xterm parses writes asynchronously; without a
  * limit a burst (`cat` of a big file, a build log) queues unbounded data and starves the UI.
  * We count characters written but not yet parsed, ask main to pause the PTY above the
  * high-water mark and resume it below the low-water mark. Characters stand in for bytes.

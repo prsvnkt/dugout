@@ -1,7 +1,7 @@
 import type { TerminalId } from '@shared/terminal'
 
 /**
- * Most output a pane keeps while its `create()` call is in flight (decision 052). Startup
+ * Most output a pane keeps while its `create()` call is in flight (decision 056). Startup
  * output is a few KB; the rest is other panes' output arriving in the same window.
  */
 export const EARLY_OUTPUT_LIMIT_CHARS = 256 * 1024

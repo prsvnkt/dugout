@@ -87,7 +87,7 @@ export const terminalResizeRequestSchema = z.object({
 
 export const terminalKillRequestSchema = z.object({ id: terminalId })
 
-/** Output flow control: pause or resume reading a terminal's PTY (decision 052). */
+/** Output flow control: pause or resume reading a terminal's PTY (decision 056). */
 export const terminalFlowRequestSchema = z.object({ id: terminalId })
 
 export type TerminalCreateRequest = z.infer<typeof terminalCreateRequestSchema>

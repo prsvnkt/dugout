@@ -17,6 +17,22 @@ progress for its up to 10 minutes, and an interactive shell banner would end up 
 once their stdout is checked to be the answer alone; refresh the tab with the existing change
 polling; stream the build's output into the tab.
 
+## Task descriptions reach agents; only task writes are gated
+
+- **Area:** `src/main/mcp/toolAccess.ts`, `src/main/services/tasks/taskSession.ts`, agent adapters
+- **Found:** 2026-10-09, in a security audit (decision 053)
+
+**What happens:** Task writes now ask first, but a task's description (and, through `get_task`,
+its comments) is still text from anyone who can file an issue, and it reaches the agent. The
+delimiters around it only discourage an agent from obeying it. Whatever else the user has
+pre-approved in their own agent config (shell commands, other MCP servers, Codex
+`approval_policy = "never"` or a bypass flag) is outside Dugout's rules. Codex's gate relies on
+its default `auto` approval mode reading the tools' annotations, and OpenCode's on a version that
+accepts per-tool permission keys; older versions may run the writes without asking.
+
+**Likely fix:** let a project mark task sources as trusted or not, and for untrusted ones start
+queued agents only after a person has read the task; show the task's author on its card.
+
 ## OpenCode agents do not get the project's .mcp.json servers
 
 - **Area:** `src/main/services/agents/opencode/`
@@ -75,6 +91,10 @@ can still stretch them.
 never opened) in otherwise unrelated specs, plus "errors not part of any test" from their
 teardown; an immediate rerun passed. This is app launch, not shells, so the profile fix below
 would not cover it; consider retrying once locally too.
+
+**Debugging a failure:** since 2026-10-09 `playwright.config.ts` keeps a trace (`trace.zip`, open
+with `npx playwright show-trace`) and a screenshot of each window for every failing test, in its
+folder under `test-results/`, which CI uploads on failure.
 
 **If it recurs:** start test shells with a minimal profile (e.g. `ZDOTDIR` pointing at an empty
 folder) so tests do not depend on the developer's shell setup.
@@ -158,9 +178,17 @@ there are no automatic updates.
 
 **Why:** notarization needs an Apple Developer ID; not worth it while Dugout is used locally.
 
+**Mitigated:** the Release workflow runs `npm run check` before building, so a tag on a broken
+commit fails instead of shipping, and attaches a `SHA256SUMS` file that the README tells users
+to check the download against (decision 055). Checksums only show the file matches the release;
+they do not replace a signature.
+
 **Likely fix:** with a Developer ID, enable `hardenedRuntime` with entitlements (node-pty and
 the Node-mode MCP server need `cs.allow-jit` / `cs.disable-library-validation`), add
 `notarize`, add an `x64` or `universal` target, and use `electron-updater` with GitHub Releases.
+Then set fuses (`EnableNodeCliInspectArguments=false`, `OnlyLoadAppFromAsar`, embedded asar
+integrity, `GrantFileProtocolExtraPrivileges=false`; `RunAsNode` stays on for the MCP server),
+as tracked in issue #65.
 
 ## The welcome screen offers to clone repos that are already on this Mac
 
@@ -239,7 +267,7 @@ before the first check; keep a failed check in the inbox until it is opened.
 
 ## Terminals: WebGL cap within one project, flow control counts characters
 
-- **Area:** `src/renderer/src/features/terminal/` (decision 052)
+- **Area:** `src/renderer/src/features/terminal/` (decision 056)
 - **Found:** 2026-10-09, while gating WebGL on visibility (#79, #80)
 
 **What happens:** only the visible project's panes hold a WebGL context, so a single project with
@@ -263,3 +291,20 @@ ENG-123" in a pull request closes the issue only when the Linear GitHub integrat
 
 **Likely fix:** a key per project if anyone needs two workspaces; fetch comment counts lazily for
 visible cards; follow moved issues by their UUID.
+
+## Git panel push skips pre-push hooks; repo http settings and filters still apply
+
+- **Area:** `src/main/services/git/` (decision 054)
+- **Found:** 2026-10-09, while hardening Dugout-run git
+
+**What happens:** Push and "Create PR" run no repository hooks, so a `pre-push` check
+(and Git LFS's `pre-push`, which uploads LFS objects) does not run; push from a terminal in
+an LFS repo. A remote's custom `uploadpack` / `receivepack` (e.g. git installed elsewhere on an
+SSH server) is ignored. A repo's own `.git/config` can still set `http.proxy` with
+`http.sslVerify=false` or its own `http.sslCAInfo`, which could intercept the token on push or
+fetch to GitHub. Clean/smudge filters and diff textconv drivers named in `.git/config` still run
+during status and diffs (Git LFS needs them).
+
+**Likely fix:** run Git LFS's upload (`git lfs pre-push`) without the token in its env, or ask
+before pushing when the repo has a `pre-push` hook; for push and fetch, override `http.*` for the
+GitHub host from Dugout's side (repo config can name a longer URL, so `-c` alone is not enough).

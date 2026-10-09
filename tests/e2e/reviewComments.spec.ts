@@ -10,20 +10,14 @@ import {
   makeGitRepo,
   makeTempDir,
   recordTerminalOutput,
+  GIT_IDENTITY,
 } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'Dugout Test',
-  GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'Dugout Test',
-  GIT_COMMITTER_EMAIL: 'test@example.com',
-}
 
 let app: ElectronApplication
 let page: Page
 
 test.beforeEach(async () => {
-  app = await launchApp(makeTempDir(), { ...IDENTITY, DUGOUT_CLAUDE_COMMAND: makeFakeClaude() })
+  app = await launchApp(makeTempDir(), { ...GIT_IDENTITY, DUGOUT_CLAUDE_COMMAND: makeFakeClaude() })
   page = await app.firstWindow()
 })
 
@@ -36,7 +30,7 @@ function makeRepo(): string {
   const repo = makeGitRepo('app')
   writeFileSync(join(repo, 'app.ts'), "const greeting = 'hello'\nconst answer = 41\n")
   const git = (...args: string[]) =>
-    execFileSync('git', args, { cwd: repo, env: { ...process.env, ...IDENTITY } })
+    execFileSync('git', args, { cwd: repo, env: { ...process.env, ...GIT_IDENTITY } })
   git('add', '.')
   git('commit', '-qm', 'init')
   return repo

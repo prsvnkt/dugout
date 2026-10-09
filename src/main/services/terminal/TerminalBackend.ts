@@ -20,7 +20,7 @@ export interface TerminalProcess {
   write(data: string): void
   resize(cols: number, rows: number): void
   kill(): void
-  /** Stops reading output until `resume`, so a busy renderer can catch up (decision 052). */
+  /** Stops reading output until `resume`, so a busy renderer can catch up (decision 056). */
   pause(): void
   resume(): void
 }

@@ -1,5 +1,5 @@
 /**
- * Keeps a splitter drag from flooding the agent with SIGWINCHs (decision 052): xterm fits at
+ * Keeps a splitter drag from flooding the agent with SIGWINCHs (decision 056): xterm fits at
  * most once per animation frame, and the PTY hears about the size once it has settled.
  */
 

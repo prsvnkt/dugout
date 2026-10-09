@@ -159,7 +159,7 @@ function wireInput(terminal: Terminal, id: TerminalId, kind: TerminalKind): Arra
       return false
     })
   }
-  // One SIGWINCH once a splitter drag settles, not one per frame (decision 052).
+  // One SIGWINCH once a splitter drag settles, not one per frame (decision 056).
   const sendResize = createTrailingDebounce(
     (cols: number, rows: number) => dugout.terminal.resize(id, cols, rows),
     RESIZE_SETTLE_MS,
@@ -173,7 +173,7 @@ function wireInput(terminal: Terminal, id: TerminalId, kind: TerminalKind): Arra
   ]
 }
 
-/** Writes output to xterm, pausing the PTY while xterm is far behind (decision 052). */
+/** Writes output to xterm, pausing the PTY while xterm is far behind (decision 056). */
 function flowControlled(terminal: Terminal, id: TerminalId) {
   return createFlowControl({
     write: (data, done) => terminal.write(data, done),
@@ -353,7 +353,7 @@ export function useTerminal(
     }
   }, [containerRef, kind, projectId, cwd])
 
-  // Only panes of the visible project hold a WebGL context (decision 052).
+  // Only panes of the visible project hold a WebGL context (decision 056).
   useEffect(() => {
     isVisibleRef.current = isVisible
     webglRef.current?.setEnabled(isVisible)
