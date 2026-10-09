@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react'
 import { useDismiss } from '@renderer/lib/useDismiss'
+import { CheckBadge } from '@renderer/features/checks/CheckBadge'
+import { checkLabel } from '@renderer/features/checks/checks'
+import { usePaneCheck } from '@renderer/features/checks/checkStore'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
@@ -21,16 +24,20 @@ const STEP: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 }
 function EntryRow({ entry, onOpen }: { entry: InboxEntry; onOpen(): void }) {
   const who = `${entry.projectName} · ${entry.agentLabel}${entry.taskNumber ? ` #${entry.taskNumber}` : ''}`
   const hasApprovals = entry.approvals.length > 0
+  const paneCheck = usePaneCheck(entry.paneId)
+  const check = paneCheck.state === 'idle' ? null : paneCheck
+  const checkText = check ? `, ${checkLabel(check)}` : ''
   return (
     <li>
       <button
         className={styles.entry}
         onClick={onOpen}
-        aria-label={`${who}: ${entry.detail ?? entry.activity}`}
+        aria-label={`${who}: ${entry.detail ?? entry.activity}${checkText}`}
         data-inbox-entry
       >
         <span className={styles.who}>
           <ActivityIndicator activity={entry.activity} label={who} />
+          {check && <CheckBadge check={check} />}
           <span className={styles.time}>{timeAgo(entry.since)}</span>
         </span>
         {hasApprovals

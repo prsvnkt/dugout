@@ -5,6 +5,8 @@ import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator
 import { ACTIVITY_LABEL } from '@renderer/features/workspace/paneActivity'
 import { formatAge } from '@renderer/lib/formatAge'
 import { Icon } from '@renderer/lib/Icon'
+import { CheckBadge } from '@renderer/features/checks/CheckBadge'
+import { checkLabel } from '@renderer/features/checks/checks'
 import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
 import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
 import { priorityOf, visibleLabels } from './taskList'
@@ -37,6 +39,7 @@ function AgentsOnTask({ agents }: { agents: TaskAgents }) {
       {agents.activity && (
         <ActivityIndicator activity={agents.activity} label={ACTIVITY_LABEL[agents.activity]} />
       )}
+      {agents.check && <CheckBadge check={agents.check} isCompact />}
     </span>
   )
 }
@@ -55,7 +58,7 @@ export function TaskCard({ task, agents, overlaps, isCurrent, onOpen }: TaskCard
         data-task-card
         aria-current={isCurrent ? 'page' : undefined}
         aria-label={`#${task.number} ${task.title}`}
-        aria-description={`${TASK_STATUS_LABEL[task.status]}${age ? `, updated ${age}` : ''}`}
+        aria-description={`${TASK_STATUS_LABEL[task.status]}${age ? `, updated ${age}` : ''}${agents?.check ? `, ${checkLabel(agents.check)}` : ''}`}
         title={task.title}
         onClick={() => onOpen(true)}
         onDoubleClick={() => onOpen(false)}

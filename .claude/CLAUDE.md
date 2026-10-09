@@ -52,7 +52,8 @@ src/
                 openIn/ (open a checkout in VS Code, Cursor, Zed or Finder),
                 tasks/ (GitHub Issues as tasks),
                 agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions),
-                welcome/ (first-run repo search, agent CLI check).
+                welcome/ (first-run repo search, agent CLI check),
+                checks/ (Verify on Stop: the project's check command after each Done).
     mcp/        The "dugout" MCP server agents use for tasks (separate build entry: mcp.js).
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
@@ -73,6 +74,8 @@ src/
               prompt, pasted into the checkout's agent via terminal/terminalInput.ts.
               overlaps/ tracks what each worktree changed and flags agents and tasks that
               changed the same files (advisory, decision 044).
+              checks/ shows Verify on Stop results (agent header, inbox, tasks) and sends a
+              failure back to its agent (decision 042); the command is set in Agent settings.
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.

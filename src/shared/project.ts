@@ -22,6 +22,8 @@ export interface Project {
   readonly createdAt: string
   /** What "Run" starts in a new shell with an assigned `PORT`, e.g. `npm run dev`. */
   readonly devCommand?: string
+  /** What Verify on Stop runs when an agent finishes, e.g. `npm run check`. Off when unset. */
+  readonly checkCommand?: string
 }
 
 export const MAX_PROJECT_NAME_LENGTH = 60

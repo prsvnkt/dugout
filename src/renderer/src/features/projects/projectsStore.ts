@@ -15,8 +15,14 @@ interface ProjectsState {
   remove(id: ProjectId): Promise<void>
   /** Saves the project's dev command (null or blank clears it). Throws a user-facing message. */
   setDevCommand(id: ProjectId, command: string | null): Promise<void>
+  /** Saves Verify on Stop's command (null or blank turns it off). Throws a user-facing message. */
+  setCheckCommand(id: ProjectId, command: string | null): Promise<void>
   select(id: ProjectId): void
   selectIndex(index: number): void
+}
+
+function replaceProject(projects: readonly Project[], updated: Project): readonly Project[] {
+  return projects.map((project) => (project.id === updated.id ? updated : project))
 }
 
 export const useProjectsStore = create<ProjectsState>()((set, get) => ({
@@ -51,9 +57,12 @@ export const useProjectsStore = create<ProjectsState>()((set, get) => ({
 
   async setDevCommand(id, command) {
     const updated = unwrap(await dugout.projects.setDevCommand(id, command))
-    set((state) => ({
-      projects: state.projects.map((project) => (project.id === id ? updated : project)),
-    }))
+    set((state) => ({ projects: replaceProject(state.projects, updated) }))
+  },
+
+  async setCheckCommand(id, command) {
+    const updated = unwrap(await dugout.projects.setCheckCommand(id, command))
+    set((state) => ({ projects: replaceProject(state.projects, updated) }))
   },
 
   select(id) {

@@ -38,10 +38,11 @@ export class ProjectStore {
     const parsed = projectsFileSchema.safeParse(safeJsonParse(raw))
     if (parsed.success) {
       // Names always follow the folder, including projects saved when names were editable.
-      this.projects = parsed.data.projects.map(({ devCommand, ...project }) => ({
+      this.projects = parsed.data.projects.map(({ devCommand, checkCommand, ...project }) => ({
         ...project,
         name: suggestProjectName(project.rootPath),
         ...(devCommand && { devCommand }),
+        ...(checkCommand && { checkCommand }),
       }))
       return
     }
@@ -67,12 +68,25 @@ export class ProjectStore {
   }
 
   /** Sets the project's dev command; null or blank removes it. */
-  async setDevCommand(id: ProjectId, command: string | null): Promise<Project> {
+  setDevCommand(id: ProjectId, command: string | null): Promise<Project> {
+    return this.setCommand(id, 'devCommand', command)
+  }
+
+  /** Sets the command Verify on Stop runs; null or blank turns it off. */
+  setCheckCommand(id: ProjectId, command: string | null): Promise<Project> {
+    return this.setCommand(id, 'checkCommand', command)
+  }
+
+  private async setCommand(
+    id: ProjectId,
+    key: 'devCommand' | 'checkCommand',
+    command: string | null,
+  ): Promise<Project> {
     const project = this.projects.find((candidate) => candidate.id === id)
     if (!project) throw new Error('Project not found.')
-    const { devCommand, ...rest } = project
+    const { [key]: _previous, ...rest } = project
     const trimmed = command?.trim()
-    const updated: Project = trimmed ? { ...rest, devCommand: trimmed } : rest
+    const updated: Project = trimmed ? { ...rest, [key]: trimmed } : rest
     await this.commit(this.projects.map((candidate) => (candidate.id === id ? updated : candidate)))
     return updated
   }

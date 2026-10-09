@@ -10,6 +10,7 @@ import { isAgentKind, type TerminalExit, type TerminalKind } from '@shared/termi
 import { XTERM_OPTIONS } from './xtermOptions'
 import { agentKeyOverride } from './agentKeys'
 import { registerPaste } from './terminalInput'
+import { useCheckStore } from '@renderer/features/checks/checkStore'
 import {
   applySubagentUpdate,
   clearFinished,
@@ -132,6 +133,7 @@ export function useTerminal(
           if (sourceId !== id) return
           setStatus({ state: 'exited', exit })
           setSubagents(NO_SUBAGENTS)
+          useCheckStore.getState().remove(id)
         }),
         dugout.terminal.onAgentStatus((sourceId, next, detail, approvals) => {
           if (sourceId !== id) return
@@ -147,6 +149,10 @@ export function useTerminal(
         dugout.terminal.onAgentSession((sourceId, next) => {
           if (sourceId === id) setSessionId(next)
         }),
+        dugout.terminal.onCheckStatus((sourceId, check) => {
+          if (sourceId === id) useCheckStore.getState().set(id, check)
+        }),
+        () => useCheckStore.getState().remove(id),
         registerPaste(id, (text) => terminal.paste(text)),
         () => input.dispose(),
         () => resize.dispose(),

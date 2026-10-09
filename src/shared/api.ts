@@ -1,6 +1,7 @@
 import type { AgentStatus, SubagentUpdate } from './agentStatus'
 import type { AgentConfig, McpServer } from './agentConfig'
 import type { CloneDefaults, CloneProgress } from './clone'
+import type { CheckStatus } from './checks'
 import type { WorktreeChanges } from './compare'
 import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
@@ -55,6 +56,8 @@ export interface DugoutApi {
     onAgentSession(listener: (id: TerminalId, sessionId: string) => void): Unsubscribe
     /** Subagents an agent starts and finishes, from its hooks. */
     onAgentSubagent(listener: (id: TerminalId, update: SubagentUpdate) => void): Unsubscribe
+    /** Verify on Stop: the project's check command running after the agent finished a turn. */
+    onCheckStatus(listener: (id: TerminalId, status: CheckStatus) => void): Unsubscribe
   }
   readonly projects: {
     list(): Promise<Result<readonly Project[]>>
@@ -62,6 +65,8 @@ export interface DugoutApi {
     remove(id: ProjectId): Promise<Result<void>>
     /** Sets the command "Run" starts a dev server with; null or blank removes it. */
     setDevCommand(id: ProjectId, command: string | null): Promise<Result<Project>>
+    /** Sets the command Verify on Stop runs; null or blank turns it off. */
+    setCheckCommand(id: ProjectId, command: string | null): Promise<Result<Project>>
   }
   /** Preview deployments and local dev servers, for checking what an agent changed. */
   readonly preview: {

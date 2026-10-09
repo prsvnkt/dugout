@@ -42,6 +42,8 @@ import { isPortFree } from './services/preview/portProbe'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
 import { TerminalManager } from './services/terminal/TerminalManager'
+import { CheckRunner } from './services/checks/CheckRunner'
+import { shellCheckSpawner } from './services/checks/spawnCheck'
 import { agentCommands } from './services/agents/registry'
 import { loginShellRunner } from './services/welcome/checkAgentClis'
 import { SettingsStore } from './services/settings/SettingsStore'
@@ -59,6 +61,8 @@ const WORKTREES_DIR = 'worktrees'
 const WORKSPACE_FILE = 'workspace.json'
 const GITHUB_TOKEN_FILE = 'github-token.bin'
 const SETTINGS_FILE = 'settings.json'
+/** A Verify on Stop check still running after this is stopped and reported as failed. */
+const CHECK_TIMEOUT_MS = 30 * 60_000
 /** Where macOS apps live, at the root and in the home folder. */
 const APPLICATIONS_DIR = '/Applications'
 
@@ -94,6 +98,7 @@ if (userDataOverride) app.setPath('userData', userDataOverride)
 
 let agentHooks: AgentHooks | null = null
 let terminalManager: TerminalManager | null = null
+let checkRunner: CheckRunner | null = null
 
 function sendCommand(command: AppCommand): void {
   const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
@@ -205,8 +210,19 @@ async function start(): Promise<void> {
     },
   })
   terminalManager = manager
+  const checks = new CheckRunner({
+    spawn: shellCheckSpawner(process.env),
+    checkCommand: (id) => projectStore.list().find((project) => project.id === id)?.checkCommand,
+    now: () => Date.now(),
+    timeoutMs: CHECK_TIMEOUT_MS,
+    schedule: (run, delayMs) => {
+      const timer = setTimeout(run, delayMs)
+      return () => clearTimeout(timer)
+    },
+  })
+  checkRunner = checks
 
-  registerTerminalIpc(manager)
+  registerTerminalIpc(manager, checks)
   registerProjectIpc(projectStore)
   const github = gitHubConfig(process.env)
   const githubApi = new GitHubApi({ fetch, apiBaseUrl: github.apiBaseUrl })
@@ -342,5 +358,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   terminalManager?.killAll()
+  checkRunner?.stopAll()
   void agentHooks?.close()
 })

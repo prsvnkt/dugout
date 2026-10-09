@@ -640,6 +640,42 @@ and marked in the gutter. Pending comments are grouped per checkout (Compare: pe
   Review diff cannot. Comments keep the line numbers they were made on, even if the file is
   edited afterwards. A prompt over 10,000 characters is refused with a message.
 
+## 042 — Verify on Stop: the project's check runs when an agent finishes (2026-10-09)
+
+**Context.** "Done" meant the agent stopped, not that its work passes; you found out only after
+reading the diff or running the checks yourself (issue #18).
+
+**Decision.** A project can have a check command (e.g. `npm run check`), set under "Verify on
+Stop" in Agent settings and off by default. Each time an agent with status (`hasStatus`,
+decision 037; no kind checks) reports Done, main runs that command in the agent's checkout (the
+project or its worktree) and reports the result to the agent's renderer.
+
+- **Where it runs:** `services/checks/CheckRunner` owns one check per agent terminal, run by
+  `spawnCheck` as `$SHELL -l -i -c <command>` (PATH and profile as in the user's terminal) with
+  the terminal environment plus `NO_COLOR=1`, in its own process group so cancelling also stops
+  what it started. Never in the agent's PTY. `registerTerminalIpc` tracks each terminal it
+  creates and forwards its status events, so results go only to the window that owns it, and a
+  terminal that exits (or a window that reloads) kills its check.
+- **Status** is a discriminated union (`shared/checks.ts`): `idle`, `running`, `passed` (with its
+  duration) or `failed` (exit code, or null when stopped, and the output's tail without colour
+  codes, at most 6,000 characters). A new Done while a check runs kills it and starts again. A
+  new turn (Working) cancels a running check and clears the result, since the code is changing
+  again. A check still running after 30 minutes is stopped and reported as failed.
+- **Where it shows:** an icon plus words (never colour alone): "Checking…", "Check passed",
+  "Check failed" on the agent's header, on its entry in the inbox, and on the task card (icon
+  only, named in its description) and task tab, where several agents show the most urgent one.
+  "Check failed" in the header opens the command's output with **Send failure to agent**, which
+  sends the command, exit code and output to the agent on that checkout through the shared
+  `reviewComments/deliverPrompt` (decisions 041, 045): typed in, never while it is starting or
+  waiting for an answer, or as the first prompt of a new default agent if it has gone.
+- **Open question, answered:** the command is stored in Dugout's app data, as `checkCommand` on
+  the project in `projects.json` (like the dev command, decision 049), not in a committed
+  `.dugout/` file. It is a personal choice of what to run on each stop, needs no repo change or
+  commit, and a repo's own scripts already say what its checks are. The IPC payload is one line
+  of at most 500 characters; blank turns it off.
+- No queue: parallel agents' checks run at the same time, each in its own checkout. Results
+  live only as long as the agent's terminal (see `docs/known-issues.md`).
+
 ## 043 — Task cards, and tasks open in an editor tab (2026-10-09)
 
 **Context.** The Tasks panel listed tasks as one-line rows (`#n` and a cut-off title), showed
@@ -795,4 +831,5 @@ worktree on a free port, or hunting for the deploy preview (issue #28).
 17. **Done since:** preview deployment URLs and per-worktree dev servers in the git panel ✅.
 18. **Done since:** PR review comments and failing CI handed to the agent from the Pull request
     block ✅.
-19. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+19. **Done since:** Verify on Stop: the project's check runs when an agent finishes ✅.
+20. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

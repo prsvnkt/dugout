@@ -90,6 +90,37 @@ describe('ProjectStore', () => {
     expect(store.list()).toEqual([{ ...saved, name: 'bene' }])
   })
 
+  test('saves a check command, trimmed, and keeps it across loads', async () => {
+    // Arrange
+    const project = await ctx.store.add({ rootPath: REPO })
+
+    // Act
+    const updated = await ctx.store.setCheckCommand(project.id, '  npm run check ')
+    const reloaded = setup(ctx.dir)
+    await reloaded.store.load()
+
+    // Assert
+    expect(updated.checkCommand).toBe('npm run check')
+    expect(reloaded.store.list()[0]?.checkCommand).toBe('npm run check')
+  })
+
+  test('a blank or null check command turns verify on stop off', async () => {
+    const project = await ctx.store.add({ rootPath: REPO })
+    await ctx.store.setCheckCommand(project.id, 'npm test')
+
+    const blank = await ctx.store.setCheckCommand(project.id, '   ')
+    await ctx.store.setCheckCommand(project.id, 'npm test')
+    const cleared = await ctx.store.setCheckCommand(project.id, null)
+
+    expect(blank).not.toHaveProperty('checkCommand')
+    expect(cleared).not.toHaveProperty('checkCommand')
+    expect(ctx.store.list()[0]).not.toHaveProperty('checkCommand')
+  })
+
+  test('refuses a check command for an unknown project', async () => {
+    await expect(ctx.store.setCheckCommand('nope', 'npm test')).rejects.toThrow('Project not found')
+  })
+
   test('removes a project', async () => {
     const project = await ctx.store.add({ rootPath: REPO })
     await ctx.store.remove(project.id)
