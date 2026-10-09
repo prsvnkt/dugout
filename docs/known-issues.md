@@ -178,9 +178,17 @@ there are no automatic updates.
 
 **Why:** notarization needs an Apple Developer ID; not worth it while Dugout is used locally.
 
+**Mitigated:** the Release workflow runs `npm run check` before building, so a tag on a broken
+commit fails instead of shipping, and attaches a `SHA256SUMS` file that the README tells users
+to check the download against (decision 055). Checksums only show the file matches the release;
+they do not replace a signature.
+
 **Likely fix:** with a Developer ID, enable `hardenedRuntime` with entitlements (node-pty and
 the Node-mode MCP server need `cs.allow-jit` / `cs.disable-library-validation`), add
 `notarize`, add an `x64` or `universal` target, and use `electron-updater` with GitHub Releases.
+Then set fuses (`EnableNodeCliInspectArguments=false`, `OnlyLoadAppFromAsar`, embedded asar
+integrity, `GrantFileProtocolExtraPrivileges=false`; `RunAsNode` stays on for the MCP server),
+as tracked in issue #65.
 
 ## The welcome screen offers to clone repos that are already on this Mac
 

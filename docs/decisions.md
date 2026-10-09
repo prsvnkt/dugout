@@ -1169,6 +1169,26 @@ are the user's business; this is about git Dugout runs on its own behalf.
   pushing from the Git panel; repo `http.*` settings (proxy, TLS checks) still apply to pushes;
   clean/smudge filters and textconv drivers from repo config still run.
 
+## 055 — Release: check before dist, SHA256SUMS (2026-10-09)
+
+**Context.** The Release workflow went straight from `npm ci` to `npm run dist`, and tags are
+not protected, so a tag on any commit could ship a build that never passed CI. Releases are
+ad-hoc signed (see known issues), so users had no way to check a download (issue #65).
+
+**Decision.**
+
+- **Check first.** The Release workflow runs `npm run check` before `dist`. The e2e tests are
+  not run there: they would double the release time, and the tagged commit is normally a merged
+  release PR that already passed them on `main`.
+- **Checksums.** After `dist`, the workflow writes `dist/SHA256SUMS` (basenames, from
+  `shasum -a 256` run inside `dist/`) and attaches it to the draft release with the DMG and zip.
+  The README tells users to run `shasum -a 256 -c SHA256SUMS --ignore-missing`.
+- **CI hygiene** (issue #84). CI and Release cache the Electron download
+  (`~/Library/Caches/electron`, keyed on `package-lock.json`), and the cosmetic
+  `brand-dev-electron.mjs` postinstall step is skipped when `CI` is set and only warns on failure.
+- **Not yet:** signing, Hardened Runtime, notarization and Electron fuses need a Developer ID;
+  they stay open in issue #65 and known issues.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
