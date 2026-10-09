@@ -100,14 +100,38 @@ describe('readOverrides', () => {
     expect(readOverrides(env, { isPackaged: false }).githubBaseUrl).toBeUndefined()
   })
 
-  test.each([LOCAL_URL, 'http://localhost:4321', 'https://ghe.example.com'])(
-    'accepts base URL %s',
+  test.each([LOCAL_URL, 'http://localhost:4321'])(
+    'accepts loopback base URL %s in packaged and dev runs',
     (url) => {
       const env = { DUGOUT_E2E: '1', DUGOUT_GITHUB_BASE_URL: url }
 
       expect(readOverrides(env, { isPackaged: true }).githubBaseUrl).toBe(url)
+      expect(readOverrides(env, { isPackaged: false }).githubBaseUrl).toBe(url)
     },
   )
+
+  test('accepts an https base URL in a dev run (e.g. GitHub Enterprise)', () => {
+    const env = { DUGOUT_GITHUB_BASE_URL: 'https://ghe.example.com' }
+
+    expect(readOverrides(env, { isPackaged: false }).githubBaseUrl).toBe('https://ghe.example.com')
+  })
+
+  test('rejects https base URLs in a packaged run, even with DUGOUT_E2E=1', () => {
+    const env = {
+      DUGOUT_E2E: '1',
+      DUGOUT_GITHUB_BASE_URL: 'https://ghe.example.com',
+      DUGOUT_LINEAR_BASE_URL: 'https://attacker.example',
+    }
+
+    const overrides = readOverrides(env, { isPackaged: true })
+
+    expect(overrides.githubBaseUrl).toBeUndefined()
+    expect(overrides.linearBaseUrl).toBeUndefined()
+    expect(overrides.rejected).toEqual(['DUGOUT_GITHUB_BASE_URL', 'DUGOUT_LINEAR_BASE_URL'])
+    expect(describeOverrides(overrides)).toContain(
+      'ignored: DUGOUT_GITHUB_BASE_URL, DUGOUT_LINEAR_BASE_URL',
+    )
+  })
 
   test('reads each agent command from its adapter variable', () => {
     for (const adapter of Object.values(AGENT_ADAPTERS)) {
@@ -141,5 +165,13 @@ describe('describeOverrides', () => {
       '[dugout] dev/test environment overrides active: DUGOUT_HOME_DIR; ' +
         'ignored: DUGOUT_GITHUB_BASE_URL (decision 060)',
     )
+  })
+
+  test('spells out plaintext token storage', () => {
+    const env = { DUGOUT_E2E: '1', DUGOUT_INSECURE_TOKEN_STORAGE_FOR_TESTS: '1' }
+
+    const line = describeOverrides(readOverrides(env, { isPackaged: true }))
+
+    expect(line).toContain('PLAINTEXT TOKEN STORAGE (not Keychain)')
   })
 })

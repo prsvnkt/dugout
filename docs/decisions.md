@@ -1155,19 +1155,22 @@ next Dock launch would send the token elsewhere or hand a remote page the whole 
   sets it on every launch. Unpackaged (dev) runs behave as before.
 - **`ELECTRON_RENDERER_URL` is never honoured when packaged**, flag or not; the packaged e2e
   run loads the bundled renderer anyway.
-- **Base URLs are validated in every mode:** `https://…`, or `http://` on `127.0.0.1` /
-  `localhost`, without credentials. Anything else (`http://evil`, `http://10.0.0.1`) is ignored.
+- **Packaged base URLs are loopback only:** even with `DUGOUT_E2E=1`, `DUGOUT_GITHUB_BASE_URL`
+  and `DUGOUT_LINEAR_BASE_URL` must be `http://127.0.0.1:<port>` or `http://localhost:<port>`, so
+  the token can never be sent off the machine. Dev runs also accept `https://` hosts (a fork can
+  point a dev build at GitHub Enterprise). Credentials in the URL, other schemes and other hosts
+  (`http://evil`, `http://10.0.0.1`) are always ignored.
 - **Visible:** when any override is set, main logs one `console.warn` line naming the active and
-  the ignored ones.
-- `DUGOUT_GITHUB_CLIENT_ID` is gated too; a fork that wants its own OAuth app changes the
-  constant in `services/github/config.ts`.
+  the ignored ones, and it says "PLAINTEXT TOKEN STORAGE (not Keychain)" when that one is on.
+- `DUGOUT_GITHUB_CLIENT_ID` is gated too. A fork that wants its own OAuth app sets the
+  `GITHUB_CLIENT_ID` constant in `services/github/config.ts`.
 - Not overrides, so not gated: `CLAUDE_CONFIG_DIR` / `CODEX_HOME` (the agent CLIs' own variables,
   which they honour themselves) and the environment passed through to shells and agents.
 
 **Why not a build-time switch.** Compiling the overrides out of release builds would mean
-`test:e2e:packaged` tests a different binary from the one shipped. `DUGOUT_E2E` stops a single
-planted variable from working and makes any override visible; it does not stop an attacker who
-can set several variables (see `docs/known-issues.md`).
+`test:e2e:packaged` tests a different binary from the one shipped. `DUGOUT_E2E` on its own is
+only a gate, since it is an environment variable too; the loopback-only rule is what keeps a
+packaged build from sending a token elsewhere (see `docs/known-issues.md`).
 
 ## Roadmap
 

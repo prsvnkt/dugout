@@ -39,8 +39,12 @@ export interface OverrideOptions {
 const E2E_FLAG = 'DUGOUT_E2E'
 const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['127.0.0.1', 'localhost'])
 
-/** `https://…`, or `http://` on the loopback interface; no credentials. Else undefined. */
-function safeBaseUrl(value: string): string | undefined {
+/**
+ * `http://` on the loopback interface, or (only when `allowHttps`) any `https://` host; never
+ * credentials. Else undefined. Packaged builds allow loopback only, so a planted variable cannot
+ * send a token off the machine.
+ */
+function safeBaseUrl(value: string, allowHttps: boolean): string | undefined {
   let url: URL
   try {
     url = new URL(value)
@@ -49,7 +53,8 @@ function safeBaseUrl(value: string): string | undefined {
   }
   if (url.username !== '' || url.password !== '') return undefined
   const isLoopbackHttp = url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname)
-  if (url.protocol !== 'https:' && !isLoopbackHttp) return undefined
+  const isAllowedHttps = allowHttps && url.protocol === 'https:'
+  if (!isLoopbackHttp && !isAllowedHttps) return undefined
   return value.replace(/\/$/, '')
 }
 
@@ -57,10 +62,12 @@ const identity = (value: string): string | undefined => value
 
 /**
  * Reads every override from `env`. A packaged app ignores them all unless DUGOUT_E2E=1 (the
- * packaged e2e run), and even then never loads a renderer URL. Base URLs are validated always.
+ * packaged e2e run), and even then never loads a renderer URL and takes loopback base URLs only.
+ * Dev runs also accept `https://` base URLs (e.g. GitHub Enterprise).
  */
 export function readOverrides(env: Env, { isPackaged }: OverrideOptions): DevOverrides {
   const isGated = isPackaged && env[E2E_FLAG] !== '1'
+  const baseUrl = (value: string): string | undefined => safeBaseUrl(value, !isPackaged)
   const active: string[] = []
   const rejected: string[] = []
 
@@ -84,9 +91,9 @@ export function readOverrides(env: Env, { isPackaged }: OverrideOptions): DevOve
     userDataDir: take('DUGOUT_USER_DATA_DIR'),
     homeDir: take('DUGOUT_HOME_DIR'),
     openCommand: take('DUGOUT_OPEN_COMMAND'),
-    githubBaseUrl: take('DUGOUT_GITHUB_BASE_URL', safeBaseUrl),
+    githubBaseUrl: take('DUGOUT_GITHUB_BASE_URL', baseUrl),
     githubClientId: take('DUGOUT_GITHUB_CLIENT_ID', identity, true),
-    linearBaseUrl: take('DUGOUT_LINEAR_BASE_URL', safeBaseUrl),
+    linearBaseUrl: take('DUGOUT_LINEAR_BASE_URL', baseUrl),
     rendererUrl: take('ELECTRON_RENDERER_URL', (value) => (isPackaged ? undefined : value)),
   }
   const insecureTokenStorage =
@@ -104,11 +111,15 @@ export function readOverrides(env: Env, { isPackaged }: OverrideOptions): DevOve
   })
 }
 
-/** One line naming the overrides in effect (and any ignored), or undefined when there are none. */
+/**
+ * One line naming the overrides in effect (and any ignored), or undefined when there are none.
+ * Plaintext token storage is spelled out so it cannot be missed in a log.
+ */
 export function describeOverrides(overrides: DevOverrides): string | undefined {
   const parts = [
     overrides.active.length > 0 ? `active: ${overrides.active.join(', ')}` : '',
     overrides.rejected.length > 0 ? `ignored: ${overrides.rejected.join(', ')}` : '',
+    overrides.insecureTokenStorage ? 'PLAINTEXT TOKEN STORAGE (not Keychain)' : '',
   ].filter((part) => part !== '')
   if (parts.length === 0) return undefined
   return `[dugout] dev/test environment overrides ${parts.join('; ')} (decision 060)`

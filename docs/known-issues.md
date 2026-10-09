@@ -8,14 +8,15 @@ Limitations we have accepted for now and intend to revisit. Remove an entry when
 - **Found:** 2026-10-09, fixing #61 (decision 060)
 
 **What happens:** The packaged app ignores every test override unless `DUGOUT_E2E=1` is set, but
-that flag is an environment variable too. Something running as the user that can
-`launchctl setenv` both `DUGOUT_E2E=1` and, say, `DUGOUT_GITHUB_BASE_URL=https://attacker` still
-redirects the GitHub token on the next launch (base URLs may be any `https://` host). The
-`console.warn` line at startup is only visible in Console.app or a terminal.
+that flag is an environment variable too: something running as the user can `launchctl setenv`
+it alongside other overrides. Base URLs are loopback only when packaged, so the remaining
+exposure is a listener on 127.0.0.1 receiving the token, which is already the user's own
+process space; it can also switch on plaintext token storage, fake agent commands or another
+data folder. The startup `console.warn` line names all of them (and says "PLAINTEXT TOKEN
+STORAGE"), but it is only visible in Console.app or a terminal.
 
 **Likely fix:** build the packaged e2e app with a build-time flag (or Electron fuse) so release
-builds contain no override code, and test that build; or allow only loopback base URLs when
-packaged.
+builds contain no override code, and test that build.
 
 ## Project context: codemap only with Claude; stale pins show on reload
 
