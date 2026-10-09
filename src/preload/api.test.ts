@@ -95,6 +95,26 @@ const requests: Row[] = [
     payload: [{ id: 't1' }],
     kind: 'send',
   },
+  {
+    method: 'terminal.pause',
+    args: ['t1'],
+    channel: IpcChannel.terminalPause,
+    payload: [{ id: 't1' }],
+    kind: 'send',
+  },
+  {
+    method: 'terminal.resume',
+    args: ['t1'],
+    channel: IpcChannel.terminalResume,
+    payload: [{ id: 't1' }],
+    kind: 'send',
+  },
+  {
+    method: 'terminal.withheldServers',
+    args: ['t1'],
+    channel: IpcChannel.terminalWithheldServers,
+    payload: [{ id: 't1' }],
+  },
   { method: 'projects.list', args: [], channel: IpcChannel.projectList, payload: [] },
   {
     method: 'projects.add',
@@ -367,6 +387,12 @@ const requests: Row[] = [
     args: [P],
     channel: IpcChannel.agentConfigRead,
     payload: [{ projectId: P }],
+  },
+  {
+    method: 'agentConfig.approveServers',
+    args: [P, 'abc'],
+    channel: IpcChannel.agentConfigApproveServers,
+    payload: [{ projectId: P, hash: 'abc' }],
   },
   {
     method: 'agentConfig.saveMcp',

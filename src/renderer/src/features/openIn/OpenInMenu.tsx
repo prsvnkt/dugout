@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type CSSProperties } from 'react'
 import { Code, ExternalLink, Folder, type LucideIcon } from 'lucide-react'
 import { Icon } from '@renderer/lib/Icon'
+import { useMenuKeys } from '@renderer/lib/useArrowNavigation'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import { EXTERNAL_APP_LABEL, type ExternalAppId } from '@shared/openIn'
 import type { GitCheckout } from '@shared/worktree'
@@ -66,13 +67,16 @@ export function OpenInMenu({ checkout, target }: OpenInMenuProps) {
   const [error, setError] = useState<string | null>(null)
   const isOpen = menuAt !== null
   const wrapRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const { apps, open } = useOpenIn(checkout, isOpen)
+  const onMenuKeyDown = useMenuKeys(menuRef, isOpen)
 
   const close = useCallback(() => {
     setMenuAt(null)
     setError(null)
   }, [])
-  useDismiss(wrapRef, isOpen, close)
+  useDismiss(wrapRef, isOpen, close, triggerRef)
 
   const toggle = (button: HTMLElement) => {
     if (isOpen) return close()
@@ -94,6 +98,7 @@ export function OpenInMenu({ checkout, target }: OpenInMenuProps) {
     // Keeps the click from focusing the terminal under the pane header.
     <div className={styles.wrap} ref={wrapRef} onMouseDown={(event) => event.stopPropagation()}>
       <button
+        ref={triggerRef}
         className={styles.trigger}
         onClick={(event) => toggle(event.currentTarget)}
         aria-haspopup="menu"
@@ -105,7 +110,14 @@ export function OpenInMenu({ checkout, target }: OpenInMenuProps) {
         Open in…
       </button>
       {menuAt && (
-        <div className={styles.menu} style={menuAt} role="menu" aria-label="Open in">
+        <div
+          className={styles.menu}
+          style={menuAt}
+          role="menu"
+          aria-label="Open in"
+          ref={menuRef}
+          onKeyDown={onMenuKeyDown}
+        >
           <AppItems apps={apps} error={error} onChoose={(app) => void choose(app)} />
         </div>
       )}

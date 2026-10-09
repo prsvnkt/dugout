@@ -3,7 +3,8 @@ import { isSignedIn, useAuthStore } from '@renderer/features/github/authStore'
 import { formatAge } from '@renderer/lib/formatAge'
 import start from '@renderer/features/start/StartScreen.module.css'
 import { recentlyPushed } from './repoLists'
-import { useGitHubRepos, useQuickClone, type QuickClone } from './useWelcomeData'
+import { useGitHubRepos } from '@renderer/features/github/useGitHubRepos'
+import { useQuickClone, type QuickClone } from './useWelcomeData'
 import styles from './Welcome.module.css'
 
 const SHOWN_REPOS = 5
@@ -50,11 +51,11 @@ function GitHubRepoList({ onBrowseAll }: { onBrowseAll(): void }) {
   if (state.kind === 'failed') {
     return (
       <p className={start.error} role="alert">
-        {state.error}
+        {state.message}
       </p>
     )
   }
-  const repos = recentlyPushed(state.repos, SHOWN_REPOS)
+  const repos = recentlyPushed(state.value, SHOWN_REPOS)
   return (
     <>
       {repos.length === 0 ? (

@@ -25,6 +25,9 @@ export function createDugoutApi(ipc: IpcRendererLike): DugoutApi {
       write: (id, data) => ipc.send(IpcChannel.terminalWrite, { id, data }),
       resize: (id, cols, rows) => ipc.send(IpcChannel.terminalResize, { id, cols, rows }),
       kill: (id) => ipc.send(IpcChannel.terminalKill, { id }),
+      pause: (id) => ipc.send(IpcChannel.terminalPause, { id }),
+      resume: (id) => ipc.send(IpcChannel.terminalResume, { id }),
+      withheldServers: (id) => ipc.invoke(IpcChannel.terminalWithheldServers, { id }),
       onData: (listener) => subscribe(IpcChannel.terminalData, listener),
       onExit: (listener) => subscribe(IpcChannel.terminalExit, listener),
       onAgentStatus: (listener) => subscribe(IpcChannel.terminalAgentStatus, listener),
@@ -137,6 +140,8 @@ export function createDugoutApi(ipc: IpcRendererLike): DugoutApi {
     },
     agentConfig: {
       read: (projectId) => ipc.invoke(IpcChannel.agentConfigRead, { projectId }),
+      approveServers: (projectId, hash) =>
+        ipc.invoke(IpcChannel.agentConfigApproveServers, { projectId, hash }),
       saveMcp: (projectId, servers, version) =>
         ipc.invoke(IpcChannel.agentConfigSaveMcp, { projectId, servers, version }),
       linkInstructions: (projectId) =>

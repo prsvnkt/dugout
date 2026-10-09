@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { AgentConfigService } from '../services/agentConfig/AgentConfigService'
+import type { ProjectStore } from '../services/projects/ProjectStore'
 import { FakeIpcMain, PROJECT_ID, PROJECT_ROOT, fakeProjects, silenceIpcLogs } from './fakeIpcMain'
 import { registerAgentConfigIpc } from './registerAgentConfigIpc'
 
@@ -9,12 +10,15 @@ const SERVER = { name: 'docs', type: 'http', url: 'https://mcp.example/docs', he
 function setup() {
   const agentConfig = {
     read: vi.fn(async () => ({ from: 'read' })),
+    checkApproval: vi.fn(async () => undefined),
     saveMcp: vi.fn(async () => ({ from: 'saveMcp' })),
     linkInstructions: vi.fn(async () => ({ from: 'linkInstructions' })),
   }
   const ipc = new FakeIpcMain()
-  registerAgentConfigIpc(fakeProjects(), agentConfig as unknown as AgentConfigService, ipc)
-  return { ipc, agentConfig }
+  const setApprovedMcpServers = vi.fn(async () => undefined)
+  const projects = { ...fakeProjects(), setApprovedMcpServers } as unknown as ProjectStore
+  registerAgentConfigIpc(projects, agentConfig as unknown as AgentConfigService, ipc)
+  return { ipc, agentConfig, setApprovedMcpServers }
 }
 
 afterEach(() => {
@@ -30,6 +34,7 @@ describe('registerAgentConfigIpc', () => {
     expect(ipc.channels()).toEqual(
       [
         IpcChannel.agentConfigRead,
+        IpcChannel.agentConfigApproveServers,
         IpcChannel.agentConfigSaveMcp,
         IpcChannel.agentConfigLinkInstructions,
       ].sort(),
@@ -37,7 +42,7 @@ describe('registerAgentConfigIpc', () => {
   })
 
   test.each([
-    [IpcChannel.agentConfigRead, {}, 'read', []],
+    [IpcChannel.agentConfigRead, {}, 'read', [undefined]],
     [
       IpcChannel.agentConfigSaveMcp,
       { servers: [SERVER], version: 'v1' },
@@ -88,5 +93,32 @@ describe('registerAgentConfigIpc', () => {
     // Assert
     expect(result).toEqual({ ok: false, error: 'Invalid request.' })
     expect(agentConfig.saveMcp).not.toHaveBeenCalled()
+  })
+  test('agent-config:approve-servers checks the hash at the main checkout, then stores it', async () => {
+    // Arrange
+    const { ipc, agentConfig, setApprovedMcpServers } = setup()
+
+    // Act
+    const result = await ipc.invoke(IpcChannel.agentConfigApproveServers, {
+      projectId: PROJECT_ID,
+      hash: 'a'.repeat(64),
+    })
+
+    // Assert
+    expect(result).toEqual({ ok: true, data: undefined })
+    expect(agentConfig.checkApproval).toHaveBeenCalledWith(PROJECT_ROOT, 'a'.repeat(64))
+    expect(setApprovedMcpServers).toHaveBeenCalledWith(PROJECT_ID, 'a'.repeat(64))
+  })
+
+  test('agent-config:approve-servers with null revokes without checking the file', async () => {
+    // Arrange
+    const { ipc, agentConfig, setApprovedMcpServers } = setup()
+
+    // Act
+    await ipc.invoke(IpcChannel.agentConfigApproveServers, { projectId: PROJECT_ID, hash: null })
+
+    // Assert
+    expect(agentConfig.checkApproval).not.toHaveBeenCalled()
+    expect(setApprovedMcpServers).toHaveBeenCalledWith(PROJECT_ID, null)
   })
 })

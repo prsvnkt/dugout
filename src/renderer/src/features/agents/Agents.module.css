@@ -52,6 +52,12 @@
   transform: rotate(180deg);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .toggle svg {
+    transition: none;
+  }
+}
+
 .scroll {
   flex: 1;
   min-height: 0;
