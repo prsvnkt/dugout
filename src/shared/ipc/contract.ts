@@ -17,6 +17,7 @@ import {
   MAX_COMMIT_MESSAGE_LENGTH,
   MAX_GIT_PATHS_PER_REQUEST,
 } from '../git'
+import { EXTERNAL_APP_IDS } from '../openIn'
 import { MAX_PROJECT_NAME_LENGTH, PROJECT_COLORS } from '../project'
 import { AGENT_KINDS, TERMINAL_KINDS } from '../terminal'
 
@@ -248,6 +249,8 @@ export const gitShowRequestSchema = z.object({
 })
 
 export type FilesWriteRequest = z.infer<typeof filesWriteRequestSchema>
+
+export const openInRequestSchema = z.object({ ...checkoutFields, app: z.enum(EXTERNAL_APP_IDS) })
 
 /** https, ssh (incl. scp-style git@host:path), file:// or an absolute local path. Never an option. */
 const cloneUrl = z

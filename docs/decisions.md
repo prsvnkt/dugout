@@ -500,6 +500,31 @@ Agents list and notification clicks use it too.
 
 Changing the `PostToolUse` hook command means Codex asks once more to trust Dugout's hooks.
 
+## 039 — "Open in…" an editor or Finder (2026-10-09)
+
+**Context.** For bigger manual edits people want their own editor, but worktrees live in app
+data and are awkward to find (issue #29).
+
+**Decision.** An "Open in…" button opens a menu of VS Code, Cursor, Zed and Finder. It sits in
+the Explorer header (for the checkout the Explorer shows: the project, or the focused agent's
+worktree) and in the header of every worktree agent.
+
+- **Detection:** an app counts as installed when `<App name>.app` exists in `/Applications` or
+  `~/Applications`; Finder is always offered. No `open -Ra` (it reveals the app in a Finder
+  window) and no Spotlight query (it can be switched off). Apps are looked up each time the menu
+  opens, so a newly installed editor shows up without a restart.
+- **Launching** happens only in main (`services/openIn/`): the renderer sends a checkout
+  (`projectId` + optional `worktreePath`) and an app id, never a free path. Main resolves it with
+  `WorktreeManager.resolveCheckout` (the project root or a Dugout-managed worktree), checks the
+  folder exists, then runs `/usr/bin/open -a <App name> <folder>` with `execFile`, never a shell
+  string. E2E tests swap `open` for a recorder through `DUGOUT_OPEN_COMMAND`.
+- **Remembering:** the app that last opened successfully is saved as `openInApp` in
+  `settings.json`. Rather than a separate one-click button, the menu marks it "last used" and
+  focuses it, so `Enter` reopens it; the menu keeps a fixed order so items do not move around.
+- Failures (app removed, folder gone) show inside the menu, which stays open.
+- The button and the menu items use `<Icon>` (decision 035): an external-link icon next to
+  "Open in…", a code icon for the editors and a folder icon for Finder.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -522,3 +547,4 @@ Changing the `PostToolUse` hook command means Codex asks once more to trust Dugo
    batch create) ✅, icons for the rail and icon buttons ✅.
 10. **Done since:** the inbox shows pending tool calls in full and jumps straight to the agent ✅,
     with approvals tracked per tool call ✅.
+11. **Done since:** "Open in…" VS Code, Cursor, Zed or Finder for projects and worktrees ✅.

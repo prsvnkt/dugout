@@ -8,6 +8,7 @@ import {
   gitSwitchBranchRequestSchema,
   gitPathsRequestSchema,
   gitProjectRequestSchema,
+  openInRequestSchema,
   projectAddRequestSchema,
   projectsFileSchema,
   terminalCreateRequestSchema,
@@ -225,5 +226,21 @@ describe('clone schemas', () => {
 
   test.each(['..', '.', 'a/b', '-rf', ''])('rejects the folder name %s', (folderName) => {
     expect(cloneRequestSchema.safeParse({ ...base, folderName }).success).toBe(false)
+  })
+})
+
+describe('openInRequestSchema', () => {
+  const valid = { projectId: 'p1', worktreePath: '/Users/me/worktrees/p1/abc', app: 'cursor' }
+
+  test('accepts a known app for a checkout', () => {
+    expect(openInRequestSchema.parse(valid)).toEqual(valid)
+  })
+
+  test('rejects an app it does not know', () => {
+    expect(openInRequestSchema.safeParse({ ...valid, app: 'Terminal' }).success).toBe(false)
+  })
+
+  test('rejects a relative worktree path', () => {
+    expect(openInRequestSchema.safeParse({ ...valid, worktreePath: 'repo' }).success).toBe(false)
   })
 })

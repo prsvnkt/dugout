@@ -19,6 +19,9 @@ import { registerPullRequestIpc } from './ipc/registerPullRequestIpc'
 import { registerTaskIpc } from './ipc/registerTaskIpc'
 import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { registerWelcomeIpc } from './ipc/registerWelcomeIpc'
+import { registerOpenInIpc } from './ipc/registerOpenInIpc'
+import { OpenInService } from './services/openIn/OpenInService'
+import { DEFAULT_OPEN_COMMAND, execFileRunner } from './services/openIn/runOpen'
 import { installMenu } from './menu'
 import { setupAgentHooks, type AgentHooks } from './services/agentHooks/setupAgentHooks'
 import { GitService } from './services/git/GitService'
@@ -55,6 +58,8 @@ const WORKTREES_DIR = 'worktrees'
 const WORKSPACE_FILE = 'workspace.json'
 const GITHUB_TOKEN_FILE = 'github-token.bin'
 const SETTINGS_FILE = 'settings.json'
+/** Where macOS apps live, at the root and in the home folder. */
+const APPLICATIONS_DIR = '/Applications'
 
 /**
  * safeStorage is Keychain-backed on macOS. E2E tests opt into a plaintext stand-in so they never
@@ -287,6 +292,15 @@ async function start(): Promise<void> {
   const settings = new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) })
   registerCloneIpc(git, settings)
   registerSettingsIpc(settings)
+  registerOpenInIpc(
+    projectStore,
+    worktrees,
+    new OpenInService({
+      applicationDirs: [APPLICATIONS_DIR, join(homedir(), APPLICATIONS_DIR)],
+      runOpen: execFileRunner(process.env.DUGOUT_OPEN_COMMAND ?? DEFAULT_OPEN_COMMAND),
+      settings,
+    }),
+  )
   registerWelcomeIpc({
     settings,
     // Tests point this at a temp folder so they never search the real home folder.

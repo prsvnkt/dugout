@@ -17,6 +17,7 @@ import type {
   TerminalCreateRequest,
   WorkspaceSnapshot,
 } from './ipc/contract'
+import type { ExternalAppId, OpenInApps } from './openIn'
 import type { Project, ProjectId } from './project'
 import type { Result } from './result'
 import type { AppSettings } from './settings'
@@ -142,6 +143,12 @@ export interface DugoutApi {
   readonly settings: {
     get(): Promise<Result<AppSettings>>
     update(change: SettingsUpdateRequest): Promise<Result<AppSettings>>
+  }
+  /** Opens a project's main checkout or one of its worktrees in an editor or Finder. */
+  readonly openIn: {
+    apps(): Promise<Result<OpenInApps>>
+    /** Remembers `app` as the last choice once it opened. */
+    open(checkout: GitCheckout, app: ExternalAppId): Promise<Result<void>>
   }
   /** A project's tasks: the GitHub Issues of its origin repository. */
   readonly tasks: {

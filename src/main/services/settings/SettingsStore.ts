@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { z } from 'zod'
+import { EXTERNAL_APP_IDS } from '@shared/openIn'
 import { AGENT_KINDS } from '@shared/terminal'
 import { writeFileAtomic } from '../projects/atomicWrite'
 
@@ -9,6 +10,8 @@ const settingsSchema = z.object({
   cloneParentDir: z.string().min(1).optional(),
   /** The agent the start screen's prompt box sends work to. */
   defaultAgent: z.enum(AGENT_KINDS).optional(),
+  /** The app a folder was last opened in from "Open in…". */
+  openInApp: z.enum(EXTERNAL_APP_IDS).optional(),
 })
 
 export type Settings = z.infer<typeof settingsSchema>
