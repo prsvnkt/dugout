@@ -8,6 +8,7 @@ import {
   terminalWriteRequestSchema,
 } from '@shared/ipc/contract'
 import type { TerminalId } from '@shared/terminal'
+import type { CheckRunner } from '../services/checks/CheckRunner'
 import type { TerminalManager } from '../services/terminal/TerminalManager'
 import { handleRequest } from './handle'
 import { parsePayload } from './validate'
@@ -50,7 +51,8 @@ function trackOwnership(manager: TerminalManager) {
   }
 }
 
-export function registerTerminalIpc(manager: TerminalManager): void {
+/** `checks` runs Verify on Stop for agents that report status (decision 042). */
+export function registerTerminalIpc(manager: TerminalManager, checks: CheckRunner): void {
   const ownership = trackOwnership(manager)
 
   handleRequest(IpcChannel.terminalCreate, terminalCreateRequestSchema, async (request, event) => {
@@ -61,16 +63,22 @@ export function registerTerminalIpc(manager: TerminalManager): void {
       onData: (terminalId, data) => sendTo(owner, IpcChannel.terminalData, terminalId, data),
       onExit: (terminalId, exit) => {
         ownership.remove(owner, terminalId)
+        checks.untrack(terminalId)
         sendTo(owner, IpcChannel.terminalExit, terminalId, exit)
       },
-      onAgentStatus: (terminalId, status, detail, approvals) =>
-        sendTo(owner, IpcChannel.terminalAgentStatus, terminalId, status, detail, approvals),
+      onAgentStatus: (terminalId, status, detail, approvals) => {
+        sendTo(owner, IpcChannel.terminalAgentStatus, terminalId, status, detail, approvals)
+        checks.agentStatus(terminalId, status)
+      },
       onAgentSession: (terminalId, sessionId) =>
         sendTo(owner, IpcChannel.terminalAgentSession, terminalId, sessionId),
       onAgentSubagent: (terminalId, update) =>
         sendTo(owner, IpcChannel.terminalAgentSubagent, terminalId, update),
     })
     ownership.add(owner, id)
+    checks.track(id, { projectId: request.projectId, cwd: request.cwd }, (status) =>
+      sendTo(owner, IpcChannel.terminalCheckStatus, id, status),
+    )
     return id
   })
 

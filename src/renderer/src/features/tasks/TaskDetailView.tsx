@@ -10,6 +10,7 @@ import { Icon } from '@renderer/lib/Icon'
 import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
 import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
 import { Markdown } from './markdown/Markdown'
+import { CheckBadge } from '@renderer/features/checks/CheckBadge'
 import { StartAgentMenu } from './StartAgentMenu'
 import { TaskComments } from './TaskComments'
 import { visibleLabels } from './taskList'
@@ -140,6 +141,7 @@ export function TaskDetailView({ projectId, number }: TaskDetailViewProps) {
           >
             Open on GitHub
           </button>
+          {agents?.check && <CheckBadge check={agents.check} />}
         </div>
 
         <OverlapFlag overlaps={overlaps} />

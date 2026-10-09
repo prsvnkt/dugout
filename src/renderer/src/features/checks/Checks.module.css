@@ -1,0 +1,142 @@
+.badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.badge[data-check='running'] {
+  color: var(--status-working);
+}
+
+.badge[data-check='passed'] {
+  color: var(--status-done);
+}
+
+.badge[data-check='failed'] {
+  color: var(--status-error);
+}
+
+.badge[data-check='running'] .icon {
+  animation: spin 1s linear infinite;
+}
+
+.label {
+  color: inherit;
+}
+
+/* Doubled class names: this sits in headers whose `.header button` rules would otherwise win. */
+.wrap {
+  flex-shrink: 0;
+}
+
+.wrap .trigger {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.wrap .trigger:hover,
+.wrap .trigger[aria-expanded='true'] {
+  background: var(--bg-elevated);
+}
+
+.popover {
+  position: fixed;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--status-error);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-menu);
+  font-size: 12px;
+}
+
+.summary {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.output {
+  max-height: 260px;
+  margin: 0;
+  padding: var(--space-2);
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error {
+  margin: 0;
+  color: var(--status-error);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.popover .primary,
+.popover .secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: auto;
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.popover .primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.popover .secondary {
+  padding: 0 var(--space-2);
+}
+
+.popover .primary:hover {
+  filter: brightness(1.05);
+}
+
+.popover .secondary:hover {
+  background: var(--bg-elevated);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge[data-check='running'] .icon {
+    animation: none;
+  }
+}

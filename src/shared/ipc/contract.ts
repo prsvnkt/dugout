@@ -27,6 +27,7 @@ import {
   MAX_DEV_PORT,
   MIN_DEV_PORT,
 } from '../preview'
+import { MAX_CHECK_COMMAND_LENGTH } from '../checks'
 import { AGENT_KINDS, TERMINAL_KINDS } from '../terminal'
 
 /** Schemas for IPC payloads. Main validates every incoming payload; never trust the renderer. */
@@ -102,6 +103,18 @@ export const projectSetDevCommandRequestSchema = z.object({
   command: devCommand.nullable(),
 })
 
+/** Verify on Stop's command, as typed into a shell, e.g. `npm run check`. One line. */
+const checkCommand = z
+  .string()
+  .max(MAX_CHECK_COMMAND_LENGTH)
+  .refine(isOneLineCommand, 'The check command must be one line')
+
+/** `null` or blank turns Verify on Stop off for the project. */
+export const projectSetCheckCommandRequestSchema = z.object({
+  id: projectId,
+  command: checkCommand.nullable(),
+})
+
 export const projectSchema = z.object({
   id: projectId,
   name: projectName,
@@ -109,6 +122,7 @@ export const projectSchema = z.object({
   color: projectColor,
   createdAt: z.iso.datetime(),
   devCommand: devCommand.min(1).optional(),
+  checkCommand: checkCommand.optional(),
 })
 
 /** On-disk format of projects.json. Bump `version` and migrate when it changes. */
@@ -120,6 +134,7 @@ export const projectsFileSchema = z.object({
 export type ProjectAddRequest = z.infer<typeof projectAddRequestSchema>
 export type ProjectRemoveRequest = z.infer<typeof projectRemoveRequestSchema>
 export type ProjectSetDevCommandRequest = z.infer<typeof projectSetDevCommandRequestSchema>
+export type ProjectSetCheckCommandRequest = z.infer<typeof projectSetCheckCommandRequestSchema>
 export type ProjectsFile = z.infer<typeof projectsFileSchema>
 
 /** A path inside a repository: relative, with no `..` segments, so it cannot escape it. */

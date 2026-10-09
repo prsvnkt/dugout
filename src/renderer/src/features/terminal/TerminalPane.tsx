@@ -13,6 +13,7 @@ import {
   type PaneActivity,
 } from '@renderer/features/workspace/paneActivity'
 import type { Subagent } from '@renderer/features/agents/subagents'
+import { CheckIndicator } from '@renderer/features/checks/CheckIndicator'
 import { OpenInMenu } from '@renderer/features/openIn/OpenInMenu'
 import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
 import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
@@ -143,6 +144,7 @@ export function TerminalPane(props: TerminalPaneProps) {
           label={describe(activity, status)}
           className={styles.status}
         />
+        <CheckIndicator terminalId={terminalId} />
         {worktreePath && <OpenInMenu checkout={{ projectId, worktreePath }} target="worktree" />}
         {canRestart && (
           <button

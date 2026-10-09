@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { CodexSharing, McpServer } from '@shared/agentConfig'
 import type { ProjectId } from '@shared/project'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
+import { CheckCommandSection } from './CheckCommandSection'
 import { PresetList } from './PresetList'
 import { sharingText } from './sharingText'
 import { draftFromServer, EMPTY_DRAFT } from './serverDraft'
@@ -199,7 +200,10 @@ function InstructionsSection({ projectId, agent }: SectionProps) {
   )
 }
 
-/** Per-project agent setup: MCP servers for Claude and Codex, and the shared instructions. */
+/**
+ * Per-project agent setup: MCP servers for Claude and Codex, the shared instructions, and the
+ * check Verify on Stop runs.
+ */
 export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
   const agent = useAgentConfig(projectId)
   return (
@@ -215,6 +219,10 @@ export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
       <section className={styles.section} aria-labelledby="agent-settings-instructions">
         <h2 id="agent-settings-instructions">Agent instructions</h2>
         <InstructionsSection projectId={projectId} agent={agent} />
+      </section>
+      <section className={styles.section} aria-labelledby="agent-settings-verify">
+        <h2 id="agent-settings-verify">Verify on Stop</h2>
+        <CheckCommandSection projectId={projectId} />
       </section>
     </section>
   )

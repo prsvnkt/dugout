@@ -22,6 +22,7 @@ const api: DugoutApi = {
     onAgentStatus: (listener) => subscribe(IpcChannel.terminalAgentStatus, listener),
     onAgentSession: (listener) => subscribe(IpcChannel.terminalAgentSession, listener),
     onAgentSubagent: (listener) => subscribe(IpcChannel.terminalAgentSubagent, listener),
+    onCheckStatus: (listener) => subscribe(IpcChannel.terminalCheckStatus, listener),
   },
   projects: {
     list: () => ipcRenderer.invoke(IpcChannel.projectList),
@@ -29,6 +30,8 @@ const api: DugoutApi = {
     remove: (id) => ipcRenderer.invoke(IpcChannel.projectRemove, { id }),
     setDevCommand: (id, command) =>
       ipcRenderer.invoke(IpcChannel.projectSetDevCommand, { id, command }),
+    setCheckCommand: (id, command) =>
+      ipcRenderer.invoke(IpcChannel.projectSetCheckCommand, { id, command }),
   },
   preview: {
     deployment: (checkout) => ipcRenderer.invoke(IpcChannel.previewDeployment, checkout),

@@ -186,3 +186,18 @@ statuses) contribute just their title and link. Details are fetched for the firs
 
 **Likely fix:** paginate `reviewThreads` when a PR exceeds 100 threads, and read logs from other
 providers' `details_url` if a common format turns up.
+
+## Verify on Stop runs every check at once and keeps no history
+
+- **Area:** `src/main/services/checks/`, `src/renderer/src/features/checks/`
+- **Found:** 2026-10-09, while building Verify on Stop (decision 042)
+
+**What happens:** each agent's check starts as soon as it finishes, so several agents stopping
+together run several heavy checks in parallel. A result lives only as long as the agent's
+terminal (gone after a relaunch). A check in a new worktree fails when it needs untracked setup
+such as `node_modules/` (see "Worktrees start without untracked setup files"). An agent whose
+"Done" was already seen does not come back to the inbox when its check fails later; its header
+still shows it.
+
+**Likely fix:** a small concurrency limit with a "Queued" state; run the worktree setup command
+before the first check; keep a failed check in the inbox until it is opened.

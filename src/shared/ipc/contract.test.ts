@@ -10,6 +10,7 @@ import {
   gitProjectRequestSchema,
   openInRequestSchema,
   projectAddRequestSchema,
+  projectSetCheckCommandRequestSchema,
   projectsFileSchema,
   terminalCreateRequestSchema,
   terminalResizeRequestSchema,
@@ -71,6 +72,16 @@ describe('project schemas', () => {
     expect(projectsFileSchema.safeParse({ version: 1, projects: [{ id: 'p1' }] }).success).toBe(
       false,
     )
+  })
+
+  test('a check command is one line of bounded length, or null to turn it off', () => {
+    const parse = (command: unknown) =>
+      projectSetCheckCommandRequestSchema.safeParse({ id: 'p1', command }).success
+
+    expect(parse('npm run check')).toBe(true)
+    expect(parse(null)).toBe(true)
+    expect(parse('npm test\nrm -rf ~')).toBe(false)
+    expect(parse('x'.repeat(501))).toBe(false)
   })
 })
 
