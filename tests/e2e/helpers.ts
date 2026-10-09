@@ -138,13 +138,17 @@ process.stdout.write('mcp=' + mcpNames.map((key) => key.slice('mcp_servers.'.len
 /**
  * A stand-in for an agent CLI that runs Dugout's hook commands exactly as the real one would,
  * driven by lines typed into the terminal:
- * prompt | ask | tool | notify-idle | stop | stop-later | exit | agent-comment | edit | raw-keys |
- * subagent-start <id> <type> | subagent-stop <id> <type>
+ * prompt | ask [command…] | ask-edit [file] | tool [command…] | notify-idle | stop | stop-later |
+ * exit | agent-comment | edit | raw-keys | subagent-start <id> <type> | subagent-stop <id> <type>
+ * (`ask` requests approval for a Bash command, `npm install` by default; like the real CLIs it
+ * sends no tool id. `tool` finishes a Bash call with a fresh tool id, as PostToolUse does.)
  * (`raw-keys` puts the TTY in raw mode and prints every later input chunk as `keys=<json>`.)
  * It resumes the session it was asked to, or starts a new one, and prints which.
  */
 const FAKE_AGENT_SOURCE = String.raw`
 const sessionId = resumed ?? 'fake-session-' + process.pid
+let toolCount = 0
+const bash = (words) => ({ command: words.length > 0 ? words.join(' ') : 'npm install' })
 
 function fire(event, matchValue, extra = {}) {
   for (const group of hooks[event] ?? []) {
@@ -158,8 +162,19 @@ function fire(event, matchValue, extra = {}) {
 
 const actions = {
   prompt: () => fire('UserPromptSubmit'),
-  ask: () => fire('PermissionRequest', undefined, { tool_name: 'Bash', tool_input: { command: 'npm install' } }),
-  tool: () => fire('PostToolUse', 'Bash'),
+  ask: (...words) => fire('PermissionRequest', 'Bash', { tool_name: 'Bash', tool_input: bash(words) }),
+  'ask-edit': (file = 'src/login.ts') =>
+    fire('PermissionRequest', 'Edit', {
+      tool_name: 'Edit',
+      tool_input: { file_path: file, old_string: 'const timeout = 1000', new_string: 'const timeout = 5000' },
+    }),
+  tool: (...words) =>
+    fire('PostToolUse', 'Bash', {
+      tool_name: 'Bash',
+      tool_use_id: 'toolu_fake_' + ++toolCount,
+      tool_input: bash(words),
+      tool_response: { stdout: 'ok' },
+    }),
   'notify-idle': () => fire('Notification', 'idle_prompt'),
   stop: () => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }),
   'stop-later': () =>

@@ -6,7 +6,8 @@ describe('HOOK_BINDINGS', () => {
     const signalFor = (event: string) => HOOK_BINDINGS.find((b) => b.event === event)?.signal
     expect(signalFor('SessionStart')).toBe('ready')
     expect(signalFor('UserPromptSubmit')).toBe('working')
-    expect(signalFor('PostToolUse')).toBe('working')
+    expect(signalFor('PostToolUse')).toBe('tool-done')
+    expect(signalFor('PostToolUseFailure')).toBe('tool-done')
     expect(signalFor('PermissionRequest')).toBe('needs-input')
     expect(signalFor('Stop')).toBe('done')
   })
@@ -48,14 +49,16 @@ describe('buildHookSettings', () => {
     expect(command).toMatch(/\|\| true$/)
   })
 
-  test('ready, needs-input and done forward the payload (session id, what is asked, summary)', () => {
+  test('forward the payload where it matters (session id, tool calls, summary, subagents)', () => {
     const command = (event: string) => settings.hooks[event]?.[0]?.hooks[0]?.command ?? ''
     expect(command('SessionStart')).toContain('--data-binary @-')
     expect(command('PermissionRequest')).toContain('--data-binary @-')
     expect(command('Stop')).toContain('--data-binary @-')
     expect(command('SubagentStart')).toContain('--data-binary @-')
     expect(command('SubagentStop')).toContain('--data-binary @-')
-    expect(command('PostToolUse')).not.toContain('--data-binary')
+    expect(command('PostToolUse')).toContain('--data-binary @-')
+    expect(command('PostToolUseFailure')).toContain('--data-binary @-')
+    expect(command('UserPromptSubmit')).not.toContain('--data-binary')
   })
 
   test("pre-approves Dugout's own task tools", () => {

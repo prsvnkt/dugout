@@ -50,6 +50,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
   const setPaneSession = useWorkspaceStore((state) => state.setPaneSession)
   const restartPane = useWorkspaceStore((state) => state.restartPane)
   const clearInitialPrompt = useWorkspaceStore((state) => state.clearInitialPrompt)
+  const focusRequests = useWorkspaceStore((state) => state.focusRequests)
   const projectColor = projectColorVar(project.color)
 
   if (layout.panes.length === 0) {
@@ -76,7 +77,10 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               shouldFocus={isActive && layout.focusedPaneId === pane.id}
               onFocus={() => focusPane(project.id, pane.id)}
               onClose={() => closePane(project.id, pane.id)}
-              onActivity={(activity, detail) => setActivity(pane.id, activity, detail)}
+              focusRequest={focusRequests[pane.id] ?? 0}
+              onActivity={(activity, detail, approvals) =>
+                setActivity(pane.id, activity, detail, approvals)
+              }
               onSubagents={(subagents) => setSubagents(pane.id, subagents)}
               onTerminalId={(terminalId) => {
                 setTerminalId(pane.id, terminalId)

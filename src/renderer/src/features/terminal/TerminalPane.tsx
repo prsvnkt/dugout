@@ -2,6 +2,7 @@ import { useEffect, useRef, type CSSProperties } from 'react'
 import { X } from 'lucide-react'
 import '@xterm/xterm/css/xterm.css'
 import { isAgentKind, type TerminalKind } from '@shared/terminal'
+import type { ToolCallPreview } from '@shared/toolCall'
 import { paneNumber } from '@renderer/features/workspace/layout'
 import { Icon } from '@renderer/lib/Icon'
 import {
@@ -28,6 +29,8 @@ interface TerminalPaneProps {
   /** True when this pane should own keyboard focus (focused pane of the visible project). */
   readonly shouldFocus: boolean
   readonly isFocused: boolean
+  /** Changes each time something asks to put the keyboard in this terminal (e.g. the inbox). */
+  readonly focusRequest: number
   /** Resume this Claude conversation when the pane starts. */
   readonly resumeSessionId?: string | undefined
   /** First message for a new Claude session (e.g. the task it was started for). */
@@ -36,7 +39,11 @@ interface TerminalPaneProps {
   readonly task?: { number: number; title: string } | undefined
   onFocus(): void
   onClose(): void
-  onActivity(activity: PaneActivity, detail: string | null): void
+  onActivity(
+    activity: PaneActivity,
+    detail: string | null,
+    approvals: readonly ToolCallPreview[],
+  ): void
   onSubagents(subagents: readonly Subagent[]): void
   onTerminalId(terminalId: string | null): void
   onSessionId(sessionId: string): void
@@ -58,19 +65,19 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 
 export function TerminalPane(props: TerminalPaneProps) {
   const { index, kind, projectId, cwd, branch, projectColor, shouldFocus, isFocused } = props
+  const { focusRequest } = props
   const { resumeSessionId, initialPrompt, task } = props
   const { onFocus, onClose, onActivity, onSubagents, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
-  const { status, agentStatus, agentDetail, terminalId, sessionId, subagents, focus } = useTerminal(
-    containerRef,
-    {
-      kind,
-      projectId,
-      cwd,
-      resumeSessionId,
-      initialPrompt,
-    },
-  )
+  const terminal = useTerminal(containerRef, {
+    kind,
+    projectId,
+    cwd,
+    resumeSessionId,
+    initialPrompt,
+  })
+  const { status, agentStatus, agentDetail, agentApprovals, terminalId, sessionId } = terminal
+  const { subagents, focus } = terminal
   const canRestart = status.state === 'exited' || status.state === 'error'
   // If Claude never got ready, resuming failed (e.g. the session no longer exists).
   const isAgent = isAgentKind(kind)
@@ -80,9 +87,12 @@ export function TerminalPane(props: TerminalPaneProps) {
 
   useEffect(() => {
     if (shouldFocus) focus()
-  }, [shouldFocus, focus])
+  }, [shouldFocus, focusRequest, focus])
 
-  useEffect(() => onActivity(activity, agentDetail), [activity, agentDetail, onActivity])
+  useEffect(
+    () => onActivity(activity, agentDetail, agentApprovals),
+    [activity, agentDetail, agentApprovals, onActivity],
+  )
   useEffect(() => onSubagents(subagents), [subagents, onSubagents])
   useEffect(() => onTerminalId(terminalId), [terminalId, onTerminalId])
   useEffect(() => {

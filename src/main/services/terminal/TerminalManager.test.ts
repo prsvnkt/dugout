@@ -400,10 +400,109 @@ describe('TerminalManager status details', () => {
 
     manager.applyHookSignal(id, 'needs-input', { detail: 'Bash: npm install' })
 
-    expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm install')
+    expect(events.onAgentStatus).toHaveBeenLastCalledWith(
+      id,
+      'needs-input',
+      'Bash: npm install',
+      [],
+    )
     expect(onAgentStatusChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: 'needs-input', detail: 'Bash: npm install' }),
     )
+  })
+})
+
+describe('TerminalManager pending approvals', () => {
+  const preview = (command: string) =>
+    ({ kind: 'command', tool: 'Bash', command, description: null }) as const
+  const ask = (command: string) => ({
+    detail: `Bash: ${command}`,
+    toolCall: { toolUseId: null, key: `Bash\u0000${command}` },
+    preview: preview(command),
+  })
+  const finished = (command: string, id: string) => ({
+    toolCall: { toolUseId: id, key: `Bash\u0000${command}` },
+  })
+
+  function asking(...commands: string[]) {
+    const setup = setupWithHooks()
+    const id = setup.manager.create(request, setup.events)
+    setup.manager.applyHookSignal(id, 'working')
+    for (const command of commands) setup.manager.applyHookSignal(id, 'needs-input', ask(command))
+    return { ...setup, id }
+  }
+
+  test('stays "needs you" while a parallel tool that needed no approval finishes', () => {
+    // Arrange
+    const { manager, events, id } = asking('npm install')
+
+    // Act
+    manager.applyHookSignal(id, 'tool-done', finished('ls', 'toolu_ls'))
+
+    // Assert
+    expect(manager.agentStatus(id)).toBe('needs-input')
+    expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm install', [
+      preview('npm install'),
+    ])
+  })
+
+  test('works again once the approved tool finishes', () => {
+    const { manager, events, id } = asking('npm install')
+
+    manager.applyHookSignal(id, 'tool-done', finished('npm install', 'toolu_1'))
+
+    expect(manager.agentStatus(id)).toBe('working')
+    expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'working', undefined, [])
+  })
+
+  test('with two approvals pending, shows the one still waiting after the other finishes', () => {
+    const { manager, events, onAgentStatusChange, id } = asking('npm install', 'npm test')
+    expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm install', [
+      preview('npm install'),
+      preview('npm test'),
+    ])
+    const notified = onAgentStatusChange.mock.calls.length
+
+    manager.applyHookSignal(id, 'tool-done', finished('npm install', 'toolu_1'))
+
+    expect(manager.agentStatus(id)).toBe('needs-input')
+    expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm test', [
+      preview('npm test'),
+    ])
+    expect(onAgentStatusChange).toHaveBeenCalledTimes(notified + 1)
+
+    manager.applyHookSignal(id, 'tool-done', finished('npm test', 'toolu_2'))
+    expect(manager.agentStatus(id)).toBe('working')
+  })
+
+  test('a second approval updates the list without notifying again', () => {
+    const { manager, onAgentStatusChange, id } = asking('npm install')
+    const notified = onAgentStatusChange.mock.calls.length
+
+    manager.applyHookSignal(id, 'needs-input', ask('npm test'))
+
+    expect(onAgentStatusChange).toHaveBeenCalledTimes(notified)
+  })
+
+  test("the permission notification after a request keeps the tool call's detail", () => {
+    const { manager, events, id } = asking('npm install')
+    const emitted = events.onAgentStatus.mock.calls.length
+
+    manager.applyHookSignal(id, 'needs-input', {
+      detail: 'Claude needs your permission to use Bash',
+    })
+
+    expect(events.onAgentStatus).toHaveBeenCalledTimes(emitted)
+  })
+
+  test('the end of the turn clears pending approvals', () => {
+    const { manager, events, id } = asking('npm install', 'npm test')
+
+    manager.applyHookSignal(id, 'done', { detail: 'Finished.' })
+    manager.applyHookSignal(id, 'working')
+
+    expect(manager.agentStatus(id)).toBe('working')
+    expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'working', undefined, [])
   })
 })
 
@@ -449,6 +548,6 @@ describe('TerminalManager codex terminals', () => {
 
     expect(manager.agentStatus(id)).toBe('starting')
     manager.applyHookSignal(id, 'needs-input')
-    expect(events.onAgentStatus).toHaveBeenCalledWith(id, 'needs-input', undefined)
+    expect(events.onAgentStatus).toHaveBeenCalledWith(id, 'needs-input', undefined, [])
   })
 })

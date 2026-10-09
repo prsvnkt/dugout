@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { AgentStatus } from '@shared/agentStatus'
+import type { ToolCallPreview } from '@shared/toolCall'
 import { dugout } from '@renderer/lib/dugout'
 import { isAgentKind, type TerminalExit, type TerminalKind } from '@shared/terminal'
 import { XTERM_OPTIONS } from './xtermOptions'
@@ -15,6 +16,7 @@ import {
 } from '@renderer/features/agents/subagents'
 
 const NO_SUBAGENTS: readonly Subagent[] = []
+const NO_APPROVALS: readonly ToolCallPreview[] = []
 
 export type TerminalStatus =
   | { readonly state: 'starting' }
@@ -28,6 +30,8 @@ export interface TerminalHandle {
   readonly agentStatus: AgentStatus | null
   /** Why the agent is waiting or what it finished (from its hooks), if known. */
   readonly agentDetail: string | null
+  /** Tool calls the agent waits to have approved, oldest first. */
+  readonly agentApprovals: readonly ToolCallPreview[]
   /** The main-process terminal id, once the PTY has started. */
   readonly terminalId: string | null
   /** The Claude session id reported by hooks (Claude terminals only). */
@@ -75,6 +79,7 @@ export function useTerminal(
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
   const [agentDetail, setAgentDetail] = useState<string | null>(null)
+  const [agentApprovals, setAgentApprovals] = useState<readonly ToolCallPreview[]>(NO_APPROVALS)
   const [connectedId, setConnectedId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [subagents, setSubagents] = useState<readonly Subagent[]>(NO_SUBAGENTS)
@@ -123,12 +128,13 @@ export function useTerminal(
           setStatus({ state: 'exited', exit })
           setSubagents(NO_SUBAGENTS)
         }),
-        dugout.terminal.onAgentStatus((sourceId, next, detail) => {
+        dugout.terminal.onAgentStatus((sourceId, next, detail, approvals) => {
           if (sourceId !== id) return
           if (startsNewTurn(lastAgentStatus, next)) setSubagents(clearFinished)
           lastAgentStatus = next
           setAgentStatus(next)
           setAgentDetail(detail ?? null)
+          setAgentApprovals(approvals.length > 0 ? approvals : NO_APPROVALS)
         }),
         dugout.terminal.onAgentSubagent((sourceId, update) => {
           if (sourceId === id) setSubagents((list) => applySubagentUpdate(list, update))
@@ -193,6 +199,7 @@ export function useTerminal(
     status,
     agentStatus,
     agentDetail,
+    agentApprovals,
     terminalId: connectedId,
     sessionId,
     subagents,

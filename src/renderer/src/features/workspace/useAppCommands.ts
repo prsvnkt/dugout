@@ -73,7 +73,7 @@ export function useAppCommands(onAddProject: () => void, onCloneProject: () => v
           const target = workspace.findTerminal(command.terminalId)
           if (!target) return
           useProjectsStore.getState().select(target.projectId)
-          workspace.focusPane(target.projectId, target.paneId)
+          workspace.revealPane(target.projectId, target.paneId)
           return
         }
       }

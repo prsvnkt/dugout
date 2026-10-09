@@ -1,10 +1,11 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
 import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
 import { inboxEntries, type InboxEntry } from './inbox'
 import { useInboxStore } from './inboxStore'
+import { ToolCallView } from './ToolCallView'
 import styles from './Inbox.module.css'
 
 function timeAgo(since: number): string {
@@ -14,23 +15,41 @@ function timeAgo(since: number): string {
   return `${Math.round(minutes / 60)}h ago`
 }
 
+const ENTRY_SELECTOR = '[data-inbox-entry]'
+const STEP: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 }
+
 function EntryRow({ entry, onOpen }: { entry: InboxEntry; onOpen(): void }) {
   const who = `${entry.projectName} · ${entry.agentLabel}${entry.taskNumber ? ` #${entry.taskNumber}` : ''}`
+  const hasApprovals = entry.approvals.length > 0
   return (
     <li>
       <button
         className={styles.entry}
         onClick={onOpen}
         aria-label={`${who}: ${entry.detail ?? entry.activity}`}
+        data-inbox-entry
       >
         <span className={styles.who}>
           <ActivityIndicator activity={entry.activity} label={who} />
           <span className={styles.time}>{timeAgo(entry.since)}</span>
         </span>
-        {entry.detail && <span className={styles.detail}>{entry.detail}</span>}
+        {hasApprovals
+          ? entry.approvals.map((call, index) => <ToolCallView key={index} call={call} />)
+          : entry.detail && <span className={styles.detail}>{entry.detail}</span>}
       </button>
     </li>
   )
+}
+
+/** Up and down move between entries, so Return on one jumps straight to that agent. */
+function moveFocus(event: KeyboardEvent<HTMLElement>): void {
+  const step = STEP[event.key]
+  if (!step) return
+  event.preventDefault()
+  const entries = [...event.currentTarget.querySelectorAll<HTMLElement>(ENTRY_SELECTOR)]
+  const current = entries.indexOf(document.activeElement as HTMLElement)
+  const next = current === -1 ? 0 : (current + step + entries.length) % entries.length
+  entries[next]?.focus()
 }
 
 /** Title bar: agents across all projects that need you or have finished, one click away. */
@@ -41,6 +60,7 @@ export function InboxButton() {
   const details = useWorkspaceStore((state) => state.details)
   const { isOpen, toggle, close } = useInboxStore()
   const wrapRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const entries = useMemo(
     () => inboxEntries({ projects, layouts, activities, details }),
     [projects, layouts, activities, details],
@@ -50,10 +70,16 @@ export function InboxButton() {
 
   useDismiss(wrapRef, isOpen, close)
 
+  // Opening the inbox (⇧⌘I) puts the keyboard on the most urgent entry.
+  useEffect(() => {
+    if (isOpen) panelRef.current?.querySelector<HTMLElement>(ENTRY_SELECTOR)?.focus()
+  }, [isOpen])
+
+  /** Shows the agent with the keyboard in its terminal, ready to answer its prompt. */
   const open = (entry: InboxEntry) => {
     close()
     useProjectsStore.getState().select(entry.projectId)
-    useWorkspaceStore.getState().focusPane(entry.projectId, entry.paneId)
+    useWorkspaceStore.getState().revealPane(entry.projectId, entry.paneId)
   }
 
   return (
@@ -71,7 +97,13 @@ export function InboxButton() {
         {entries.length > 0 && <span className={styles.count}>{entries.length}</span>}
       </button>
       {isOpen && (
-        <div className={styles.panel} role="dialog" aria-label="Inbox">
+        <div
+          className={styles.panel}
+          role="dialog"
+          aria-label="Inbox"
+          ref={panelRef}
+          onKeyDown={moveFocus}
+        >
           {entries.length === 0 && <p className={styles.empty}>Nothing needs you right now.</p>}
           {waiting.length > 0 && (
             <section aria-label="Needs you">
@@ -92,6 +124,9 @@ export function InboxButton() {
                 ))}
               </ul>
             </section>
+          )}
+          {entries.length > 0 && (
+            <p className={styles.hint}>↑ ↓ to choose · Return to go to the agent</p>
           )}
         </div>
       )}

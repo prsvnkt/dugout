@@ -26,7 +26,7 @@ describe('agentEntries', () => {
     const entries = agentEntries({
       layout,
       activities: { a: 'working', b: 'needs-input', s: 'running' },
-      details: { b: { detail: 'Bash: npm test', since: 5 } },
+      details: { b: { detail: 'Bash: npm test', approvals: [], since: 5 } },
       subagents: {},
     })
 

@@ -13,7 +13,8 @@ export interface HookBinding {
 export const HOOK_BINDINGS: readonly HookBinding[] = [
   { event: 'SessionStart', signal: 'ready' },
   { event: 'UserPromptSubmit', signal: 'working' },
-  { event: 'PostToolUse', signal: 'working' },
+  { event: 'PostToolUse', signal: 'tool-done' },
+  { event: 'PostToolUseFailure', signal: 'tool-done' },
   { event: 'PermissionRequest', signal: 'needs-input' },
   {
     event: 'Notification',
@@ -48,22 +49,23 @@ export interface HookSettings {
 const ALLOWED_TOOLS = ['mcp__dugout']
 
 /**
- * A shell command that tells the app about `signal`. It is a no-op outside Dugout terminals,
- * runs async, times out quickly and always succeeds, so it can never disturb Claude.
- */
-/**
- * Signals that forward the hook's JSON payload (stdin): the session id (ready), what the agent
- * is asking (needs-input), its last message (done) and which subagent started or stopped.
- * Frequent ones (working) send nothing.
+ * Signals that forward the hook's JSON payload (stdin): the session id (ready), the tool call
+ * the agent is asking about (needs-input) or that finished (tool-done), its last message (done)
+ * and which subagent started or stopped. A prompt (working) sends nothing.
  */
 const FORWARDS_PAYLOAD: ReadonlySet<AnySignal> = new Set([
   'ready',
   'needs-input',
+  'tool-done',
   'done',
   'subagent-start',
   'subagent-stop',
 ])
 
+/**
+ * A shell command that tells the app about `signal`. It is a no-op outside Dugout terminals,
+ * runs async, times out quickly and always succeeds, so it can never disturb Claude.
+ */
 export function signalCommand(signal: AnySignal): string {
   return [
     '[ -n "$DUGOUT_TERMINAL_ID" ] &&',
