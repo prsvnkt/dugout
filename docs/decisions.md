@@ -525,6 +525,37 @@ worktree) and in the header of every worktree agent.
 - The button and the menu items use `<Icon>` (decision 035): an external-link icon next to
   "Open in…", a code icon for the editors and a folder icon for Finder.
 
+## 040 — One-click MCP server presets in Agent settings (2026-10-09)
+
+**Context.** Adding a common MCP server meant looking up its config and hand-writing `.mcp.json`
+(issue #26).
+
+**Decision.**
+
+- A "Presets" list under the project's MCP servers in Agent settings: Playwright, Context7,
+  GitHub, Sentry, Linear, Figma and Postgres. "Add" saves the server straight to `.mcp.json`
+  through the same atomic, conflict-checked write as the server form (decision 022); a preset
+  whose name is already in the file shows "Added" (a plus or check `<Icon>`, decision 035). To
+  change it afterwards, edit the server.
+- The presets are data in one file, `src/shared/mcpPresets.ts`; the server name is the preset's
+  id. Each entry was checked against the vendor's docs or registry: `npx @playwright/mcp@latest`;
+  the hosted HTTP servers of Context7 (`https://mcp.context7.com/mcp`), GitHub
+  (`https://api.githubcopilot.com/mcp/`), Sentry, Linear and Figma (each `…/mcp`); and Postgres
+  as `uvx postgres-mcp --access-mode=restricted` (Postgres MCP Pro, read-only), because
+  `@modelcontextprotocol/server-postgres` is deprecated on npm.
+- Secrets are only `${VAR}` references (`Authorization: Bearer ${GITHUB_PAT}`,
+  `Bearer ${CONTEXT7_API_KEY}`, `DATABASE_URI=${DATABASE_URI}`); each preset says what to set in
+  the shell or that it signs in (OAuth) on first use. Sentry, Linear and Figma use the plain
+  endpoint, not an org- or project-scoped URL, so no value has to be filled in.
+- Whether a preset also works in Codex agents comes from main, computed with the existing
+  translation rules (`codexSharing`, decision 022), and is returned with the agent settings as
+  `presetCodex`; the renderer never re-implements the rules. All current presets translate.
+- Unit tests check every preset: a valid, unique, non-reserved name, it passes the save IPC
+  schema, it survives a write and read of `.mcp.json` unchanged, no literal secrets, `https` URLs.
+- Claude Code refuses a `.mcp.json` `${VAR}` that is unset and has no default, so a preset with
+  a variable needs it set before Claude starts; `${VAR:-}` was not used because Codex cannot
+  translate it.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -548,3 +579,4 @@ worktree) and in the header of every worktree agent.
 10. **Done since:** the inbox shows pending tool calls in full and jumps straight to the agent ✅,
     with approvals tracked per tool call ✅.
 11. **Done since:** "Open in…" VS Code, Cursor, Zed or Finder for projects and worktrees ✅.
+12. **Done since:** one-click MCP server presets in Agent settings ✅.

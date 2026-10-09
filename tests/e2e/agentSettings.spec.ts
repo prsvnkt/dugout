@@ -69,6 +69,22 @@ test('edits .mcp.json servers that Codex panes then receive', async () => {
   await expect.poll(output).toContain('mcp=dugout,docs')
 })
 
+test('adds an MCP server from a preset in one click', async () => {
+  await clickMenuItem(app, 'View', 'Agent Settings')
+  const preset = settings().getByRole('listitem', { name: 'MCP preset GitHub' })
+  await expect(preset).toContainText('Claude and Codex')
+
+  await preset.getByRole('button', { name: 'Add GitHub' }).click()
+
+  await expect(settings().getByRole('listitem', { name: 'MCP server github' })).toBeVisible()
+  await expect(preset.getByRole('button', { name: 'Add GitHub' })).toBeDisabled()
+  expect(mcpJson().mcpServers.github).toEqual({
+    type: 'http',
+    url: 'https://api.githubcopilot.com/mcp/',
+    headers: { Authorization: 'Bearer ${GITHUB_PAT}' },
+  })
+})
+
 test('makes AGENTS.md the shared instructions', async () => {
   await chooseNewAgentAction(page, 'Agent settings')
   await settings().getByRole('button', { name: 'Make AGENTS.md the source' }).click()

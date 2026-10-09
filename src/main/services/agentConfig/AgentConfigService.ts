@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AgentConfig, InstructionsStatus, McpServer } from '@shared/agentConfig'
+import { MCP_PRESETS } from '@shared/mcpPresets'
 import { tomlInline } from '../agentHooks/codexConfig'
 import { writeFileAtomic } from '../projects/atomicWrite'
 import { codexMcpServer, codexSharing } from './codexMcp'
@@ -10,6 +11,10 @@ import { AGENTS_MD, CLAUDE_MD_PATHS, importsAgentsMd, linkInstructions } from '.
 import { parseMcpJson, serializeMcpJson } from './mcpJson'
 
 const MCP_JSON = '.mcp.json'
+
+const PRESET_CODEX = Object.fromEntries(
+  MCP_PRESETS.map((preset) => [preset.server.name, codexSharing(preset.server)]),
+)
 
 async function readOptional(path: string): Promise<string | null> {
   try {
@@ -36,9 +41,17 @@ export class AgentConfigService {
     try {
       const { servers } = parseMcpJson(text)
       const codex = Object.fromEntries(servers.map((server) => [server.name, codexSharing(server)]))
-      return { mcp: { ok: true, servers, codex, version: versionOf(text) }, instructions }
+      return {
+        mcp: { ok: true, servers, codex, version: versionOf(text) },
+        instructions,
+        presetCodex: PRESET_CODEX,
+      }
     } catch (error) {
-      return { mcp: { ok: false, error: (error as Error).message }, instructions }
+      return {
+        mcp: { ok: false, error: (error as Error).message },
+        instructions,
+        presetCodex: PRESET_CODEX,
+      }
     }
   }
 
