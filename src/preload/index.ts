@@ -26,6 +26,7 @@ const api: DugoutApi = {
     onAgentSubagent: (listener) => subscribe(IpcChannel.terminalAgentSubagent, listener),
     onCheckStatus: (listener) => subscribe(IpcChannel.terminalCheckStatus, listener),
     onAgentUsage: (listener) => subscribe(IpcChannel.terminalAgentUsage, listener),
+    withheldServers: (id) => ipcRenderer.invoke(IpcChannel.terminalWithheldServers, { id }),
   },
   projects: {
     list: () => ipcRenderer.invoke(IpcChannel.projectList),
@@ -137,6 +138,8 @@ const api: DugoutApi = {
       ipcRenderer.invoke(IpcChannel.agentConfigSaveMcp, { projectId, servers, version }),
     linkInstructions: (projectId) =>
       ipcRenderer.invoke(IpcChannel.agentConfigLinkInstructions, { projectId }),
+    approveServers: (projectId, hash) =>
+      ipcRenderer.invoke(IpcChannel.agentConfigApproveServers, { projectId, hash }),
   },
   context: {
     read: (projectId) => ipcRenderer.invoke(IpcChannel.contextRead, { projectId }),

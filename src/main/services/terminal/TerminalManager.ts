@@ -1,3 +1,4 @@
+import type { WithheldServers } from '@shared/agentConfig'
 import type { AgentStatus, HookSignal, SubagentUpdate } from '@shared/agentStatus'
 import type { AgentUsage } from '@shared/usage'
 import type { TerminalCreateRequest } from '@shared/ipc/contract'
@@ -53,6 +54,8 @@ export interface TerminalManagerDeps {
   readonly agentHooks?: AgentHooksConfig
   /** Called after any agent's status changes (null status once it exits). */
   readonly onAgentStatusChange?: (change: AgentStatusChange) => void
+  /** The project's approved `.mcp.json` servers hash, if any (decision 057). */
+  readonly approvedProjectServers?: (projectId: string) => string | undefined
 }
 
 /** A new worktree's setup command, as `WorktreeManager.claimSetup` hands it out. */
@@ -102,6 +105,8 @@ interface ManagedTerminal {
   readonly detail: string | null
   /** Tool calls the agent asked to have approved that have not finished yet. */
   readonly approvals: readonly PendingApproval[]
+  /** `.mcp.json` servers the agent did not get, waiting for the project's approval. */
+  readonly withheldServers: WithheldServers | null
   /** The renderer asked to stop output until it catches up (decision 056). */
   readonly isPaused: boolean
 }
@@ -180,9 +185,15 @@ export class TerminalManager {
       reportedSessionId: request.resumeSessionId ?? null,
       detail: null,
       approvals: NO_APPROVALS,
+      withheldServers: launch?.withheldServers ?? null,
       isPaused: false,
     })
     return id
+  }
+
+  /** `.mcp.json` servers the agent started without, for want of approval (decision 057). */
+  withheldServers(id: TerminalId): WithheldServers | null {
+    return this.terminals.get(id)?.withheldServers ?? null
   }
 
   private handleExit(
@@ -242,6 +253,7 @@ export class TerminalManager {
       command: hooks.commands?.[adapter.info.kind] ?? adapter.defaultCommand,
       isResuming: resumeSessionId !== undefined,
       hasInitialPrompt: initialPrompt !== undefined,
+      approvedProjectServers: this.deps.approvedProjectServers?.(request.projectId),
       ...(mcp && {
         mcp: {
           server: dugoutMcpServer(mcp.server, hooks.socketPath, hooks.token, id),

@@ -1,23 +1,40 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import type { McpServer } from '@shared/agentConfig'
-import { MCP_JSON, parseMcpJson } from '../../agentConfig/mcpJson'
+import type { WithheldServers } from '@shared/agentConfig'
+import { readProjectServers } from '../../agentConfig/serverApproval'
 import { tomlInline } from './codexConfig'
 import { codexMcpServer } from './codexMcp'
 
+export interface CodexProjectServers {
+  /** `-c mcp_servers.<name>=…` overrides; empty unless the file's servers are approved. */
+  readonly overrides: readonly string[]
+  /** The servers left out for want of approval; null when nothing was left out. */
+  readonly withheld: WithheldServers | null
+}
+
+const NONE: CodexProjectServers = { overrides: [], withheld: null }
+
 /**
- * `-c` overrides that give a Codex agent the servers in its checkout's `.mcp.json`, as Claude Code
- * gets them. Read when the agent starts; servers Codex cannot express are left out.
+ * The servers in a Codex agent's checkout's `.mcp.json`, read when it starts. Codex has no
+ * project file of its own that it asks about, and session-flag config is not gated, so they are
+ * passed only when the project approved exactly these servers (`approvedHash`, decision 057).
+ * Servers Codex cannot express are left out either way.
  */
-export function codexProjectServerOverrides(cwd: string): string[] {
-  let servers: McpServer[]
-  try {
-    servers = parseMcpJson(readFileSync(join(cwd, MCP_JSON), 'utf8')).servers
-  } catch {
-    return []
-  }
-  return servers.flatMap((server) => {
+export function codexProjectServers(
+  cwd: string,
+  approvedHash: string | undefined,
+): CodexProjectServers {
+  const project = readProjectServers(cwd)
+  if (!project) return NONE
+  const shareable = project.servers.flatMap((server) => {
     const result = codexMcpServer(server)
-    return result.ok ? [`mcp_servers.${server.name}=${tomlInline(result.config)}`] : []
+    return result.ok ? [{ server, config: result.config }] : []
   })
+  if (shareable.length === 0) return NONE
+  if (project.hash !== approvedHash) {
+    const servers = shareable.map(({ server }) => server)
+    return { overrides: [], withheld: { servers, hash: project.hash } }
+  }
+  const overrides = shareable.map(
+    ({ server, config }) => `mcp_servers.${server.name}=${tomlInline(config)}`,
+  )
+  return { overrides, withheld: null }
 }
