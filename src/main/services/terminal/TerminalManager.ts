@@ -89,7 +89,11 @@ export class TerminalManager {
     const process = this.deps.backend.spawn({
       ...buildLaunchSpec(resolveShell(this.deps.env), commandLine),
       cwd: request.cwd,
-      env: { ...buildTerminalEnv(this.deps.env), ...launch?.env },
+      env: {
+        ...buildTerminalEnv(this.deps.env),
+        ...launch?.env,
+        ...(request.port !== undefined && { PORT: String(request.port) }),
+      },
       cols: request.cols,
       rows: request.rows,
     })

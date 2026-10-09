@@ -12,6 +12,7 @@ import { CommitBox } from './CommitBox'
 import { isAuthError, useAuthStore } from '@renderer/features/github/authStore'
 import { useCheckoutGit, useGitStore } from './gitStore'
 import { PullRequestBlock } from './PullRequestBlock'
+import { PreviewBlock } from '@renderer/features/preview/PreviewBlock'
 import { usePullRequestStatus } from './usePullRequestStatus'
 import { dugout } from '@renderer/lib/dugout'
 import { Icon } from '@renderer/lib/Icon'
@@ -142,6 +143,7 @@ export function GitPanel({ project }: GitPanelProps) {
         <FetchButton checkout={checkout} isBusy={git.isBusy} />
       </div>
       {pullRequest && <PullRequestBlock pullRequest={pullRequest} />}
+      <PreviewBlock project={project} checkout={checkout} status={git.status} />
       <CommitBox
         stagedCount={staged.length}
         unstagedCount={unstaged.length}

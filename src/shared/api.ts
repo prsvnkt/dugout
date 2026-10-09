@@ -5,6 +5,7 @@ import type { WorktreeChanges } from './compare'
 import type { AppCommand } from './commands'
 import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } from './files'
 import type { GitBranch, GitStatus } from './git'
+import type { PreviewDeployment } from './preview'
 import type { PullRequestStatus } from './pullRequest'
 import type { ToolCallPreview } from './toolCall'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
@@ -59,6 +60,17 @@ export interface DugoutApi {
     list(): Promise<Result<readonly Project[]>>
     add(request: ProjectAddRequest): Promise<Result<Project>>
     remove(id: ProjectId): Promise<Result<void>>
+    /** Sets the command "Run" starts a dev server with; null or blank removes it. */
+    setDevCommand(id: ProjectId, command: string | null): Promise<Result<Project>>
+  }
+  /** Preview deployments and local dev servers, for checking what an agent changed. */
+  readonly preview: {
+    /** The branch's newest preview deployment on GitHub; null when there is none. */
+    deployment(checkout: GitCheckout): Promise<Result<PreviewDeployment | null>>
+    /** A free port for a new dev server, other than the ones already given out. */
+    assignPort(reserved: readonly number[]): Promise<Result<number>>
+    /** Opens a reported preview or a local dev server in the browser. */
+    openUrl(url: string): Promise<Result<void>>
   }
   /** Git operations on a project's main checkout or one of its worktrees. */
   readonly git: {

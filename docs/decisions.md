@@ -696,6 +696,38 @@ and per file in Compare for worktrees beyond the two compared.
 It is advisory only: nothing is blocked, merged or changed. Files are compared whole (not line
 ranges) and agents in the main checkout are not tracked; see `docs/known-issues.md`.
 
+## 049 — Preview URLs and dev servers per worktree (2026-10-09)
+
+**Context.** Checking UI changes an agent made meant starting a dev server by hand in the right
+worktree on a free port, or hunting for the deploy preview (issue #28).
+
+**Decision.**
+
+- A "Preview" block in the git panel, under the Pull request block, for the selected checkout.
+- **Preview deployment:** `GitHubDeployments.forBranch` reads GitHub deployments and their
+  statuses (which Vercel, Netlify and Actions report) through the shared REST helpers, so the
+  token stays in main (decision 015). Deployments are matched by `ref=<branch>`; when none match,
+  by the SHA the branch points to on GitHub (providers that deploy by commit). The newest
+  deployment gives the state (Ready / Deploying / Failed, as text, not colour alone; replaced
+  "inactive" ones are skipped); the URL is the newest ready one's `environment_url` (else
+  `target_url`), only if it is http(s). Up to 5 deployments are looked at. It refreshes like the
+  PR block (60s, focus, push state; one `useBranchPoll` hook for both). Only the newest
+  environment is shown, even in monorepos with several.
+- **Dev server:** each project has an optional one-line dev command, stored on the project in
+  `projects.json` (where its colour lives) and edited in place ("Set dev command…" / pencil).
+  "Run" opens a new shell pane in that checkout (main or worktree) through the normal `addPane`,
+  started with `PORT` set, and types the command into it, so the shell stays open after Ctrl-C
+  and ↑ reruns it. The block then shows `localhost:<port>` with "Show" (focus the shell) and
+  "Open". One dev server per checkout; closing its shell stops it. Dev server shells are not
+  restored on relaunch: they come back as plain shells (see known issues).
+- **Ports:** main assigns them from 4100–4199 (away from 3000/5173 defaults), skipping ports
+  given to open dev server shells in any project and probing each candidate by binding it on
+  `127.0.0.1` and `::`. The candidate list and the search are pure and unit-tested with a fake
+  probe. Servers that ignore `PORT` (e.g. Vite) need `--port $PORT` in the command.
+- **Links:** `preview:open-url` opens only http(s) URLs that are either a preview URL main itself
+  reported or `http://localhost:<port>/` — never an arbitrary URL from the renderer. The GitHub
+  link channel (`git:open-url`) is unchanged.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -725,4 +757,5 @@ ranges) and agents in the main checkout are not tracked; see `docs/known-issues.
     prompt ✅.
 15. **Done since:** warnings when parallel agents change the same files ✅.
 16. **Done since:** agent CLIs behind adapters with capabilities ✅, OpenCode ✅.
-17. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+17. **Done since:** preview deployment URLs and per-worktree dev servers in the git panel ✅.
+18. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

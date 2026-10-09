@@ -2,6 +2,7 @@ import { useEffect, useRef, type CSSProperties } from 'react'
 import { X } from 'lucide-react'
 import '@xterm/xterm/css/xterm.css'
 import { AGENTS } from '@shared/agents'
+import type { DevServer } from '@shared/preview'
 import { isAgentKind, type TerminalKind } from '@shared/terminal'
 import type { ToolCallPreview } from '@shared/toolCall'
 import { paneNumber } from '@renderer/features/workspace/layout'
@@ -45,6 +46,8 @@ interface TerminalPaneProps {
   readonly task?: { number: number; title: string } | undefined
   /** Other agents that changed some of the same files (advisory), shown in the header. */
   readonly overlaps: readonly LabelledOverlap[]
+  /** A dev server this shell starts, shown in its header with its port. */
+  readonly devServer?: DevServer | undefined
   onFocus(): void
   onClose(): void
   onActivity(
@@ -72,7 +75,7 @@ function describe(activity: PaneActivity, status: TerminalStatus): string {
 export function TerminalPane(props: TerminalPaneProps) {
   const { index, kind, projectId, cwd, branch, projectColor, shouldFocus, isFocused } = props
   const { focusRequest } = props
-  const { resumeSessionId, initialPrompt, task, worktreePath, overlaps } = props
+  const { resumeSessionId, initialPrompt, task, worktreePath, overlaps, devServer } = props
   const { onFocus, onClose, onActivity, onSubagents, onTerminalId, onSessionId, onRestart } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const terminal = useTerminal(containerRef, {
@@ -81,6 +84,7 @@ export function TerminalPane(props: TerminalPaneProps) {
     cwd,
     resumeSessionId,
     initialPrompt,
+    devServer,
   })
   const { status, agentStatus, agentDetail, agentApprovals, terminalId, sessionId } = terminal
   const { subagents, focus } = terminal
@@ -121,6 +125,11 @@ export function TerminalPane(props: TerminalPaneProps) {
         {task && (
           <span className={styles.task} title={task.title}>
             #{task.number}
+          </span>
+        )}
+        {devServer && (
+          <span className={styles.task} title={`Dev server: ${devServer.command}`}>
+            :{devServer.port}
           </span>
         )}
         {branch && (

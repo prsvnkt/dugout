@@ -26,6 +26,14 @@ export interface StubOptions {
   readonly issues?: StubIssue[]
   /** A pull request for one branch of octocat/app, with its check runs. */
   readonly pullRequest?: StubPullRequest
+  /** A successful preview deployment of one branch of octocat/app. */
+  readonly deployment?: StubDeployment
+}
+
+export interface StubDeployment {
+  readonly branch: string
+  readonly environment: string
+  readonly url: string
 }
 
 export interface StubPullRequest {
@@ -172,6 +180,14 @@ export async function startGitHubStub(repos: readonly StubRepo[] = [], options: 
       })
     }
     if (pr && path === 'commits/stubsha/status') return json({ statuses: [] })
+    const deployment = options.deployment
+    if (path === 'deployments') {
+      const matches = deployment && query.get('ref') === deployment.branch
+      return json(matches ? [{ id: 1, environment: deployment.environment }] : [])
+    }
+    if (deployment && path === 'deployments/1/statuses') {
+      return json([{ state: 'success', environment_url: deployment.url, target_url: null }])
+    }
     if (path === 'issues' && method === 'GET')
       return json(issues.map((issue) => toIssue(issue, origin)))
     if (path === 'issues' && method === 'POST') {

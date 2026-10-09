@@ -16,6 +16,7 @@ import { registerProjectIpc } from './ipc/registerProjectIpc'
 import { registerTerminalIpc } from './ipc/registerTerminalIpc'
 import { registerWorkspaceIpc } from './ipc/registerWorkspaceIpc'
 import { registerPullRequestIpc } from './ipc/registerPullRequestIpc'
+import { registerPreviewIpc } from './ipc/registerPreviewIpc'
 import { registerTaskIpc } from './ipc/registerTaskIpc'
 import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { registerWelcomeIpc } from './ipc/registerWelcomeIpc'
@@ -29,12 +30,14 @@ import { gitHubConfig, GITHUB_SCOPES } from './services/github/config'
 import { DeviceFlowClient } from './services/github/DeviceFlowClient'
 import { GitHubApi } from './services/github/GitHubApi'
 import { GitHubAuth } from './services/github/GitHubAuth'
+import { GitHubDeployments } from './services/github/GitHubDeployments'
 import { GitHubPulls } from './services/github/GitHubPulls'
 import { gitCredentialConfig } from './services/github/gitCredentials'
 import { TokenStore, type Encryption } from './services/github/TokenStore'
 import { AgentNotifier, type AgentNotification } from './services/notifications/AgentNotifier'
 import { FileService } from './services/files/FileService'
 import { resolveRepoRoot } from './services/git/resolveRepoRoot'
+import { isPortFree } from './services/preview/portProbe'
 import { ProjectStore } from './services/projects/ProjectStore'
 import { NodePtyBackend } from './services/terminal/NodePtyBackend'
 import { TerminalManager } from './services/terminal/TerminalManager'
@@ -248,13 +251,22 @@ async function start(): Promise<void> {
     webBaseUrl: github.webBaseUrl,
   })
   const tasks = taskService
-  registerPullRequestIpc({
+  const githubBranch = {
     projects: projectStore,
     worktrees,
     git,
     auth: githubAuth,
-    pulls: new GitHubPulls({ fetch, apiBaseUrl: github.apiBaseUrl }),
     webBaseUrl: github.webBaseUrl,
+  }
+  registerPullRequestIpc({
+    ...githubBranch,
+    pulls: new GitHubPulls({ fetch, apiBaseUrl: github.apiBaseUrl }),
+    openExternal: (url) => shell.openExternal(url),
+  })
+  registerPreviewIpc({
+    ...githubBranch,
+    deployments: new GitHubDeployments({ fetch, apiBaseUrl: github.apiBaseUrl }),
+    isPortFree,
     openExternal: (url) => shell.openExternal(url),
   })
   registerTaskIpc({

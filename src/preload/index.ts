@@ -27,6 +27,13 @@ const api: DugoutApi = {
     list: () => ipcRenderer.invoke(IpcChannel.projectList),
     add: (request) => ipcRenderer.invoke(IpcChannel.projectAdd, request),
     remove: (id) => ipcRenderer.invoke(IpcChannel.projectRemove, { id }),
+    setDevCommand: (id, command) =>
+      ipcRenderer.invoke(IpcChannel.projectSetDevCommand, { id, command }),
+  },
+  preview: {
+    deployment: (checkout) => ipcRenderer.invoke(IpcChannel.previewDeployment, checkout),
+    assignPort: (reserved) => ipcRenderer.invoke(IpcChannel.previewAssignPort, { reserved }),
+    openUrl: (url) => ipcRenderer.invoke(IpcChannel.previewOpenUrl, { url }),
   },
   git: {
     status: (checkout) => ipcRenderer.invoke(IpcChannel.gitStatus, checkout),
