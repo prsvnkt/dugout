@@ -10,7 +10,8 @@
 
 ## Adding a capability (e.g. git status)
 
-1. Types and request schemas in `src/shared/` (schemas in `ipc/contract.ts`, channel names in `ipc/channels.ts`).
+1. Types and request schemas in `src/shared/` (schemas in `ipc/contract.ts`, or a domain file
+   beside it such as `ipc/contextContract.ts` once it grows; channel names in `ipc/channels.ts`).
 2. Extend `DugoutApi` in `src/shared/api.ts`.
 3. Domain logic in `src/main/services/<domain>/`, behind an interface when it wraps a process or
    library, with its dependencies injected so it is unit-testable without Electron.

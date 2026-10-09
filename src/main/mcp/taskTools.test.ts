@@ -1,10 +1,11 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { describe, expect, test, vi } from 'vitest'
-import { createTaskServer, type TaskRpc } from './taskTools'
+import { createDugoutServer } from './dugoutServer'
+import type { DugoutRpc as TaskRpc } from './rpcTool'
 
 async function connect(rpc: TaskRpc) {
-  const server = createTaskServer(rpc)
+  const server = createDugoutServer(rpc)
   const client = new Client({ name: 'test', version: '1.0.0' })
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair()
   await Promise.all([server.connect(serverSide), client.connect(clientSide)])
@@ -18,14 +19,16 @@ describe('Dugout task tools (MCP)', () => {
   test('offers the task tools', async () => {
     const client = await connect(vi.fn())
     const { tools } = await client.listTools()
-    expect(tools.map((tool) => tool.name).sort()).toEqual([
-      'comment_on_task',
-      'create_task',
-      'create_tasks',
-      'get_task',
-      'list_tasks',
-      'update_task',
-    ])
+    expect(tools.map((tool) => tool.name).sort()).toEqual(
+      expect.arrayContaining([
+        'comment_on_task',
+        'create_task',
+        'create_tasks',
+        'get_task',
+        'list_tasks',
+        'update_task',
+      ]),
+    )
   })
 
   test('routes calls to Dugout and returns its answer', async () => {

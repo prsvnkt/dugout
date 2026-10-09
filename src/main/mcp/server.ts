@@ -1,11 +1,12 @@
 /**
- * Entry point of the "dugout" MCP server that Claude Code starts for each Dugout terminal
- * (`claude --mcp-config`). Runs under Electron in Node mode, talks MCP over stdio, and forwards
- * tool calls to Dugout over its private socket.
+ * Entry point of the "dugout" MCP server (tasks and project context) that each agent terminal
+ * starts (e.g. `claude --mcp-config`). Runs under Electron in Node mode, talks MCP over stdio,
+ * and forwards tool calls to Dugout over its private socket.
  */
 import { request } from 'node:http'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { createTaskServer, type TaskRpc } from './taskTools'
+import { createDugoutServer } from './dugoutServer'
+import type { DugoutRpc } from './rpcTool'
 
 const RPC_TIMEOUT_MS = 30_000
 
@@ -19,7 +20,7 @@ const socketPath = requireEnv('DUGOUT_HOOK_SOCKET')
 const token = requireEnv('DUGOUT_HOOK_TOKEN')
 const terminalId = requireEnv('DUGOUT_TERMINAL_ID')
 
-const rpc: TaskRpc = (method, params) =>
+const rpc: DugoutRpc = (method, params) =>
   new Promise((resolve, reject) => {
     const req = request(
       {
@@ -49,4 +50,4 @@ const rpc: TaskRpc = (method, params) =>
     req.end(JSON.stringify({ method, params }))
   })
 
-await createTaskServer(rpc).connect(new StdioServerTransport())
+await createDugoutServer(rpc).connect(new StdioServerTransport())

@@ -69,6 +69,16 @@ describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter contract', (kind, adap
     launch.dispose?.()
     expect(files.contents.size).toBe(0)
   })
+
+  test('has a headless run exactly when it says it can, as plain "$VAR"s', () => {
+    expect(adapter.headless !== undefined).toBe(adapter.info.capabilities.canRunHeadless)
+    const headless = adapter.headless?.('/opt/fake')
+    if (!headless) return
+    expect(headless.commandLine.startsWith(`"$${adapter.commandVariable}"`)).toBe(true)
+    expect(headless.commandLine).toContain('"$DUGOUT_HEADLESS_PROMPT"')
+    expect(headless.env[adapter.commandVariable]).toBe('/opt/fake')
+    expect(withoutPlainVariables(headless.commandLine)).not.toMatch(/[$`\\]/)
+  })
 })
 
 describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter usage', (_kind, adapter) => {

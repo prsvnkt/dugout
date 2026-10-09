@@ -7,6 +7,7 @@ import { IpcChannel } from '@shared/ipc/channels'
 import { registerCloneIpc } from './ipc/registerCloneIpc'
 import { registerAgentConfigIpc } from './ipc/registerAgentConfigIpc'
 import { registerCompareIpc } from './ipc/registerCompareIpc'
+import { registerContextIpc } from './ipc/registerContextIpc'
 import { AgentConfigService } from './services/agentConfig/AgentConfigService'
 import { registerDialogIpc } from './ipc/registerDialogIpc'
 import { registerFileIpc } from './ipc/registerFileIpc'
@@ -45,7 +46,12 @@ import { NodePtyBackend } from './services/terminal/NodePtyBackend'
 import { TerminalManager } from './services/terminal/TerminalManager'
 import { CheckRunner } from './services/checks/CheckRunner'
 import { shellCheckSpawner } from './services/checks/spawnCheck'
-import { agentCommands } from './services/agents/registry'
+import { agentAdapter, agentCommands } from './services/agents/registry'
+import { loginShellHeadlessRunner } from './services/agents/runHeadless'
+import { buildCodemap } from './services/context/codemap'
+import { CONTEXT_RPC_PREFIX, handleContextRpc } from './services/context/contextRpc'
+import { ContextStore, type ContextProject } from './services/context/ContextStore'
+import { checkoutFolder, diskFolder } from './services/context/entryFolders'
 import { loginShellRunner } from './services/welcome/checkAgentClis'
 import { SettingsStore } from './services/settings/SettingsStore'
 import { registerSettingsIpc } from './ipc/registerSettingsIpc'
@@ -62,6 +68,7 @@ import { WorktreeManager } from './services/worktrees/WorktreeManager'
 import { setupUsage } from './services/usage/setupUsage'
 import type { UsageService } from './services/usage/UsageService'
 import { createUsageReporter, type TranscriptHint } from './services/usage/usageReporter'
+import { SHARED_CONTEXT_DIR } from '@shared/context'
 import { createMainWindow } from './window'
 import { applyAppIcon } from './appIcon'
 
@@ -73,6 +80,9 @@ const LINEAR_KEY_FILE = 'linear-key.bin'
 const SETTINGS_FILE = 'settings.json'
 /** A Verify on Stop check still running after this is stopped and reported as failed. */
 const CHECK_TIMEOUT_MS = 30 * 60_000
+/** Private context entries and agents' proposals, per project. */
+const CONTEXT_DIR = 'context'
+const PROPOSED_DIR = 'proposed'
 /** Where macOS apps live, at the root and in the home folder. */
 const APPLICATIONS_DIR = '/Applications'
 
@@ -162,15 +172,38 @@ function updateDockBadge(manager: TerminalManager): void {
 
 /** Status is a nice-to-have: if hooks cannot start, terminals still work without it. */
 let taskService: TaskService | null = null
+let agentContext: {
+  readonly store: ContextStore
+  readonly findProject: (id: string) => ContextProject | undefined
+} | null = null
 
-/** Task tool calls from an agent: scoped to the project of the terminal it runs in. */
-async function handleAgentTaskRpc(
+/** A context tool call from an agent: scoped to its terminal's project, as task calls are. */
+async function handleAgentContextRpc(
+  terminalId: string,
+  projectId: string,
+  method: string,
+  params: unknown,
+): Promise<unknown> {
+  const project = agentContext?.findProject(projectId)
+  if (!agentContext || !project) throw new Error('This terminal is not part of a Dugout project.')
+  const caller = { project, agent: terminalManager?.agentInfo(terminalId)?.kind ?? null }
+  return handleContextRpc(agentContext.store, caller, method, params, () =>
+    broadcast(IpcChannel.contextChanged, projectId),
+  )
+}
+
+/** Tool calls from an agent's "dugout" MCP server: scoped to the project of its terminal. */
+async function handleAgentRpc(
   terminalId: string,
   method: string,
   params: unknown,
 ): Promise<unknown> {
   const projectId = terminalManager?.projectOf(terminalId)
-  if (!projectId || !taskService) throw new Error('This terminal is not part of a Dugout project.')
+  if (!projectId) throw new Error('This terminal is not part of a Dugout project.')
+  if (method.startsWith(CONTEXT_RPC_PREFIX)) {
+    return handleAgentContextRpc(terminalId, projectId, method, params)
+  }
+  if (!taskService) throw new Error('This terminal is not part of a Dugout project.')
   return handleTaskRpc(taskService, projectId, method, params)
 }
 
@@ -189,7 +222,7 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
         terminalManager?.applySubagent(terminalId, update)
         if (transcriptPath) reportTranscript?.({ terminalId, transcriptPath, isSubagent: true })
       },
-      onRpc: handleAgentTaskRpc,
+      onRpc: handleAgentRpc,
       // Electron runs the bundled MCP server in Node mode, so users need no separate Node.
       mcpServer: { command: process.execPath, script: join(import.meta.dirname, 'mcp.js') },
     })
@@ -375,6 +408,30 @@ async function start(): Promise<void> {
     openExternal: (url) => shell.openExternal(url),
   })
   registerFileIpc(projectStore, worktrees, files)
+  const contextStore = new ContextStore({
+    folder: (project, kind) => {
+      if (kind === 'shared') return checkoutFolder(files, project.rootPath, SHARED_CONTEXT_DIR)
+      const privateDir = join(dataDir, CONTEXT_DIR, project.id)
+      return diskFolder(kind === 'proposed' ? join(privateDir, PROPOSED_DIR) : privateDir)
+    },
+    hashPath: (root, path) => files.hashPath(root, path),
+    now: () => new Date(),
+  })
+  agentContext = {
+    store: contextStore,
+    findProject: (id) => projectStore.list().find((project) => project.id === id),
+  }
+  const runHeadless = loginShellHeadlessRunner(process.env)
+  registerContextIpc({
+    projects: projectStore,
+    store: contextStore,
+    buildCodemap: (agent, root) =>
+      buildCodemap(
+        { adapter: agentAdapter, commands: agentCommands(process.env), run: runHeadless },
+        agent,
+        root,
+      ),
+  })
   const settings = new SettingsStore({ filePath: join(dataDir, SETTINGS_FILE) })
   registerCloneIpc(git, settings)
   registerSettingsIpc(settings)

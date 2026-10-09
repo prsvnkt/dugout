@@ -10,6 +10,7 @@ import { checkoutOf, fileKeyOf } from './fileKey'
 import {
   activateTab,
   closeTab,
+  CONTEXT_TAB_ID,
   EMPTY_TABS,
   openTab,
   pinTab,
@@ -63,6 +64,8 @@ interface EditorState {
   openAgentSettings(projectId: ProjectId): void
   /** The project's token usage (one tab per project). */
   openUsage(projectId: ProjectId): void
+  /** Opens (or focuses) the project's Context tab. */
+  openContext(projectId: ProjectId): void
   /** Opens (or focuses) a task's tab; as a preview, it replaces the previous preview tab. */
   openTask(
     projectId: ProjectId,
@@ -233,6 +236,17 @@ export const useEditorStore = create<EditorState>()((set, get) => {
         id: 'agent-settings',
         kind: 'agent-settings' as const,
         path: 'Agent settings',
+        staged: false,
+        worktreePath: null,
+      }
+      setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
+    },
+
+    openContext(projectId) {
+      const tab = {
+        id: CONTEXT_TAB_ID,
+        kind: 'context' as const,
+        path: 'Context',
         staged: false,
         worktreePath: null,
       }

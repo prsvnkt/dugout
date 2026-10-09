@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
-import { Files, GitBranch, ListChecks, Plus, type LucideIcon } from 'lucide-react'
+import { BookOpen, Files, GitBranch, ListChecks, Plus, type LucideIcon } from 'lucide-react'
 import { AGENT_LIST, NEW_AGENT_SHORTCUT, NEW_WORKTREE_AGENT_SHORTCUT } from '@shared/agents'
 import type { Project } from '@shared/project'
 import type { TerminalKind } from '@shared/terminal'
-import { useEditorStore } from '@renderer/features/editor/editorStore'
+import { useProjectContext } from '@renderer/features/context/contextStore'
+import { useEditorStore, useProjectTabs } from '@renderer/features/editor/editorStore'
+import { CONTEXT_TAB_ID } from '@renderer/features/editor/tabs'
 import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
 import { useDefaultAgent } from '@renderer/features/start/defaultAgentStore'
@@ -129,6 +131,23 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
   )
 }
 
+/** Opens the project's Context tab; the badge counts notes agents proposed. */
+function ContextButton({ project }: { project: Project }) {
+  const openContext = useEditorStore((state) => state.openContext)
+  const isActive = useProjectTabs(project.id).activeTabId === CONTEXT_TAB_ID
+  const proposed = useProjectContext(project.id).context?.proposals.length ?? 0
+  return (
+    <RailButton
+      icon={BookOpen}
+      label={proposed > 0 ? `Project context, ${proposed} proposed` : 'Project context'}
+      title={proposed > 0 ? `Context · ${proposed} proposed by agents` : 'Context for agents'}
+      isActive={isActive}
+      badge={proposed}
+      onClick={() => openContext(project.id)}
+    />
+  )
+}
+
 interface ActivityRailProps {
   readonly project: Project
   readonly changeCount: number
@@ -169,6 +188,7 @@ export function ActivityRail({ project, changeCount, onAdd }: ActivityRailProps)
         isActive={isTasksOpen}
         onClick={() => togglePanelView('tasks')}
       />
+      <ContextButton project={project} />
       <hr className={styles.divider} />
       <NewPaneMenu project={project} onAdd={onAdd} />
     </nav>

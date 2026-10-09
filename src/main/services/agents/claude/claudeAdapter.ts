@@ -54,4 +54,11 @@ export const claudeAdapter: AgentAdapter = {
     transcriptRoot: (homeDir, env) => env.CLAUDE_CONFIG_DIR || join(homeDir, '.claude'),
     read: (lines) => readClaudeTranscript(lines),
   },
+
+  headless(command) {
+    return {
+      commandLine: '"$DUGOUT_CLAUDE_COMMAND" -p "$DUGOUT_HEADLESS_PROMPT"',
+      env: { DUGOUT_CLAUDE_COMMAND: command },
+    }
+  },
 }

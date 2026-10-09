@@ -193,7 +193,7 @@ export type ProjectSetWorktreeSetupRequest = z.infer<typeof projectSetWorktreeSe
 export type ProjectsFile = z.infer<typeof projectsFileSchema>
 
 /** A path inside a repository: relative, with no `..` segments, so it cannot escape it. */
-const repoRelativePath = z
+export const repoRelativePath = z
   .string()
   .min(1)
   .max(4096)
