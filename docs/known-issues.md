@@ -20,7 +20,7 @@ polling; stream the build's output into the tab.
 ## Task descriptions reach agents; only task writes are gated
 
 - **Area:** `src/main/mcp/toolAccess.ts`, `src/main/services/tasks/taskSession.ts`, agent adapters
-- **Found:** 2026-10-09, in a security audit (decision 052)
+- **Found:** 2026-10-09, in a security audit (decision 053)
 
 **What happens:** Task writes now ask first, but a task's description (and, through `get_task`,
 its comments) is still text from anyone who can file an issue, and it reaches the agent. The

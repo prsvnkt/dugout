@@ -98,7 +98,7 @@ async function everythingWritten(adapter: AgentAdapter): Promise<string> {
 }
 
 describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter permissions', (_kind, adapter) => {
-  test('never pre-approves the whole dugout server or a task write (decision 052)', async () => {
+  test('never pre-approves the whole dugout server or a task write (decision 053)', async () => {
     const written = await everythingWritten(adapter)
     expect(written).not.toContain('"mcp__dugout"')
     for (const tool of WRITE_TOOLS) {

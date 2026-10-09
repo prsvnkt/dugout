@@ -21,7 +21,7 @@ function localMcpServer(server: McpServerEntry) {
 
 /**
  * OpenCode names MCP tools `<server>_<tool>` and applies the last matching permission rule, so
- * every dugout tool asks first and then the read and propose ones are allowed (decision 052).
+ * every dugout tool asks first and then the read and propose ones are allowed (decision 053).
  */
 function dugoutPermissions(): Record<string, 'ask' | 'allow'> {
   return {

@@ -47,7 +47,7 @@ export interface HookSettings {
 }
 
 /**
- * Only Dugout's read and propose tools run without a prompt (decision 052). Task writes post to
+ * Only Dugout's read and propose tools run without a prompt (decision 053). Task writes post to
  * GitHub or Linear with the user's account, and a task's description (written by anyone who can
  * open an issue) is the agent's first prompt, so writes go through Claude's permission prompt.
  */

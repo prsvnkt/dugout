@@ -1,6 +1,6 @@
 /**
  * What each "dugout" MCP tool can do, the one place that decides which tools agents may call
- * without asking (decision 052). It has no dependencies, so agent adapters can read it too.
+ * without asking (decision 053). It has no dependencies, so agent adapters can read it too.
  *
  * - `read`: reads the project's tasks or context.
  * - `propose`: only proposes something that a person approves in Dugout (add_note).

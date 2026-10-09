@@ -167,7 +167,7 @@ terminal's project and calls GitHub with the user's token — the agent never se
 `mcp__dugout`. The first prompt is placed before `--mcp-config`, which takes a list. Providers
 are behind `TaskService`, so Jira or local storage can be added later.
 
-_Superseded in part by 052: the hook settings no longer pre-approve the whole `mcp__dugout`
+_Superseded in part by 053: the hook settings no longer pre-approve the whole `mcp__dugout`
 server, only its read and propose tools; task writes ask first._
 
 ## 019 — "Needs you" inbox across projects (2026-10-06)
@@ -1080,7 +1080,28 @@ in Linear (issue #27).
   Linear's 10,000-point query limit; comment counts are not fetched for lists (cards show them
   only for GitHub), since they would multiply the complexity of every 30-second refresh.
 
-## 052 — Agents get read-only Dugout tools pre-approved; writes prompt (2026-10-09)
+## 052 — Packaging: minified bundles, renderer deps are devDependencies (2026-10-09)
+
+**Context.** The v0.4.0 DMG was 161 MB. electron-builder adds every production `dependency` to
+app.asar on top of the `files` list, so Monaco, React, xterm and the other renderer packages
+shipped twice: bundled in `out/renderer` and again as raw `node_modules` (~164 MB, Monaco alone
+102 MB). electron-vite also leaves every bundle unminified.
+
+**Decision.**
+
+- **`dependencies` holds only what main loads at runtime:** `node-pty`, `zod` and
+  `@modelcontextprotocol/sdk` (electron-vite externalises them from the main and MCP bundles).
+  Everything the renderer imports is a devDependency, since Vite bundles it.
+- **Minify the renderer only** (esbuild). Main and preload are a few hundred KB, and readable
+  stack traces in their logs are worth more than the bytes. No sourcemaps: nothing symbolicates
+  them yet; revisit with crash reporting.
+- **`npmRebuild: false`:** node-pty's N-API prebuilds run in any Electron, so the rebuild is
+  wasted work. The packaged e2e suite (`npm run test:e2e:packaged`) covers it.
+- **`!out/demo/**`** keeps `npm run demo:gif` footage out of the app.
+
+Result: app.asar 30 MB, DMG 134 MB (from 161 MB); the rest is Electron itself.
+
+## 053 — Agents get read-only Dugout tools pre-approved; writes prompt (2026-10-09)
 
 **Context.** Claude's hook settings allowed `mcp__dugout`, the whole server (decision 018), so
 `create_task`, `create_tasks`, `update_task` and `comment_on_task` ran without a prompt. Those
