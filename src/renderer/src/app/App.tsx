@@ -11,6 +11,7 @@ import { useAppCommands } from '@renderer/features/workspace/useAppCommands'
 import { useHasUnsavedChanges } from '@renderer/features/editor/editorStore'
 import { useWorkspacePersistence } from '@renderer/features/workspace/useWorkspacePersistence'
 import { WelcomeScreen } from '@renderer/features/welcome/WelcomeScreen'
+import { watchUsageChanges } from '@renderer/features/usage/usageStore'
 import { dugout } from '@renderer/lib/dugout'
 import styles from './App.module.css'
 
@@ -23,6 +24,7 @@ export function App() {
   }, [load])
   const connectAuth = useAuthStore((state) => state.connect)
   useEffect(() => connectAuth(), [connectAuth])
+  useEffect(() => watchUsageChanges(), [])
 
   const startAddProject = useCallback(async () => {
     setPickError(null)

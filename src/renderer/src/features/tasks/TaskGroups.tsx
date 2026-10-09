@@ -7,11 +7,14 @@ import { useTaskGroupsStore } from './taskGroupsStore'
 import type { TaskGroup } from './taskList'
 import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
 import type { TaskAgents } from './useTaskAgents'
+import type { UsageTotals } from '@shared/usage'
 import styles from './Tasks.module.css'
 
 interface TaskGroupsProps {
   readonly groups: readonly TaskGroup[]
   readonly agents: ReadonlyMap<number, TaskAgents>
+  /** Tokens per task, across all its sessions. */
+  readonly usage: ReadonlyMap<number, UsageTotals>
   /** Other agents that changed the same files as each task's agents. */
   overlapsFor(taskNumber: number): readonly LabelledOverlap[]
   /** The task open in the active editor tab, if any. */
@@ -34,7 +37,7 @@ function moveFocus(event: KeyboardEvent<HTMLElement>) {
 
 /** The tasks by status, in groups that collapse (remembered; Done starts collapsed). */
 export function TaskGroups(props: TaskGroupsProps) {
-  const { groups, agents, overlapsFor, currentTask, onOpen } = props
+  const { groups, agents, usage, overlapsFor, currentTask, onOpen } = props
   const isOpen = useTaskGroupsStore((state) => state.isOpen)
   const toggle = useTaskGroupsStore((state) => state.toggle)
   return (
@@ -65,6 +68,7 @@ export function TaskGroups(props: TaskGroupsProps) {
                     agents={agents.get(task.number)}
                     overlaps={overlapsFor(task.number)}
                     isCurrent={task.number === currentTask}
+                    usage={usage.get(task.number)}
                     onOpen={(isPreview) => onOpen(task, isPreview)}
                   />
                 ))}

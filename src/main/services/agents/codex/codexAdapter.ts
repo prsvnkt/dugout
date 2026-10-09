@@ -1,4 +1,6 @@
+import { join } from 'node:path'
 import { AGENTS } from '@shared/agents'
+import { readCodexTranscript } from '../../transcripts/codexTranscript'
 import type { AgentAdapter, AgentLaunchContext } from '../AgentAdapter'
 import { codexConfigOverrides } from './codexConfig'
 import { codexProjectServerOverrides } from './projectServers'
@@ -38,5 +40,11 @@ export const codexAdapter: AgentAdapter = {
         ...Object.fromEntries(overrides.map((value, index) => [`DUGOUT_CODEX_C${index}`, value])),
       },
     }
+  },
+
+  // Codex hooks send `transcript_path`, its session log (`$CODEX_HOME/sessions/…`).
+  usage: {
+    transcriptRoot: (homeDir, env) => env.CODEX_HOME || join(homeDir, '.codex'),
+    read: readCodexTranscript,
   },
 }

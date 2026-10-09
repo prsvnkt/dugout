@@ -18,6 +18,7 @@ import { CheckIndicator } from '@renderer/features/checks/CheckIndicator'
 import { OpenInMenu } from '@renderer/features/openIn/OpenInMenu'
 import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
 import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
+import { UsageBadge } from '@renderer/features/usage/UsageBadge'
 import { ActivityIndicator } from './ActivityIndicator'
 import { useDoneSeen } from './useDoneSeen'
 import { useTerminal, type TerminalStatus } from './useTerminal'
@@ -87,9 +88,10 @@ export function TerminalPane(props: TerminalPaneProps) {
     resumeSessionId,
     initialPrompt,
     devServer,
+    taskNumber: task?.number,
   })
   const { status, agentStatus, agentDetail, agentApprovals, terminalId, sessionId } = terminal
-  const { subagents, focus } = terminal
+  const { subagents, usage, focus } = terminal
   const canRestart = status.state === 'exited' || status.state === 'error'
   // If the agent never got ready, resuming failed (e.g. the session no longer exists).
   const isAgent = isAgentKind(kind)
@@ -140,6 +142,7 @@ export function TerminalPane(props: TerminalPaneProps) {
           </span>
         )}
         <OverlapFlag overlaps={overlaps} className={styles.overlap} />
+        {usage && <UsageBadge usage={usage} className={styles.usage} />}
         <ActivityIndicator
           activity={activity}
           label={describe(activity, status)}

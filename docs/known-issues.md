@@ -15,6 +15,23 @@ A user's own `OPENCODE_CONFIG_CONTENT`, if they set one, is replaced by Dugout's
 becomes `{env:VAR}`), show them in Agent settings per agent, and merge an inherited
 `OPENCODE_CONFIG_CONTENT` instead of replacing it.
 
+## Token usage: OpenCode, earlier sessions and long-context prices
+
+- **Area:** `src/main/services/usage/`, `src/main/services/transcripts/`
+- **Found:** 2026-10-09, while adding the usage tracker (decision 046)
+
+**What happens:** OpenCode agents show no usage: it keeps messages in its own storage (JSON
+files or SQLite, by version), not a transcript its plugin names. Usage counts only from when an
+agent ran in Dugout; there is no one-time import of earlier sessions for a project's folder
+("outside Dugout"). Costs use short-context list prices (Claude Haiku 5.5 over 100K prompt
+tokens and OpenAI over 272K cost more) and Codex reports one running total per session, so its
+cost is an estimate per session, not per call. After 120 days untouched, a transcript's dedupe
+ids are forgotten; resuming such an old session would count its copied replies again.
+
+**Likely fix:** an OpenCode reader on its plugin's `message.updated` events (they carry tokens and
+cost); an "Import earlier sessions" action that reads a project's transcript folders once and
+labels them; per-call Codex usage from `last_token_usage`.
+
 ## E2E tests can time out when the machine is busy
 
 - **Area:** `tests/e2e/` (Playwright, one Electron instance per worker)

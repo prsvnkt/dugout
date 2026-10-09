@@ -1,4 +1,5 @@
 import type { AgentInfo } from '@shared/agents'
+import type { TranscriptCarry, TranscriptUsage } from '../transcripts/types'
 import type { McpServerEntry } from './dugoutMcp'
 
 /** Private per-terminal files (MCP configs), written owner-only and removed when it exits. */
@@ -36,6 +37,17 @@ export interface AgentLaunch {
   readonly dispose?: () => void
 }
 
+/** Usage: where an agent's transcript (its token data) lives and how to read it. */
+export interface AgentUsageReader {
+  /**
+   * The folder its transcripts are in (honouring its own variable, e.g. `CLAUDE_CONFIG_DIR`).
+   * Transcript paths from hooks outside it are ignored.
+   */
+  transcriptRoot(homeDir: string, env: Readonly<Record<string, string | undefined>>): string
+  /** Usage in complete transcript lines; `carry` is what an earlier read of the file remembered. */
+  read(lines: readonly string[], carry: TranscriptCarry, fileKey: string): TranscriptUsage
+}
+
 /**
  * One agent CLI. Adapters only translate (command lines, config, hook formats); status rules,
  * the inbox, worktrees, tasks and resume stay shared, so agents cannot drift apart.
@@ -50,4 +62,6 @@ export interface AgentAdapter {
   prepare?(dataDir: string): Promise<void>
   /** The launch with Dugout's hooks and task server. Without hooks, `defaultCommand` runs as is. */
   launch(context: AgentLaunchContext): AgentLaunch
+  /** Present exactly when the agent has `hasUsage`; its hooks report the transcript's path. */
+  readonly usage?: AgentUsageReader
 }

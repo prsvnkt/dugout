@@ -13,6 +13,7 @@ import { TaskSourceForm } from './TaskSourceForm'
 import { filterTasks, groupTasks } from './taskList'
 import { useProjectTasks, useTaskStore } from './taskStore'
 import { useTaskAgents } from './useTaskAgents'
+import { useTaskUsage } from '@renderer/features/usage/UsageFigure'
 import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
 import styles from './Tasks.module.css'
 
@@ -117,6 +118,7 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
   const setPanelOpen = useGitStore((state) => state.setPanelOpen)
   const openTask = useEditorStore((state) => state.openTask)
   const agents = useTaskAgents(project.id)
+  const usage = useTaskUsage(project.id)
   const overlaps = useProjectOverlaps(project.id)
   const currentTask = useCurrentTask(project.id)
   const [query, setQuery] = useState('')
@@ -220,6 +222,7 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
         <TaskGroups
           groups={groups}
           agents={agents}
+          usage={usage}
           overlapsFor={overlaps.forTask}
           currentTask={currentTask}
           onOpen={(task, isPreview) => openTask(project.id, task, isPreview)}

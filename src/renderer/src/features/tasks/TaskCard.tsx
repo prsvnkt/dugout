@@ -8,6 +8,8 @@ import { Icon } from '@renderer/lib/Icon'
 import { CheckBadge } from '@renderer/features/checks/CheckBadge'
 import { checkLabel } from '@renderer/features/checks/checks'
 import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
+import { UsageFigure } from '@renderer/features/usage/UsageFigure'
+import type { UsageTotals } from '@shared/usage'
 import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
 import { visibleLabels } from './taskList'
 import type { TaskAgents } from './useTaskAgents'
@@ -26,6 +28,8 @@ interface TaskCardProps {
   readonly overlaps: readonly LabelledOverlap[]
   /** The task is open in the active editor tab. */
   readonly isCurrent: boolean
+  /** Tokens its agents used, across all their sessions. */
+  readonly usage: UsageTotals | undefined
   /** Click (or Enter) previews the task in a tab; double-click keeps the tab open. */
   onOpen(isPreview: boolean): void
 }
@@ -45,7 +49,7 @@ function AgentsOnTask({ agents }: { agents: TaskAgents }) {
 }
 
 /** One task in the Tasks list: title, when it changed, labels and the agents on it. */
-export function TaskCard({ task, agents, overlaps, isCurrent, onOpen }: TaskCardProps) {
+export function TaskCard({ task, agents, overlaps, isCurrent, usage, onOpen }: TaskCardProps) {
   const labels = visibleLabels(task.labels)
   const { priority } = task
   const age = formatAge(task.updatedAt)
@@ -78,6 +82,7 @@ export function TaskCard({ task, agents, overlaps, isCurrent, onOpen }: TaskCard
               {PRIORITY_LABEL[priority]}
             </span>
           )}
+          <UsageFigure totals={usage} label="Tokens on this task" />
         </span>
         {hasFooter && (
           <span className={styles.footer}>

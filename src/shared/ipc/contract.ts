@@ -64,6 +64,8 @@ export const terminalCreateRequestSchema = z.object({
   resumeSessionId: sessionId.optional(),
   /** First message for a new Claude session (e.g. the task it was started for). */
   initialPrompt: z.string().min(1).max(MAX_INITIAL_PROMPT_LENGTH).optional(),
+  /** The task an agent was started for; its token usage counts towards the task. */
+  taskNumber: z.number().int().positive().optional(),
   /** `PORT` for a dev server started in this shell. */
   port: z.number().int().min(MIN_DEV_PORT).max(MAX_DEV_PORT).optional(),
   cwd: absolutePath,
@@ -470,6 +472,7 @@ export const mcpServerSchema = z.discriminatedUnion('type', [
   }),
 ])
 export const agentConfigRequestSchema = z.object({ projectId })
+export const usageProjectRequestSchema = z.object({ projectId })
 export const agentConfigSaveMcpRequestSchema = z.object({
   projectId,
   version: z.string().max(128),

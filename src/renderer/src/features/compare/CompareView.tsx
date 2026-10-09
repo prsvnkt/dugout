@@ -10,6 +10,7 @@ import {
 import { Icon } from '@renderer/lib/Icon'
 import { alsoChangedBy } from '@renderer/features/overlaps/overlaps'
 import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
+import { CompareUsage } from '@renderer/features/usage/UsageFigure'
 import { compareFiles } from './compareFiles'
 import styles from './CompareView.module.css'
 
@@ -95,6 +96,9 @@ export function CompareView({ projectId, tabId, target }: CompareViewProps) {
         <header className={styles.heading}>
           {left.label} vs {right.label}
         </header>
+        {target.taskNumber !== undefined && (
+          <CompareUsage projectId={projectId} taskNumber={target.taskNumber} sides={target.sides} />
+        )}
         {error && <p className={styles.error}>{error}</p>}
         {changes && files.length === 0 && (
           <p className={styles.muted}>Neither agent changed anything yet.</p>

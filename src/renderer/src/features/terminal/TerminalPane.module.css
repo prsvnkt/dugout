@@ -112,3 +112,12 @@
      border-box it would include the padding and fit columns past the right edge. */
   box-sizing: content-box;
 }
+
+/* Tokens and context use; pushes the status to the end with it. */
+.usage {
+  margin-left: auto;
+}
+
+.usage + .status {
+  margin-left: 0;
+}

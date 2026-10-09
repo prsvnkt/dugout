@@ -14,6 +14,7 @@ export type AppCommand =
   | { readonly type: 'explorer.toggle' }
   | { readonly type: 'inbox.toggle' }
   | { readonly type: 'agentSettings.open' }
+  | { readonly type: 'usage.open' }
   | { readonly type: 'editor.save' }
   | { readonly type: 'editor.saveAll' }
   /** Show the pane running this terminal, e.g. after clicking a notification. */

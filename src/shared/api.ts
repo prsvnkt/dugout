@@ -9,6 +9,7 @@ import type { GitBranch, GitStatus } from './git'
 import type { PreviewDeployment } from './preview'
 import type { FailingCheck, PullRequestStatus, PullReviewThread } from './pullRequest'
 import type { ToolCallPreview } from './toolCall'
+import type { AgentUsage, ProjectUsage } from './usage'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
 import type {
   ProjectAddRequest,
@@ -60,6 +61,8 @@ export interface DugoutApi {
     onAgentSubagent(listener: (id: TerminalId, update: SubagentUpdate) => void): Unsubscribe
     /** Verify on Stop: the project's check command running after the agent finished a turn. */
     onCheckStatus(listener: (id: TerminalId, status: CheckStatus) => void): Unsubscribe
+    /** An agent session's token usage, each time its transcript grows. */
+    onAgentUsage(listener: (id: TerminalId, usage: AgentUsage) => void): Unsubscribe
   }
   readonly projects: {
     list(): Promise<Result<readonly Project[]>>
@@ -222,6 +225,12 @@ export interface DugoutApi {
       version: string,
     ): Promise<Result<void>>
     linkInstructions(projectId: ProjectId): Promise<Result<void>>
+  }
+  /** Token usage Dugout recorded for agents with `hasUsage` (decision 046). */
+  readonly usage: {
+    project(projectId: ProjectId): Promise<Result<ProjectUsage>>
+    /** A project's usage changed (an agent's transcript grew). */
+    onChange(listener: (projectId: ProjectId) => void): Unsubscribe
   }
   /** Saved panes per project, restored on launch. */
   readonly workspace: {

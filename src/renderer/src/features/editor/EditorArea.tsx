@@ -9,6 +9,7 @@ import { CompareView } from '@renderer/features/compare/CompareView'
 import { FileTypeIcon } from '@renderer/features/explorer/FileTypeIcon'
 import { ReviewComments } from '@renderer/features/reviewComments/ReviewComments'
 import { TaskDetailView } from '@renderer/features/tasks/TaskDetailView'
+import { UsageView } from '@renderer/features/usage/UsageView'
 import { Icon } from '@renderer/lib/Icon'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
 import { checkoutOf, fileKeyOf } from './fileKey'
@@ -22,11 +23,19 @@ const MAX_TASK_TAB_LABEL = 40
 const DIFF_COMMENT_HINT =
   'Comment for the agent: select lines on the right, then press ⌘⇧M or right-click › Add Review Comment.'
 
+/** Tabs that show a view, named by their path, with no file buffer behind them. */
+const VIEW_TABS: ReadonlySet<EditorTab['kind']> = new Set([
+  'compare',
+  'agent-settings',
+  'task',
+  'usage',
+])
+
 function tabLabel(tab: EditorTab): string {
   if (tab.kind === 'task' && tab.path.length > MAX_TASK_TAB_LABEL) {
     return `${tab.path.slice(0, MAX_TASK_TAB_LABEL - 1).trimEnd()}…`
   }
-  if (tab.kind === 'compare' || tab.kind === 'agent-settings' || tab.kind === 'task') {
+  if (VIEW_TABS.has(tab.kind)) {
     return tab.path
   }
   const { name } = splitPath(tab.path)
@@ -98,11 +107,11 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
   const isCompare = active.kind === 'compare'
   const isAgentSettings = active.kind === 'agent-settings'
   const isTask = active.kind === 'task'
+  const isUsage = active.kind === 'usage'
   const fileKey = fileKeyOf(checkoutOf(projectId, active.worktreePath), active.path)
   const buffer = buffers[fileKey]
   const pendingTab = tabs.find((tab) => tab.id === pendingClose)
-  const needsBuffer =
-    !isCompare && !isAgentSettings && !isTask && (active.kind === 'file' || !active.staged)
+  const needsBuffer = !VIEW_TABS.has(active.kind) && (active.kind === 'file' || !active.staged)
   const isEditable = buffer && !buffer.error && !buffer.isBinary && !buffer.isTooLarge
 
   return (
@@ -163,6 +172,8 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
       {buffer && needsBuffer && <DiskBanner buffer={buffer} />}
       {isAgentSettings ? (
         <AgentSettingsView projectId={projectId} />
+      ) : isUsage ? (
+        <UsageView projectId={projectId} />
       ) : isTask && active.taskNumber !== undefined ? (
         <TaskDetailView
           key={active.id}

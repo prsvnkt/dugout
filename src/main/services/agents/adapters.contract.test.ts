@@ -70,3 +70,23 @@ describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter contract', (kind, adap
     expect(files.contents.size).toBe(0)
   })
 })
+
+describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter usage', (_kind, adapter) => {
+  test('reads usage exactly when it says it has usage', () => {
+    expect(adapter.usage !== undefined).toBe(adapter.info.capabilities.hasUsage)
+  })
+
+  test.runIf(adapter.usage)('keeps transcripts under the home folder, or its own variable', () => {
+    const usage = adapter.usage
+    if (!usage) return
+    expect(usage.transcriptRoot('/Users/me', {}).startsWith('/Users/me/')).toBe(true)
+    const root = usage.transcriptRoot('/Users/me', { CLAUDE_CONFIG_DIR: '/c', CODEX_HOME: '/x' })
+    expect(['/c', '/x']).toContain(root)
+  })
+
+  test.runIf(adapter.usage)('finds nothing in lines it does not understand', () => {
+    const usage = adapter.usage?.read(['', 'not json', '{"type":"unknown"}'], {}, '/f.jsonl')
+    expect(usage?.observations).toEqual([])
+    expect(usage?.context).toBeNull()
+  })
+})

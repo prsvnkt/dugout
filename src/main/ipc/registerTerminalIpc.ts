@@ -92,6 +92,8 @@ export function registerTerminalIpc(
         sendTo(owner, IpcChannel.terminalAgentSession, terminalId, sessionId),
       onAgentSubagent: (terminalId, update) =>
         sendTo(owner, IpcChannel.terminalAgentSubagent, terminalId, update),
+      onAgentUsage: (terminalId, usage) =>
+        sendTo(owner, IpcChannel.terminalAgentUsage, terminalId, usage),
     }
     let id: TerminalId
     try {

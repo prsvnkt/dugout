@@ -21,6 +21,7 @@ import { registerTaskIpc } from './ipc/registerTaskIpc'
 import { registerWorktreeIpc } from './ipc/registerWorktreeIpc'
 import { registerWelcomeIpc } from './ipc/registerWelcomeIpc'
 import { registerOpenInIpc } from './ipc/registerOpenInIpc'
+import { registerUsageIpc } from './ipc/registerUsageIpc'
 import { OpenInService } from './services/openIn/OpenInService'
 import { DEFAULT_OPEN_COMMAND, execFileRunner } from './services/openIn/runOpen'
 import { installMenu } from './menu'
@@ -58,6 +59,9 @@ import { handleTaskRpc } from './services/tasks/taskRpc'
 import { TaskService } from './services/tasks/TaskService'
 import { LayoutStore } from './services/workspace/LayoutStore'
 import { WorktreeManager } from './services/worktrees/WorktreeManager'
+import { setupUsage } from './services/usage/setupUsage'
+import type { UsageService } from './services/usage/UsageService'
+import { createUsageReporter, type TranscriptHint } from './services/usage/usageReporter'
 import { createMainWindow } from './window'
 import { applyAppIcon } from './appIcon'
 
@@ -105,6 +109,8 @@ if (userDataOverride) app.setPath('userData', userDataOverride)
 let agentHooks: AgentHooks | null = null
 let terminalManager: TerminalManager | null = null
 let checkRunner: CheckRunner | null = null
+let usageService: UsageService | null = null
+let reportTranscript: ((hint: TranscriptHint) => void) | null = null
 
 function sendCommand(command: AppCommand): void {
   const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
@@ -173,15 +179,32 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
     return await setupAgentHooks({
       dataDir,
       commands: agentCommands(process.env),
-      onSignal: (terminalId, signal, details) =>
-        terminalManager?.applyHookSignal(terminalId, signal, details),
-      onSubagent: (terminalId, update) => terminalManager?.applySubagent(terminalId, update),
+      onSignal: (terminalId, signal, details) => {
+        terminalManager?.applyHookSignal(terminalId, signal, details)
+        const { transcriptPath, sessionId } = details
+        if (transcriptPath)
+          reportTranscript?.({ terminalId, transcriptPath, sessionId, isSubagent: false })
+      },
+      onSubagent: (terminalId, update, transcriptPath) => {
+        terminalManager?.applySubagent(terminalId, update)
+        if (transcriptPath) reportTranscript?.({ terminalId, transcriptPath, isSubagent: true })
+      },
       onRpc: handleAgentTaskRpc,
       // Electron runs the bundled MCP server in Node mode, so users need no separate Node.
       mcpServer: { command: process.execPath, script: join(import.meta.dirname, 'mcp.js') },
     })
   } catch (error) {
     console.error('[hooks] could not start; agent status disabled:', error)
+    return null
+  }
+}
+
+/** Usage is a nice-to-have too: if its folder cannot be set up, agents run without it. */
+async function startUsage(dataDir: string, homeDir: string): Promise<UsageService | null> {
+  try {
+    return await setupUsage({ dataDir, homeDir, env: process.env })
+  } catch (error) {
+    console.error('[usage] could not start; token usage disabled:', error)
     return null
   }
 }
@@ -228,6 +251,18 @@ async function start(): Promise<void> {
   })
   checkRunner = checks
 
+  // Tests point this at a temp folder so they never search the real home folder.
+  const homeDir = process.env.DUGOUT_HOME_DIR ?? homedir()
+  usageService = await startUsage(dataDir, homeDir)
+  if (usageService) {
+    reportTranscript = createUsageReporter({
+      usage: usageService,
+      terminals: manager,
+      onProjectChange: (projectId) => broadcast(IpcChannel.usageChanged, projectId),
+    })
+  }
+
+  registerUsageIpc(usageService)
   registerProjectIpc(projectStore)
   const github = gitHubConfig(process.env)
   const githubApi = new GitHubApi({ fetch, apiBaseUrl: github.apiBaseUrl })
@@ -354,8 +389,7 @@ async function start(): Promise<void> {
   )
   registerWelcomeIpc({
     settings,
-    // Tests point this at a temp folder so they never search the real home folder.
-    homeDir: process.env.DUGOUT_HOME_DIR ?? homedir(),
+    homeDir,
     runInLoginShell: loginShellRunner(process.env),
     agentCommands: agentCommands(process.env),
   })
@@ -384,5 +418,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   terminalManager?.killAll()
   checkRunner?.stopAll()
+  // Best effort: anything not saved is replayed from the usage ledger on the next start.
+  void usageService?.flush()
   void agentHooks?.close()
 })

@@ -13,6 +13,7 @@ export const IpcChannel = {
   terminalAgentSession: 'terminal:agent-session',
   terminalAgentSubagent: 'terminal:agent-subagent',
   terminalCheckStatus: 'terminal:check-status',
+  terminalAgentUsage: 'terminal:agent-usage',
   workspaceLoad: 'workspace:load',
   workspaceSave: 'workspace:save',
   dialogPickFolder: 'dialog:pick-folder',
@@ -83,5 +84,7 @@ export const IpcChannel = {
   agentConfigLinkInstructions: 'agent-config:link-instructions',
   welcomeFindRepos: 'welcome:find-repos',
   welcomeCheckAgents: 'welcome:check-agents',
+  usageProject: 'usage:project',
+  usageChanged: 'usage:changed',
   appCommand: 'app:command',
 } as const

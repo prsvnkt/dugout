@@ -14,7 +14,7 @@ export interface AgentCapabilities {
   readonly hasMcp: boolean
   /** Can continue a conversation by session id after a restart. */
   readonly canResume: boolean
-  /** Dugout can read its token usage (none yet; see issue #35). */
+  /** Dugout reads its token usage from the transcript its hooks point to (decision 046). */
   readonly hasUsage: boolean
 }
 
@@ -37,7 +37,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
     productName: 'Claude Code',
     cliName: 'Claude Code',
     installCommand: 'npm install -g @anthropic-ai/claude-code',
-    capabilities: { hasStatus: true, hasMcp: true, canResume: true, hasUsage: false },
+    capabilities: { hasStatus: true, hasMcp: true, canResume: true, hasUsage: true },
   },
   codex: {
     kind: 'codex',
@@ -45,7 +45,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
     productName: 'Codex',
     cliName: 'Codex CLI',
     installCommand: 'npm install -g @openai/codex',
-    capabilities: { hasStatus: true, hasMcp: true, canResume: true, hasUsage: false },
+    capabilities: { hasStatus: true, hasMcp: true, canResume: true, hasUsage: true },
   },
   opencode: {
     kind: 'opencode',

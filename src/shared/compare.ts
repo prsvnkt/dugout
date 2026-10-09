@@ -1,3 +1,4 @@
+import type { AgentKind } from './agents'
 import type { GitChangeKind } from './git'
 
 /** Most worktrees one request may list (Compare shows two; overlap warnings track them all). */
@@ -13,9 +14,12 @@ export interface WorktreeChanges {
 export interface CompareTarget {
   readonly title: string
   readonly sides: readonly [CompareSide, CompareSide]
+  /** The task both agents work on, whose token usage Compare shows per agent. */
+  readonly taskNumber?: number
 }
 
 export interface CompareSide {
   readonly label: string
   readonly worktreePath: string
+  readonly agent?: AgentKind
 }
