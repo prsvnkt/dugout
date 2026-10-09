@@ -24,6 +24,8 @@ export const IpcChannel = {
   projectSetCheckCommand: 'project:set-check-command',
   projectSetTaskSource: 'project:set-task-source',
   projectSetWorktreeSetup: 'project:set-worktree-setup',
+  projectChangeTaskQueue: 'project:change-task-queue',
+  projectSetMaxAgents: 'project:set-max-agents',
   gitStatus: 'git:status',
   gitShow: 'git:show',
   filesReadDir: 'files:read-dir',

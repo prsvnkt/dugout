@@ -29,7 +29,10 @@ export function useWorkspacePersistence(areProjectsLoaded: boolean): void {
     void dugout.workspace.load().then((result) => {
       if (isCancelled) return
       if (result.ok) useWorkspaceStore.getState().hydrate(result.data)
-      else console.error('[workspace] could not restore layout:', result.error)
+      else {
+        console.error('[workspace] could not restore layout:', result.error)
+        useWorkspaceStore.getState().markRestored()
+      }
       unsubscribe = useWorkspaceStore.subscribe((state, previous) => {
         const hasChanged =
           state.layouts !== previous.layouts || state.recentSessions !== previous.recentSessions

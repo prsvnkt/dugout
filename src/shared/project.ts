@@ -13,6 +13,7 @@ export const PROJECT_COLORS = [
 
 export type ProjectColor = (typeof PROJECT_COLORS)[number]
 
+import type { QueuedTask } from './taskQueue'
 import type { WorktreeSetup } from './worktreeSetup'
 
 export type ProjectId = string
@@ -32,6 +33,10 @@ export interface Project {
   readonly taskSource?: TaskSource | undefined
   /** Files to copy and a command to run in each new worktree; absent when not set up. */
   readonly worktreeSetup?: WorktreeSetup | undefined
+  /** Agents started from the queue only while fewer than this many are busy; default 3. */
+  readonly maxAgents?: number | undefined
+  /** Tasks waiting for a free agent slot, first to start first; absent when empty. */
+  readonly taskQueue?: readonly QueuedTask[] | undefined
 }
 
 export const MAX_PROJECT_NAME_LENGTH = 60

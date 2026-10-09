@@ -35,6 +35,7 @@ import type { AppSettings } from './settings'
 import type { AgentKind, TerminalExit, TerminalId } from './terminal'
 import type { LinearState, LinearTeam } from './linear'
 import type { Task, TaskDetail, TaskSource } from './tasks'
+import type { TaskQueueChange } from './taskQueue'
 import type { TaskSession } from './taskSession'
 import type { AgentCliCheck, LocalRepo, RepoSearchScope } from './welcome'
 import type { GitCheckout, Worktree } from './worktree'
@@ -84,6 +85,10 @@ export interface DugoutApi {
     setTaskSource(projectId: ProjectId, source: TaskSource): Promise<Result<Project>>
     /** Sets what new worktrees copy and run before their first agent; null turns it off. */
     setWorktreeSetup(id: ProjectId, setup: WorktreeSetup | null): Promise<Result<Project>>
+    /** Adds, removes or moves a task in the project's queue (decision 047). */
+    changeTaskQueue(id: ProjectId, change: TaskQueueChange): Promise<Result<Project>>
+    /** How many agents the queue lets run at once in the project. */
+    setMaxAgents(id: ProjectId, maxAgents: number): Promise<Result<Project>>
   }
   /** Preview deployments and local dev servers, for checking what an agent changed. */
   readonly preview: {

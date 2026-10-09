@@ -2,8 +2,10 @@ import { z } from 'zod'
 import { IpcChannel } from '@shared/ipc/channels'
 import {
   projectAddRequestSchema,
+  projectChangeTaskQueueRequestSchema,
   projectRemoveRequestSchema,
   projectSetDevCommandRequestSchema,
+  projectSetMaxAgentsRequestSchema,
   projectSetCheckCommandRequestSchema,
   projectSetTaskSourceRequestSchema,
   projectSetWorktreeSetupRequestSchema,
@@ -30,5 +32,13 @@ export function registerProjectIpc(store: ProjectStore): void {
     IpcChannel.projectSetWorktreeSetup,
     projectSetWorktreeSetupRequestSchema,
     ({ id, setup }) => store.setWorktreeSetup(id, setup),
+  )
+  handleRequest(
+    IpcChannel.projectChangeTaskQueue,
+    projectChangeTaskQueueRequestSchema,
+    ({ id, change }) => store.changeTaskQueue(id, change),
+  )
+  handleRequest(IpcChannel.projectSetMaxAgents, projectSetMaxAgentsRequestSchema, (request) =>
+    store.setMaxAgents(request.id, request.maxAgents),
   )
 }

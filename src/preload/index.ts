@@ -37,6 +37,10 @@ const api: DugoutApi = {
       ipcRenderer.invoke(IpcChannel.projectSetTaskSource, { projectId, source }),
     setWorktreeSetup: (id, setup) =>
       ipcRenderer.invoke(IpcChannel.projectSetWorktreeSetup, { id, setup }),
+    changeTaskQueue: (id, change) =>
+      ipcRenderer.invoke(IpcChannel.projectChangeTaskQueue, { id, change }),
+    setMaxAgents: (id, maxAgents) =>
+      ipcRenderer.invoke(IpcChannel.projectSetMaxAgents, { id, maxAgents }),
   },
   preview: {
     deployment: (checkout) => ipcRenderer.invoke(IpcChannel.previewDeployment, checkout),

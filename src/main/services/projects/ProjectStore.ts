@@ -1,6 +1,7 @@
 import { readFile, rename } from 'node:fs/promises'
 import { projectsFileSchema, type ProjectAddRequest } from '@shared/ipc/contract'
 import { pickProjectColor, suggestProjectName, type Project, type ProjectId } from '@shared/project'
+import { applyQueueChange, type TaskQueueChange } from '@shared/taskQueue'
 import type { TaskSource } from '@shared/tasks'
 import { isEmptySetup, type WorktreeSetup } from '@shared/worktreeSetup'
 import { writeFileAtomic } from './atomicWrite'
@@ -20,9 +21,14 @@ function isMissingFile(error: unknown): boolean {
   return (error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT'
 }
 
-/** Persists the user's projects to a JSON file. All state changes replace the array. */
+/**
+ * Persists the user's projects to a JSON file. All state changes replace the array, and run one
+ * after another, each on the result of the last, so changes sent together (e.g. two queued tasks
+ * starting at once) never undo each other.
+ */
 export class ProjectStore {
   private projects: readonly Project[] = []
+  private pending: Promise<unknown> = Promise.resolve()
 
   constructor(private readonly deps: ProjectStoreDeps) {}
 
@@ -51,22 +57,24 @@ export class ProjectStore {
     await this.quarantineCorruptFile()
   }
 
-  async add(request: ProjectAddRequest): Promise<Project> {
-    const rootPath = await this.deps.resolveRepoRoot(request.rootPath)
-    if (!rootPath) throw new Error(`${request.rootPath} is not inside a git repository.`)
+  add(request: ProjectAddRequest): Promise<Project> {
+    return this.serially(async () => {
+      const rootPath = await this.deps.resolveRepoRoot(request.rootPath)
+      if (!rootPath) throw new Error(`${request.rootPath} is not inside a git repository.`)
 
-    const existing = this.projects.find((project) => project.rootPath === rootPath)
-    if (existing) throw new Error(`This repository is already added as "${existing.name}".`)
+      const existing = this.projects.find((project) => project.rootPath === rootPath)
+      if (existing) throw new Error(`This repository is already added as "${existing.name}".`)
 
-    const project: Project = {
-      id: this.deps.createId(),
-      name: suggestProjectName(rootPath),
-      rootPath,
-      color: pickProjectColor(this.projects, this.deps.random),
-      createdAt: this.deps.now().toISOString(),
-    }
-    await this.commit([...this.projects, project])
-    return project
+      const project: Project = {
+        id: this.deps.createId(),
+        name: suggestProjectName(rootPath),
+        rootPath,
+        color: pickProjectColor(this.projects, this.deps.random),
+        createdAt: this.deps.now().toISOString(),
+      }
+      await this.commit([...this.projects, project])
+      return project
+    })
   }
 
   /** Sets the project's dev command; null or blank removes it. */
@@ -79,43 +87,66 @@ export class ProjectStore {
     return this.setCommand(id, 'checkCommand', command)
   }
 
-  private async setCommand(
+  private setCommand(
     id: ProjectId,
     key: 'devCommand' | 'checkCommand',
     command: string | null,
   ): Promise<Project> {
-    const project = this.projects.find((candidate) => candidate.id === id)
-    if (!project) throw new Error('Project not found.')
-    const { [key]: _previous, ...rest } = project
-    const trimmed = command?.trim()
-    const updated: Project = trimmed ? { ...rest, [key]: trimmed } : rest
-    await this.commit(this.projects.map((candidate) => (candidate.id === id ? updated : candidate)))
-    return updated
+    return this.update(id, (project) => {
+      const { [key]: _previous, ...rest } = project
+      const trimmed = command?.trim()
+      return trimmed ? { ...rest, [key]: trimmed } : rest
+    })
   }
 
   /** Sets what new worktrees copy and run; null, or a setup that does nothing, removes it. */
-  async setWorktreeSetup(id: ProjectId, setup: WorktreeSetup | null): Promise<Project> {
-    const project = this.projects.find((candidate) => candidate.id === id)
-    if (!project) throw new Error('Project not found.')
-    const { worktreeSetup, ...rest } = project
-    const updated: Project =
-      setup && !isEmptySetup(setup) ? { ...rest, worktreeSetup: setup } : rest
-    await this.commit(this.projects.map((candidate) => (candidate.id === id ? updated : candidate)))
-    return updated
+  setWorktreeSetup(id: ProjectId, setup: WorktreeSetup | null): Promise<Project> {
+    return this.update(id, ({ worktreeSetup: _previous, ...rest }) =>
+      setup && !isEmptySetup(setup) ? { ...rest, worktreeSetup: setup } : rest,
+    )
   }
 
   async remove(id: ProjectId): Promise<void> {
-    await this.commit(this.projects.filter((project) => project.id !== id))
+    await this.serially(() => this.commit(this.projects.filter((project) => project.id !== id)))
   }
 
   /** Where the project's tasks live; GitHub is stored as the absence of a source. */
-  async setTaskSource(id: ProjectId, source: TaskSource): Promise<Project> {
-    const project = this.projects.find((candidate) => candidate.id === id)
-    if (!project) throw new Error('Project not found.')
-    const { taskSource: _previous, ...rest } = project
-    const updated: Project = source.kind === 'github' ? rest : { ...rest, taskSource: source }
-    await this.commit(this.projects.map((candidate) => (candidate.id === id ? updated : candidate)))
-    return updated
+  setTaskSource(id: ProjectId, source: TaskSource): Promise<Project> {
+    return this.update(id, ({ taskSource: _previous, ...rest }) =>
+      source.kind === 'github' ? rest : { ...rest, taskSource: source },
+    )
+  }
+
+  /** Adds, removes or moves a queued task (decision 047); an empty queue is stored as none. */
+  changeTaskQueue(id: ProjectId, change: TaskQueueChange): Promise<Project> {
+    return this.update(id, ({ taskQueue = [], ...rest }) => {
+      const queue = applyQueueChange(taskQueue, change)
+      return queue.length > 0 ? { ...rest, taskQueue: queue } : rest
+    })
+  }
+
+  /** How many agents the queue lets run at once in the project. */
+  setMaxAgents(id: ProjectId, maxAgents: number): Promise<Project> {
+    return this.update(id, (project) => ({ ...project, maxAgents }))
+  }
+
+  private update(id: ProjectId, change: (project: Project) => Project): Promise<Project> {
+    return this.serially(async () => {
+      const project = this.projects.find((candidate) => candidate.id === id)
+      if (!project) throw new Error('Project not found.')
+      const updated = change(project)
+      await this.commit(
+        this.projects.map((candidate) => (candidate.id === id ? updated : candidate)),
+      )
+      return updated
+    })
+  }
+
+  /** Runs `task` after every change before it has finished, whether or not they failed. */
+  private serially<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.pending.then(task)
+    this.pending = result.catch(() => undefined)
+    return result
   }
 
   private async commit(projects: readonly Project[]): Promise<void> {

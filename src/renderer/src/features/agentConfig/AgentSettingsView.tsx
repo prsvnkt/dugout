@@ -4,6 +4,7 @@ import type { ProjectId } from '@shared/project'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { CheckCommandSection } from './CheckCommandSection'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
+import { MaxAgentsSection } from './MaxAgentsSection'
 import { PresetList } from './PresetList'
 import { sharingText } from './sharingText'
 import { draftFromServer, EMPTY_DRAFT } from './serverDraft'
@@ -204,7 +205,7 @@ function InstructionsSection({ projectId, agent }: SectionProps) {
 
 /**
  * Per-project agent setup: MCP servers, the shared instructions, the check Verify on Stop
- * runs, and what new worktrees get before their first agent starts.
+ * runs, what new worktrees get before their first agent starts, and the task queue's limit.
  */
 export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
   const agent = useAgentConfig(projectId)
@@ -237,6 +238,18 @@ export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
             terminal. Symbolic links are not copied.
           </p>
           <WorktreeSetupSection key={project.id} project={project} />
+        </section>
+      )}
+      {project && (
+        <section className={styles.section} aria-labelledby="agent-settings-queue">
+          <h2 id="agent-settings-queue">Task queue</h2>
+          <p className={styles.muted}>
+            Queued tasks (Queue on a task) start one by one, each in its own worktree, while fewer
+            than this many of the project&apos;s agents are working or waiting for you. An agent
+            frees its slot when it is done or ready, or when you close it. Starting an agent
+            yourself is never held back.
+          </p>
+          <MaxAgentsSection project={project} />
         </section>
       )}
     </section>

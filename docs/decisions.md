@@ -851,6 +851,45 @@ project, task, worktree and agent a session belongs to. Claude Code deletes tran
 Import of earlier sessions: not now; usage counts from when an agent ran in Dugout (a resumed
 older session's earlier replies are counted on their own days). Budgets and alerts: not now.
 
+## 047 — A task queue: the next task starts when an agent slot frees up (2026-10-09)
+
+**Context.** Running many agents meant starting each task by hand and keeping count of how many
+were running (issue #23).
+
+**Decision.**
+
+- **Queue.** "Queue ▾" sits next to "Start agent ▾" on a task's tab and offers each agent with
+  the task tools (one agent per queued task; comparing two agents stays a "Start agent" choice).
+  A queued task shows "Remove from queue" instead. The Tasks panel shows the queue at the top
+  while it has tasks: position, title, key and agent, "Move #n up / down" (↑/↓ buttons) and
+  "Remove #n from queue", and "2 of 3 agents busy".
+- **Limit.** "Max agents at once" (1–20, default 3) is set per project in Agent settings → Task
+  queue. It only holds back the queue: starting an agent yourself never waits.
+- **Slots.** Every agent in the project counts (not shells, and not only task agents, since
+  restored agents no longer know their task): it holds a slot while it is starting, running,
+  working or needs you. **Done frees the slot, and so do Ready and closing its terminal.** An
+  agent in Needs you keeps its slot, so nothing new starts while you are being asked something.
+  Done rather than only closing: agents idle at Done (and their worktree stays for review), so
+  waiting for the terminal to close would stall the queue on every finished agent. A task agent
+  that was just started holds its slot even at Ready until it works, asks, finishes or closes
+  (an agent with a first prompt can say Ready for a moment before it works); so does a start
+  whose worktree is still being created. An agent that is Done and is then prompted again counts
+  again, so the project can briefly run more than the limit; the limit only decides when queued
+  tasks start.
+- **Starting.** The renderer (`features/taskQueue/useTaskQueueRunner`) starts the first queued
+  tasks while slots are free, through `taskStore.startAgent`, the same path as "Start agent":
+  a new worktree, its setup (decision 038), the task as the first prompt, the task moved to In
+  progress. The task leaves the queue as it starts; if it fails to start, it stays off the queue
+  and the error shows in the queue (queue it again to retry). The transitions are pure,
+  unit-tested functions: `applyQueueChange` (add, remove, move; `shared/taskQueue.ts`) and
+  `settleLaunches`, `busySlots`, `tasksToStart` (`features/taskQueue/slots.ts`).
+- **Persistence.** The queue (`taskQueue`, at most 100 tasks) and the limit (`maxAgents`) are
+  stored on the project in `projects.json`, like the other per-project settings (decisions 042,
+  049). The renderer sends changes (add, remove, move) rather than whole queues, and
+  `ProjectStore` applies every change in turn on the latest state, so two tasks starting at once
+  never undo each other. Nothing starts while the app is closed; on launch the queue waits until
+  saved agents are restored, so a relaunch never starts more than the limit.
+
 ## 048 — Session timeline from agent transcripts (2026-10-09)
 
 **Context.** Review showed what an agent changed but not how: which tools ran, in what order,
@@ -1077,4 +1116,5 @@ in Linear (issue #27).
 23. **Done since:** project context agents read over MCP, with agent-proposed notes you approve
     and a headless codemap ✅.
 24. **Done since:** session timelines from Claude and Codex transcripts ✅.
-25. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+25. **Done since:** a task queue that starts the next task when an agent slot frees up ✅.
+26. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

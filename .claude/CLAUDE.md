@@ -92,6 +92,7 @@ src/
               Usage view (editor tab kind `usage`), from main's ledger (decision 046).
               timeline/ shows a session's steps (editor tab kind `timeline`), opened from an
               agent header or a task tab (decision 048).
+              taskQueue/ starts queued tasks while a project has free agent slots (decision 047).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               pure state transitions (e.g. workspace/layout.ts) are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.

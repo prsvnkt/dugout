@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ProjectAddRequest } from '@shared/ipc/contract'
 import type { Project, ProjectId } from '@shared/project'
+import type { TaskQueueChange } from '@shared/taskQueue'
 import type { TaskSource } from '@shared/tasks'
 import { unwrap } from '@shared/result'
 import type { WorktreeSetup } from '@shared/worktreeSetup'
@@ -23,6 +24,10 @@ interface ProjectsState {
   setTaskSource(id: ProjectId, source: TaskSource): Promise<void>
   /** Saves what new worktrees copy and run (null turns it off). Throws a user-facing message. */
   setWorktreeSetup(id: ProjectId, setup: WorktreeSetup | null): Promise<void>
+  /** Adds, removes or moves a queued task. Throws with a user-facing message on failure. */
+  changeTaskQueue(id: ProjectId, change: TaskQueueChange): Promise<void>
+  /** How many agents the queue lets run at once. Throws a user-facing message on failure. */
+  setMaxAgents(id: ProjectId, maxAgents: number): Promise<void>
   select(id: ProjectId): void
   selectIndex(index: number): void
 }
@@ -78,6 +83,16 @@ export const useProjectsStore = create<ProjectsState>()((set, get) => ({
 
   async setWorktreeSetup(id, setup) {
     const updated = unwrap(await dugout.projects.setWorktreeSetup(id, setup))
+    set((state) => ({ projects: replaceProject(state.projects, updated) }))
+  },
+
+  async changeTaskQueue(id, change) {
+    const updated = unwrap(await dugout.projects.changeTaskQueue(id, change))
+    set((state) => ({ projects: replaceProject(state.projects, updated) }))
+  },
+
+  async setMaxAgents(id, maxAgents) {
+    const updated = unwrap(await dugout.projects.setMaxAgents(id, maxAgents))
     set((state) => ({ projects: replaceProject(state.projects, updated) }))
   },
 

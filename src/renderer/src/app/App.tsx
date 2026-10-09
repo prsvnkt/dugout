@@ -12,6 +12,7 @@ import { useHasUnsavedChanges } from '@renderer/features/editor/editorStore'
 import { useWorkspacePersistence } from '@renderer/features/workspace/useWorkspacePersistence'
 import { WelcomeScreen } from '@renderer/features/welcome/WelcomeScreen'
 import { watchUsageChanges } from '@renderer/features/usage/usageStore'
+import { useTaskQueueRunner } from '@renderer/features/taskQueue/useTaskQueueRunner'
 import { dugout } from '@renderer/lib/dugout'
 import styles from './App.module.css'
 
@@ -42,6 +43,7 @@ export function App() {
   const openClone = useCallback(() => setIsCloneOpen(true), [])
   useAppCommands(addProject, openClone)
   useWorkspacePersistence(isLoaded && loadError === null)
+  useTaskQueueRunner()
   const hasUnsavedChanges = useHasUnsavedChanges()
   useEffect(() => dugout.editor.setHasUnsavedChanges(hasUnsavedChanges), [hasUnsavedChanges])
 

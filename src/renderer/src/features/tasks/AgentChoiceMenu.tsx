@@ -1,21 +1,24 @@
 import { useCallback, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { AGENT_LIST, type AgentKind } from '@shared/agents'
+import type { AgentKind } from '@shared/agents'
 import { Icon } from '@renderer/lib/Icon'
 import { useDismiss } from '@renderer/lib/useDismiss'
-import { taskStartOptions } from './taskStartOptions'
+import type { TaskStartOption } from './taskStartOptions'
 import styles from './TaskDetailView.module.css'
 
-const START_OPTIONS = taskStartOptions(AGENT_LIST)
-
-interface StartAgentMenuProps {
+interface AgentChoiceMenuProps {
   readonly label: string
+  /** The button's tooltip: what choosing an agent does. */
+  readonly title: string
+  readonly options: readonly TaskStartOption[]
+  readonly isPrimary?: boolean
   readonly disabled: boolean
-  onStart(agents: readonly AgentKind[]): void
+  onChoose(agents: readonly AgentKind[]): void
 }
 
-/** Which agent(s) to start on the task, each in its own worktree. */
-export function StartAgentMenu({ label, disabled, onStart }: StartAgentMenuProps) {
+/** A button that opens a menu of agents to start (or queue) on the task. */
+export function AgentChoiceMenu(props: AgentChoiceMenuProps) {
+  const { label, title, options, isPrimary = false, disabled, onChoose } = props
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
   const close = useCallback(() => setIsOpen(false), [])
@@ -23,25 +26,25 @@ export function StartAgentMenu({ label, disabled, onStart }: StartAgentMenuProps
   return (
     <span className={styles.startMenu} ref={ref}>
       <button
-        className={`${styles.button} ${styles.primary}`}
+        className={isPrimary ? `${styles.button} ${styles.primary}` : styles.button}
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        title="Start an agent in a new worktree with this task as its first prompt"
+        title={title}
       >
         {label}
         <Icon icon={ChevronDown} />
       </button>
       {isOpen && (
         <span className={styles.menu} role="menu">
-          {START_OPTIONS.map((option) => (
+          {options.map((option) => (
             <button
               key={option.label}
               role="menuitem"
               onClick={() => {
                 setIsOpen(false)
-                onStart(option.agents)
+                onChoose(option.agents)
               }}
             >
               {option.label}
