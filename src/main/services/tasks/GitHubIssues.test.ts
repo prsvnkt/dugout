@@ -61,6 +61,87 @@ describe('GitHubIssues', () => {
     expect(JSON.parse(requests[0]?.body ?? '{}')).toEqual({ title: 'New', body: 'Details' })
   })
 
+  test('creates an issue with labels, a priority label and related tasks', async () => {
+    const { issues, requests } = setup({
+      'GET /repos/octo/app/labels/dugout:priority-high': [{ status: 404, json: {} }],
+      'POST /repos/octo/app/labels': [{ json: { name: 'dugout:priority-high' } }],
+      'POST /repos/octo/app/issues': [{ json: issue(8) }],
+    })
+
+    await issues.create('tok', REPO, {
+      title: 'New',
+      body: 'Details',
+      labels: ['bug'],
+      priority: 'high',
+      related: [3],
+    })
+
+    const [label, created] = requests.filter((request) => request.method === 'POST')
+    expect(JSON.parse(label?.body ?? '{}')).toMatchObject({
+      name: 'dugout:priority-high',
+      color: 'ef4444',
+    })
+    expect(JSON.parse(created?.body ?? '{}')).toEqual({
+      title: 'New',
+      body: 'Details\n\nRelated: #3',
+      labels: ['bug', 'dugout:priority-high'],
+    })
+  })
+
+  test('changes the priority and labels, keeping the status label', async () => {
+    const { issues, requests } = setup({
+      'GET /repos/octo/app/issues/5': [
+        {
+          json: issue(5, {
+            labels: [
+              { name: 'bug' },
+              { name: 'dugout:in-progress' },
+              { name: 'dugout:priority-low' },
+            ],
+          }),
+        },
+      ],
+      'GET /repos/octo/app/labels/dugout:in-progress': [{ json: {} }],
+      'GET /repos/octo/app/labels/dugout:priority-medium': [{ json: {} }],
+      'PATCH /repos/octo/app/issues/5': [{ json: issue(5) }],
+    })
+
+    await issues.update('tok', REPO, 5, {
+      priority: 'medium',
+      addLabels: ['ui'],
+      removeLabels: ['bug'],
+    })
+
+    const patch = requests.find((request) => request.method === 'PATCH')
+    expect(JSON.parse(patch?.body ?? '{}')).toEqual({
+      labels: ['dugout:in-progress', 'dugout:priority-medium', 'ui'],
+    })
+  })
+
+  test('adds related tasks to the current description', async () => {
+    const { issues, requests } = setup({
+      'GET /repos/octo/app/issues/5': [{ json: issue(5) }],
+      'PATCH /repos/octo/app/issues/5': [{ json: issue(5) }],
+    })
+
+    await issues.update('tok', REPO, 5, { related: [2] })
+
+    const patch = requests.find((request) => request.method === 'PATCH')
+    expect(JSON.parse(patch?.body ?? '{}')).toEqual({
+      body: 'Body 5\n\nRelated: #2',
+      labels: ['bug'],
+    })
+  })
+
+  test('a title change alone does not read the issue first', async () => {
+    const { issues, requests } = setup({
+      'PATCH /repos/octo/app/issues/5': [{ json: issue(5) }],
+    })
+    await issues.update('tok', REPO, 5, { title: 'Renamed' })
+    expect(requests.map((request) => request.method)).toEqual(['PATCH'])
+    expect(JSON.parse(requests[0]?.body ?? '{}')).toEqual({ title: 'Renamed' })
+  })
+
   test('moves a task to in progress by ensuring and setting the label', async () => {
     const { issues, requests } = setup({
       'GET /repos/octo/app/issues/5': [{ json: issue(5) }],

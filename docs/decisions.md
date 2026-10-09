@@ -159,9 +159,10 @@ their task (`#n` in the header, live agent status on the task). Create PR from s
 pre-fills "Closes #n" and marks the task In review, so merging closes it.
 Every Claude pane gets a per-terminal `--mcp-config` (0600, deleted on exit) for the bundled
 "dugout" MCP server (`out/main/mcp.js`, run by Electron in Node mode, official MCP SDK) with
-tools list/get/create/update/comment. The server forwards calls over the private hook socket
-(`/rpc/<terminalId>`), where main validates them, scopes them to the terminal's project and calls
-GitHub with the user's token — the agent never sees it. The hook settings pre-approve
+tools list/get/create/update/comment (plus batch create, search, priority, labels and related
+tasks since decision 034). The server forwards calls over the private hook socket
+(`/rpc/<terminalId>`), where main validates them (`taskRpc.ts`), scopes them to the
+terminal's project and calls GitHub with the user's token — the agent never sees it. The hook settings pre-approve
 `mcp__dugout`. The first prompt is placed before `--mcp-config`, which takes a list. Providers
 are behind `TaskService`, so Jira or local storage can be added later.
 
@@ -413,6 +414,38 @@ token, `--divider`, marks lines between areas (pane and panel separators, termin
 rail edge, the status bar, the editor tab strip); `--border` stays for inner hairlines (rows,
 cards, inputs), so the UI does not get busy. The focused pane keeps its project-colour underline.
 
+## 034 — Leaner, richer task tools for agents (2026-10-09)
+
+**Context.** Filing #17–#29 through the "dugout" MCP server (decision 018) showed six gaps
+(issue #30): `list_tasks` returned every body (~6k tokens for 13 tasks), there was no priority,
+no way to link tasks, one call and one approval per new task, writes echoed the whole issue back,
+and an empty list did not say what it covered.
+
+**Decision.**
+
+- `list_tasks` returns `{ covers, tasks }`: per task only number, title, status, priority, labels
+  (without `dugout:*`, which status and priority already express) and updatedAt; `get_task` has
+  the description. `covers` and the tool description say the list spans open and closed issues,
+  every status, the 300 most recently updated, plus any filter applied. Tasks are ordered by
+  priority (high, medium, low, none), most recently updated first within one. A `search` filter
+  keeps tasks whose title or description contains every word (any case), so agents can look for
+  duplicates before creating.
+- Priority is a `dugout:priority-high|medium|low` label, like the status labels: at most one,
+  created in Dugout's colours on first use. `create_task` takes `labels` and `priority`;
+  `update_task` takes `priority` (`"none"` clears it), `addLabels` and `removeLabels`, applied to
+  the issue's current labels so status labels survive. Agents cannot set `dugout:*` labels
+  directly. Other missing labels are left for GitHub to create.
+- Relationships are plain `Related: #n` lines appended to the description (`related` on create
+  and update; numbers already listed are skipped). GitHub links them and shows the mention on the
+  other issue. GitHub sub-issues were not used: they need a second API (issue ids, not numbers)
+  and a parent/child model, while "related" covers dependencies and epics well enough for now.
+- `create_tasks` files up to 20 tasks in one call (one approval). The whole batch is validated
+  first; tasks are then created in order, and if one fails the error lists those already created.
+- Writes (`create_task`, `create_tasks`, `update_task`) return only `{ number, url, status }`, and
+  results are compact JSON.
+- The RPC dispatch moved from `main/index.ts` to `services/tasks/taskRpc.ts` (unit-tested); main
+  still validates every call with `taskRpcSchemas` from the shared contract.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -431,4 +464,5 @@ cards, inputs), so the UI does not get busy. The focused pane keeps its project-
    with local and GitHub repos and an agent CLI check ✅, projects named after their folder ✅,
    fetch from Source Control ✅.
 9. **Done since:** Agents list in the sidebar ✅, with each agent's subagents ✅, readable
-   terminals and visible dividers ✅.
+   terminals and visible dividers ✅, leaner task tools for agents (search, priority, related,
+   batch create) ✅.

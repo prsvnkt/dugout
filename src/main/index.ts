@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, shell } from 'electron'
 import type { AppCommand } from '@shared/commands'
 import { IpcChannel } from '@shared/ipc/channels'
-import { taskRpcSchemas } from '@shared/ipc/contract'
 import { registerCloneIpc } from './ipc/registerCloneIpc'
 import { registerAgentConfigIpc } from './ipc/registerAgentConfigIpc'
 import { registerCompareIpc } from './ipc/registerCompareIpc'
@@ -44,6 +43,7 @@ import { loginShellRunner } from './services/welcome/checkAgentClis'
 import { SettingsStore } from './services/settings/SettingsStore'
 import { registerSettingsIpc } from './ipc/registerSettingsIpc'
 import { GitHubIssues } from './services/tasks/GitHubIssues'
+import { handleTaskRpc } from './services/tasks/taskRpc'
 import { TaskService } from './services/tasks/TaskService'
 import { LayoutStore } from './services/workspace/LayoutStore'
 import { WorktreeManager } from './services/worktrees/WorktreeManager'
@@ -141,36 +141,14 @@ function updateDockBadge(manager: TerminalManager): void {
 let taskService: TaskService | null = null
 
 /** Task tool calls from an agent: scoped to the project of the terminal it runs in. */
-async function handleTaskRpc(
+async function handleAgentTaskRpc(
   terminalId: string,
   method: string,
   params: unknown,
 ): Promise<unknown> {
   const projectId = terminalManager?.projectOf(terminalId)
   if (!projectId || !taskService) throw new Error('This terminal is not part of a Dugout project.')
-  const tasks = taskService
-  switch (method) {
-    case 'list': {
-      const { status } = taskRpcSchemas.list.parse(params)
-      const all = await tasks.list(projectId)
-      return status ? all.filter((task) => task.status === status) : all
-    }
-    case 'get':
-      return tasks.get(projectId, taskRpcSchemas.get.parse(params).number)
-    case 'create':
-      return tasks.create(projectId, taskRpcSchemas.create.parse(params))
-    case 'update': {
-      const { number, ...patch } = taskRpcSchemas.update.parse(params)
-      return tasks.update(projectId, number, patch)
-    }
-    case 'comment': {
-      const { number, body } = taskRpcSchemas.comment.parse(params)
-      await tasks.comment(projectId, number, body)
-      return { ok: true }
-    }
-    default:
-      throw new Error(`Unknown task operation: ${method}`)
-  }
+  return handleTaskRpc(taskService, projectId, method, params)
 }
 
 async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
@@ -182,7 +160,7 @@ async function startAgentHooks(dataDir: string): Promise<AgentHooks | null> {
       onSignal: (terminalId, signal, details) =>
         terminalManager?.applyHookSignal(terminalId, signal, details),
       onSubagent: (terminalId, update) => terminalManager?.applySubagent(terminalId, update),
-      onRpc: handleTaskRpc,
+      onRpc: handleAgentTaskRpc,
       // Electron runs the bundled MCP server in Node mode, so users need no separate Node.
       mcpServer: { command: process.execPath, script: join(import.meta.dirname, 'mcp.js') },
     })
