@@ -36,12 +36,26 @@ folder) so tests do not depend on the developer's shell setup.
 - **Area:** `src/renderer/src/features/workspace/useCheckoutRefresh.ts`
 - **Found:** 2026-10-05, while building the explorer and editor (decision 014)
 
-**What happens:** the git status, expanded explorer folders and open files refresh every 3s
-while the app is visible (plus on focus and agent status changes), so edits can take up to 3s
-to appear, and large expanded trees are re-read on every tick.
+**What happens:** the git status, expanded explorer folders, open files and what each worktree
+changed (overlap warnings, decision 044) refresh every 3s while the app is visible (plus on focus
+and agent status changes), so edits can take up to 3s to appear, and large expanded trees and
+many worktrees are re-read on every tick.
 
 **Likely fix:** a main-process watcher (`@parcel/watcher`) per active checkout that pushes
 change events, keeping the poll only as a fallback.
+
+## Overlap warnings compare whole files, between worktrees only
+
+- **Area:** `src/renderer/src/features/overlaps/`
+- **Found:** 2026-10-09, while adding overlap warnings (decision 044)
+
+**What happens:** two worktrees that change different parts of one file are flagged, though git
+may merge them cleanly. Agents in the main checkout are not tracked (their changes are not on a
+branch of their own), and only the visible project is checked. If a listed worktree disappears
+behind Dugout's back, the check fails and the warnings stay hidden until the list reloads.
+
+**Possible improvement:** compare changed line ranges (`git diff -U0`), or ask git for a
+trial merge (`git merge-tree`), and say "conflicts" only when the changes really meet.
 
 ## Codex asks to trust Dugout's hooks once
 

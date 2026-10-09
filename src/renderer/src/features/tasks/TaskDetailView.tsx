@@ -7,6 +7,8 @@ import { taskTabId } from '@renderer/features/editor/tabs'
 import { dugout } from '@renderer/lib/dugout'
 import { formatAge } from '@renderer/lib/formatAge'
 import { Icon } from '@renderer/lib/Icon'
+import { OverlapFlag } from '@renderer/features/overlaps/OverlapFlag'
+import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
 import { Markdown } from './markdown/Markdown'
 import { StartAgentMenu } from './StartAgentMenu'
 import { TaskComments } from './TaskComments'
@@ -56,6 +58,7 @@ export function TaskDetailView({ projectId, number }: TaskDetailViewProps) {
   const openCompare = useEditorStore((state) => state.openCompare)
   const pin = useEditorStore((state) => state.pin)
   const agents = useTaskAgents(projectId).get(number)
+  const overlaps = useProjectOverlaps(projectId).forTask(number)
   const [actionError, setActionError] = useState<string | null>(null)
 
   if (!task) {
@@ -138,6 +141,8 @@ export function TaskDetailView({ projectId, number }: TaskDetailViewProps) {
             Open on GitHub
           </button>
         </div>
+
+        <OverlapFlag overlaps={overlaps} />
 
         {actionError && (
           <p className={styles.error} role="alert">

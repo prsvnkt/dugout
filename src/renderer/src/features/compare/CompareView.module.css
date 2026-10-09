@@ -61,6 +61,15 @@
   color: var(--status-needs-input);
 }
 
+/* Another agent (outside this comparison) changed the file too. */
+.elsewhere {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--status-needs-input);
+  font-size: 11px;
+}
+
 .diff {
   display: flex;
   flex: 1;

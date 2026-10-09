@@ -11,6 +11,7 @@ import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
 import { WorktreeError } from '@renderer/features/worktrees/WorktreeError'
 import { StartScreen } from '@renderer/features/start/StartScreen'
 import { projectColorVar } from '@renderer/features/projects/projectColor'
+import { useProjectOverlaps } from '@renderer/features/overlaps/useOverlaps'
 import { ActivityRail } from './ActivityRail'
 import { LeftSidebar } from './LeftSidebar'
 import { SidePanel } from './SidePanel'
@@ -52,6 +53,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
   const clearInitialPrompt = useWorkspaceStore((state) => state.clearInitialPrompt)
   const focusRequests = useWorkspaceStore((state) => state.focusRequests)
   const projectColor = projectColorVar(project.color)
+  const overlaps = useProjectOverlaps(project.id)
 
   if (layout.panes.length === 0) {
     return <StartScreen project={project} isActive={isActive} onAdd={onAdd} />
@@ -69,6 +71,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               resumeSessionId={pane.sessionId}
               initialPrompt={pane.initialPrompt}
               task={pane.task}
+              overlaps={overlaps.forWorktree(pane.worktree?.path)}
               projectId={project.id}
               cwd={pane.worktree?.path ?? project.rootPath}
               branch={pane.worktree?.branch ?? null}

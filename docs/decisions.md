@@ -618,6 +618,29 @@ narrow side panel, so long tasks were cramped and you lost your place (issue #36
   `javascript:`, become plain text. Images become links, so a task never loads remote content.
   Task-list checkboxes are read-only.
 
+## 044 — Warn when parallel agents change the same files (2026-10-09)
+
+**Context.** Agents in separate worktrees could edit the same files, and you only found out at
+PR or merge time (issue #24).
+
+**Decision.** The renderer tracks what each live worktree of the visible project changed since
+its branch left the base branch, with the same `GitService.changesSince` call Compare uses
+(`compare.changes`, now up to 32 worktrees per call, reading the base branch once). It refreshes
+with the existing change polling in `useCheckoutRefresh` (every 3s, on focus and on agent status
+changes), only when there are two or more worktrees. "Live" means every worktree Dugout lists
+for the project plus any an open agent runs in, whether or not an agent is still open: a
+finished session's changes still meet the others at merge time.
+
+Overlap detection is a pure function (`features/overlaps/overlaps.ts`): two worktrees overlap
+when they changed at least one same file. Worktrees whose agents work on the same task are
+skipped: they are competing attempts (e.g. Claude + Codex), which Compare already shows. The
+other side is named by its task ("#12"), else its agent and worktree ("Codex (k3x9)"), else the
+worktree name. The warning is an amber triangle icon plus "also changed by #12, …" (never colour
+alone), with the files in its tooltip: on the agent headers, task cards and task tabs involved,
+and per file in Compare for worktrees beyond the two compared.
+It is advisory only: nothing is blocked, merged or changed. Files are compared whole (not line
+ranges) and agents in the main checkout are not tracked; see `docs/known-issues.md`.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -645,3 +668,4 @@ narrow side panel, so long tasks were cramped and you lost your place (issue #36
 13. **Done since:** task cards with markdown, and tasks open in an editor tab ✅.
 14. **Done since:** review comments from the Review and Compare diffs, sent to the agent as one
     prompt ✅.
+15. **Done since:** warnings when parallel agents change the same files ✅.

@@ -5,12 +5,15 @@ import { Icon } from '@renderer/lib/Icon'
 import { TaskCard } from './TaskCard'
 import { useTaskGroupsStore } from './taskGroupsStore'
 import type { TaskGroup } from './taskList'
+import type { LabelledOverlap } from '@renderer/features/overlaps/overlaps'
 import type { TaskAgents } from './useTaskAgents'
 import styles from './Tasks.module.css'
 
 interface TaskGroupsProps {
   readonly groups: readonly TaskGroup[]
   readonly agents: ReadonlyMap<number, TaskAgents>
+  /** Other agents that changed the same files as each task's agents. */
+  overlapsFor(taskNumber: number): readonly LabelledOverlap[]
   /** The task open in the active editor tab, if any. */
   readonly currentTask: number | null
   onOpen(task: Task, isPreview: boolean): void
@@ -30,7 +33,8 @@ function moveFocus(event: KeyboardEvent<HTMLElement>) {
 }
 
 /** The tasks by status, in groups that collapse (remembered; Done starts collapsed). */
-export function TaskGroups({ groups, agents, currentTask, onOpen }: TaskGroupsProps) {
+export function TaskGroups(props: TaskGroupsProps) {
+  const { groups, agents, overlapsFor, currentTask, onOpen } = props
   const isOpen = useTaskGroupsStore((state) => state.isOpen)
   const toggle = useTaskGroupsStore((state) => state.toggle)
   return (
@@ -59,6 +63,7 @@ export function TaskGroups({ groups, agents, currentTask, onOpen }: TaskGroupsPr
                     key={task.number}
                     task={task}
                     agents={agents.get(task.number)}
+                    overlaps={overlapsFor(task.number)}
                     isCurrent={task.number === currentTask}
                     onOpen={(isPreview) => onOpen(task, isPreview)}
                   />
