@@ -96,6 +96,10 @@ export function buildMenuTemplate(
           click: () => send({ type: 'agentSettings.open' }),
         },
         {
+          label: 'Token Usage',
+          click: () => send({ type: 'usage.open' }),
+        },
+        {
           label: 'Toggle Explorer',
           accelerator: 'CmdOrCtrl+B',
           click: () => send({ type: 'explorer.toggle' }),

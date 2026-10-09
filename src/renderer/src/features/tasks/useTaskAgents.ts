@@ -39,7 +39,13 @@ export function useTaskAgents(projectId: ProjectId): ReadonlyMap<number, TaskAge
         const kinds = [...new Set(list.map((pane) => pane.kind).filter(isAgentKind))]
         const compareSides = list.flatMap((pane) =>
           pane.worktree && isAgentKind(pane.kind)
-            ? [{ label: AGENT_LABEL[pane.kind], worktreePath: pane.worktree.path }]
+            ? [
+                {
+                  label: AGENT_LABEL[pane.kind],
+                  worktreePath: pane.worktree.path,
+                  agent: pane.kind,
+                },
+              ]
             : [],
         )
         const activity = projectAttention(states) ?? states[0] ?? null

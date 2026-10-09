@@ -23,6 +23,7 @@ const api: DugoutApi = {
     onAgentSession: (listener) => subscribe(IpcChannel.terminalAgentSession, listener),
     onAgentSubagent: (listener) => subscribe(IpcChannel.terminalAgentSubagent, listener),
     onCheckStatus: (listener) => subscribe(IpcChannel.terminalCheckStatus, listener),
+    onAgentUsage: (listener) => subscribe(IpcChannel.terminalAgentUsage, listener),
   },
   projects: {
     list: () => ipcRenderer.invoke(IpcChannel.projectList),
@@ -134,6 +135,10 @@ const api: DugoutApi = {
   compare: {
     changes: (projectId, worktreePaths) =>
       ipcRenderer.invoke(IpcChannel.compareChanges, { projectId, worktreePaths }),
+  },
+  usage: {
+    project: (projectId) => ipcRenderer.invoke(IpcChannel.usageProject, { projectId }),
+    onChange: (listener) => subscribe(IpcChannel.usageChanged, listener),
   },
   workspace: {
     load: () => ipcRenderer.invoke(IpcChannel.workspaceLoad),

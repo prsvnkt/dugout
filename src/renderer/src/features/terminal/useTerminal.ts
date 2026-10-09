@@ -5,6 +5,7 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import type { AgentStatus } from '@shared/agentStatus'
 import type { DevServer } from '@shared/preview'
 import type { ToolCallPreview } from '@shared/toolCall'
+import type { AgentUsage } from '@shared/usage'
 import { dugout } from '@renderer/lib/dugout'
 import { isAgentKind, type TerminalExit, type TerminalKind } from '@shared/terminal'
 import { XTERM_OPTIONS } from './xtermOptions'
@@ -41,6 +42,8 @@ export interface TerminalHandle {
   readonly sessionId: string | null
   /** Subagents the agent started this turn (finished ones clear on its next turn). */
   readonly subagents: readonly Subagent[]
+  /** Tokens of the agent's session so far (agents with `hasUsage`); null until reported. */
+  readonly usage: AgentUsage | null
   focus(): void
 }
 
@@ -75,11 +78,13 @@ export interface TerminalOptions {
   readonly initialPrompt?: string | undefined
   /** Shells only: started with `PORT` set, then this command typed once. Read once at start. */
   readonly devServer?: DevServer | undefined
+  /** The task an agent works on; its usage counts towards it. Read once at start. */
+  readonly taskNumber?: number | undefined
 }
 
 export function useTerminal(
   containerRef: RefObject<HTMLDivElement | null>,
-  { kind, projectId, cwd, resumeSessionId, initialPrompt, devServer }: TerminalOptions,
+  { kind, projectId, cwd, resumeSessionId, initialPrompt, devServer, taskNumber }: TerminalOptions,
 ): TerminalHandle {
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
@@ -88,9 +93,11 @@ export function useTerminal(
   const [connectedId, setConnectedId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [subagents, setSubagents] = useState<readonly Subagent[]>(NO_SUBAGENTS)
+  const [usage, setUsage] = useState<AgentUsage | null>(null)
   const resumeRef = useRef(resumeSessionId)
   const initialPromptRef = useRef(initialPrompt)
   const devServerRef = useRef(devServer)
+  const taskNumberRef = useRef(taskNumber)
   const terminalRef = useRef<Terminal | null>(null)
 
   useEffect(() => {
@@ -153,6 +160,9 @@ export function useTerminal(
           if (sourceId === id) useCheckStore.getState().set(id, check)
         }),
         () => useCheckStore.getState().remove(id),
+        dugout.terminal.onAgentUsage((sourceId, next) => {
+          if (sourceId === id) setUsage(next)
+        }),
         registerPaste(id, (text) => terminal.paste(text)),
         () => input.dispose(),
         () => resize.dispose(),
@@ -170,6 +180,7 @@ export function useTerminal(
           ...(resumeRef.current && { resumeSessionId: resumeRef.current }),
           ...(initialPromptRef.current && { initialPrompt: initialPromptRef.current }),
           ...(devServerRef.current && { port: devServerRef.current.port }),
+          ...(taskNumberRef.current !== undefined && { taskNumber: taskNumberRef.current }),
         })
         .then((result) => {
           if (!result.ok) {
@@ -222,6 +233,7 @@ export function useTerminal(
     terminalId: connectedId,
     sessionId,
     subagents,
+    usage,
     focus,
   }
 }

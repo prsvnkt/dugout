@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { TerminalExit } from '@shared/terminal'
+import { EMPTY_TOTALS } from '@shared/usage'
 import type { SpawnOptions, TerminalBackend, TerminalProcess } from './TerminalBackend'
 import { TerminalManager } from './TerminalManager'
 
@@ -258,6 +259,39 @@ describe('TerminalManager agent status', () => {
     expect(manager.applyHookSignal('missing', 'done')).toBe(false)
     expect(manager.applyHookSignal(shell, 'done')).toBe(false)
     expect(events.onAgentStatus).not.toHaveBeenCalled()
+  })
+
+  test('describes an agent terminal for usage: project, checkout, task and session', () => {
+    // Arrange
+    const { manager, events } = setupWithHooks()
+    const id = manager.create({ ...request, taskNumber: 12 }, events)
+    const shellSetup = setupWithHooks()
+    const shell = shellSetup.manager.create({ ...request, kind: 'shell' }, shellSetup.events)
+
+    // Act
+    manager.applyHookSignal(id, 'ready', { sessionId: 's-1' })
+
+    // Assert
+    expect(manager.agentInfo(id)).toEqual({
+      kind: 'claude',
+      projectId: 'proj-1',
+      cwd: '/repo',
+      taskNumber: 12,
+      sessionId: 's-1',
+    })
+    expect(shellSetup.manager.agentInfo(shell)).toBeNull()
+    expect(manager.agentInfo('missing')).toBeNull()
+  })
+
+  test('passes usage on to the terminal’s renderer', () => {
+    const { manager, events } = setupWithHooks()
+    const onAgentUsage = vi.fn()
+    const id = manager.create(request, { ...events, onAgentUsage })
+    const usage = { sessionId: 's-1', totals: EMPTY_TOTALS, model: null, context: null }
+
+    expect(manager.reportUsage(id, usage)).toBe(true)
+    expect(manager.reportUsage('missing', usage)).toBe(false)
+    expect(onAgentUsage).toHaveBeenCalledWith(id, usage)
   })
 
   test('an exited agent no longer counts', () => {

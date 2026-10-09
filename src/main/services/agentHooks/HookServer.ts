@@ -21,6 +21,8 @@ export interface HookDetails {
   readonly toolCall?: ToolCallRef
   /** The whole tool call waiting for approval (permission requests only). */
   readonly preview?: ToolCallPreview
+  /** The session transcript the agent writes, where its token usage is (`transcript_path`). */
+  readonly transcriptPath?: string
 }
 
 const MAX_DETAIL_LENGTH = 140
@@ -32,6 +34,17 @@ interface HookPayload extends ToolPayload {
   last_assistant_message?: unknown
   agent_id?: unknown
   agent_type?: unknown
+  transcript_path?: unknown
+  agent_transcript_path?: unknown
+}
+
+/** Transcript paths are absolute file paths; anything else is ignored. */
+const MAX_PATH_LENGTH = 4096
+
+function pathOf(value: unknown): string | undefined {
+  return typeof value === 'string' && value.startsWith('/') && value.length <= MAX_PATH_LENGTH
+    ? value
+    : undefined
 }
 
 /** Subagent ids from Claude Code and Codex are short tokens; anything else is ignored. */
@@ -77,8 +90,15 @@ export interface HookServerDeps {
   readonly onSignal: (terminalId: string, signal: HookSignal, details: HookDetails) => void
   /** Task tool calls from the terminal's MCP server; resolves to the JSON result. */
   readonly onRpc: (terminalId: string, method: string, params: unknown) => Promise<unknown>
-  /** A subagent of the terminal's agent started or stopped. */
-  readonly onSubagent: (terminalId: string, update: SubagentUpdate) => void
+  /**
+   * A subagent of the terminal's agent started or stopped; `transcriptPath` is the subagent's own
+   * transcript, when its stop names one.
+   */
+  readonly onSubagent: (
+    terminalId: string,
+    update: SubagentUpdate,
+    transcriptPath: string | undefined,
+  ) => void
 }
 
 const ROUTE = /^\/hooks\/([\w-]{1,64})\/([a-z-]{1,32})$/
@@ -137,7 +157,7 @@ export class HookServer {
       return readBody(req, MAX_BODY_BYTES, (body) => {
         if (body === null) return respond(res, 413)
         const update = parseSubagent(signal, body)
-        if (update) this.deps.onSubagent(terminalId, update)
+        if (update) this.deps.onSubagent(terminalId, update, subagentTranscriptOf(body))
         respond(res, 204)
       })
     }
@@ -200,9 +220,11 @@ function parseDetails(body: string): HookDetails {
     const payload = (JSON.parse(body) ?? {}) as HookPayload
     const sessionId = sessionIdSchema.safeParse(payload.session_id)
     const detail = detailOf(payload)
+    const transcriptPath = pathOf(payload.transcript_path)
     return {
       ...(sessionId.success && { sessionId: sessionId.data }),
       ...(detail && { detail }),
+      ...(transcriptPath && { transcriptPath }),
       ...toolDetails(payload),
     }
   } catch {
@@ -226,6 +248,14 @@ function parseSubagent(signal: SubagentSignal, body: string): SubagentUpdate | n
   const message = payload.last_assistant_message
   const detail = typeof message === 'string' && message.trim() ? shorten(message) : undefined
   return { id, type, state: 'done', ...(detail && { detail }) }
+}
+
+function subagentTranscriptOf(body: string): string | undefined {
+  try {
+    return pathOf(((JSON.parse(body) ?? {}) as HookPayload).agent_transcript_path)
+  } catch {
+    return undefined
+  }
 }
 
 /** Reads a request body up to `maxBytes`; null when it is larger. */

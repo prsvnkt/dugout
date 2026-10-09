@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { AGENTS } from '@shared/agents'
 import { buildHookSettings } from '../../agentHooks/hookSettings'
+import { readClaudeTranscript } from '../../transcripts/claudeTranscript'
 import { writeFileAtomic } from '../../projects/atomicWrite'
 import type { AgentAdapter, AgentLaunchContext } from '../AgentAdapter'
 
@@ -46,5 +47,11 @@ export const claudeAdapter: AgentAdapter = {
       },
       ...(mcp && { dispose: () => mcp.files.remove(terminalId) }),
     }
+  },
+
+  // Hooks send `transcript_path`; SubagentStop sends `agent_transcript_path` for subagents.
+  usage: {
+    transcriptRoot: (homeDir, env) => env.CLAUDE_CONFIG_DIR || join(homeDir, '.claude'),
+    read: (lines) => readClaudeTranscript(lines),
   },
 }

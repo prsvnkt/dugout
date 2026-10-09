@@ -61,6 +61,8 @@ interface EditorState {
   openCompare(projectId: ProjectId, key: string, target: CompareTarget): void
   /** Opens (or focuses) the project's Agent settings tab. */
   openAgentSettings(projectId: ProjectId): void
+  /** The project's token usage (one tab per project). */
+  openUsage(projectId: ProjectId): void
   /** Opens (or focuses) a task's tab; as a preview, it replaces the previous preview tab. */
   openTask(
     projectId: ProjectId,
@@ -231,6 +233,17 @@ export const useEditorStore = create<EditorState>()((set, get) => {
         id: 'agent-settings',
         kind: 'agent-settings' as const,
         path: 'Agent settings',
+        staged: false,
+        worktreePath: null,
+      }
+      setTabs(projectId, (tabs) => openTab(tabs, tab, { isPreview: false }))
+    },
+
+    openUsage(projectId) {
+      const tab = {
+        id: 'usage',
+        kind: 'usage' as const,
+        path: 'Token usage',
         staged: false,
         worktreePath: null,
       }

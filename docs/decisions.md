@@ -798,6 +798,59 @@ buttons says what was sent, that there was nothing to send, or why it could not 
   threads); the agent can do that itself. The buttons do not pre-count comments, so "Address
   review comments" can answer "No unresolved review comments."
 
+## 046 — Token usage per agent, task and project, from Dugout's own ledger (2026-10-09)
+
+**Context.** There was no way to see how many tokens an agent is using, or what a task or a
+project used over time (issue #35). Generic tools total by folder; only Dugout knows which
+project, task, worktree and agent a session belongs to. Claude Code deletes transcripts after
+`cleanupPeriodDays` (30 by default), so lifetime totals cannot be read from them later.
+
+**Decision.**
+
+- **Hooks name the transcript; main reads it.** Claude and Codex hook payloads carry
+  `transcript_path` (SubagentStop also `agent_transcript_path`). On every forwarded hook event
+  (ready, tool-done, needs-input, done, subagents) main reads only the bytes added since the last
+  read of that file (an offset per file; a partial last line waits for the next read). No PTY
+  polling. A path is read only if it is a `.jsonl` file whose real path is inside the agent's own
+  folder (`~/.claude` or `CLAUDE_CONFIG_DIR`, `~/.codex` or `CODEX_HOME`).
+- **Adapters own the format** (decision 037): `AgentAdapter.usage` gives the transcript folder
+  and a parser; `hasUsage` is true for Claude and Codex. The parsers live in
+  `services/transcripts/` so the session timeline (#22) can reuse them. Claude: every assistant
+  reply's `message.usage`, counted once by `message.id` (streamed replies repeat their line;
+  forked or resumed sessions copy earlier replies), subagent sidechains included; uncached input,
+  output, cache reads and cache writes (1-hour writes kept apart for pricing). Codex: the last
+  `token_count` running total per session, counted as its growth since the last one recorded
+  (a total that goes down started over). Unknown entry types and malformed lines are skipped.
+  OpenCode keeps `hasUsage` false for now (see known issues).
+- **Dugout's own ledger, in app data** (`usage/`): an append-only `ledger.jsonl` (one line per
+  counted reply or total growth, with project, agent, task, session, checkout, model, tokens and
+  cost) and `state.json` with rollups by day × project × agent × model × task, sessions, dedupe
+  ids and read offsets, saved at most every 2s and on quit. On start, ledger lines newer than
+  the state are replayed, so a crash loses nothing. JSON, not SQLite (decision 005): the rollups
+  are small and every view is built from them. Dedupe ids, sessions and offsets untouched for 120
+  days are pruned; totals are kept forever.
+- **Attribution:** the terminal's project, its task (the renderer passes `taskNumber` when an
+  agent starts on a task; by number, as tasks are elsewhere) and the hook's session id; the
+  checkout is recorded too. Day = the reply's local date.
+- **Tokens first; dollars as an estimate.** The headline is input + output + cache writes; cache
+  reads are shown apart so they never swamp it. Cost is labelled "API-equivalent cost (estimate)"
+  everywhere: subscriptions do not pay per token. Prices are one table, `usage/prices.ts`, dated
+  (`PRICES_AS_OF`, checked 2026-10-09 against Anthropic's and OpenAI's pricing pages): standard
+  tier, short-context prices, 5-minute and 1-hour Claude cache writes, OpenAI cached input. Cost
+  is computed when usage is recorded, so a later price change does not rewrite history; models
+  missing from the table count as "unpriced tokens".
+- **UI.** Agent headers: tokens this session and context-window use ("302k tok · 30% ctx"), from
+  the latest main-conversation call (Codex reports its window; Claude's comes from the table,
+  1M for `[1m]` models), with a warning icon and "may compact soon" from 80%. Project tab
+  tooltips: lifetime and last-30-days totals (loaded on hover). Task cards and task tabs: the
+  task's total across all its sessions; Compare (from a task) shows each agent's tokens on it. A
+  Usage view (editor tab kind `usage`, from View → Token Usage or the rail's "+" menu): lifetime
+  and last 30 days, per day by agent kind, per agent, model and task.
+
+**Open questions, answered.** Storage: JSON aggregates, not SQLite, until a query needs more.
+Import of earlier sessions: not now; usage counts from when an agent ran in Dugout (a resumed
+older session's earlier replies are counted on their own days). Budgets and alerts: not now.
+
 ## 049 — Preview URLs and dev servers per worktree (2026-10-09)
 
 **Context.** Checking UI changes an agent made meant starting a dev server by hand in the right
@@ -914,4 +967,5 @@ in Linear (issue #27).
 19. **Done since:** Verify on Stop: the project's check runs when an agent finishes ✅.
 20. **Done since:** Linear as a task source, chosen per project ✅.
 21. **Done since:** worktree setup (copy local files, run a setup command) ✅.
-22. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+22. **Done since:** token usage per agent, task and project, with context-window use ✅.
+23. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

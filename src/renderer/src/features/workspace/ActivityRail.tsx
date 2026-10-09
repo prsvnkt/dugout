@@ -70,6 +70,7 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
   const canAddPane = useProjectLayout(project.id).panes.length < MAX_PANES_PER_PROJECT
   const startWorktreeSession = useWorktreeStore((state) => state.startSession)
   const openAgentSettings = useEditorStore((state) => state.openAgentSettings)
+  const openUsage = useEditorStore((state) => state.openUsage)
   const defaultAgent = useDefaultAgent()
   const choose = (action: () => void) => () => {
     close()
@@ -121,6 +122,7 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
             shortcut="⇧⌘,"
             onSelect={choose(() => openAgentSettings(project.id))}
           />
+          <MenuItem label="Token usage" onSelect={choose(() => openUsage(project.id))} />
         </div>
       )}
     </div>

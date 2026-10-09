@@ -68,6 +68,9 @@ export function useAppCommands(onAddProject: () => void, onCloneProject: () => v
         case 'agentSettings.open':
           if (selectedId) useEditorStore.getState().openAgentSettings(selectedId)
           return
+        case 'usage.open':
+          if (selectedId) useEditorStore.getState().openUsage(selectedId)
+          return
         case 'inbox.toggle':
           useInboxStore.getState().toggle()
           return

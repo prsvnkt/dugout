@@ -17,6 +17,7 @@ import { visibleLabels } from './taskList'
 import { useProjectTasks, useTaskStore } from './taskStore'
 import { useTaskAgents } from './useTaskAgents'
 import { useTaskSource } from './useTaskSource'
+import { UsageFigure, useTaskUsage } from '@renderer/features/usage/UsageFigure'
 import styles from './TaskDetailView.module.css'
 
 interface TaskDetailViewProps {
@@ -63,6 +64,7 @@ export function TaskDetailView({ projectId, number, taskKey }: TaskDetailViewPro
   const pin = useEditorStore((state) => state.pin)
   const agents = useTaskAgents(projectId).get(number)
   const overlaps = useProjectOverlaps(projectId).forTask(number)
+  const usage = useTaskUsage(projectId).get(number)
   const [actionError, setActionError] = useState<string | null>(null)
   const source = useTaskSource(projectId)
 
@@ -94,6 +96,7 @@ export function TaskDetailView({ projectId, number, taskKey }: TaskDetailViewPro
     openCompare(projectId, `task-${number}`, {
       title: `Compare ${task.key}`,
       sides: [first, second],
+      taskNumber: number,
     })
   }
 
@@ -149,6 +152,7 @@ export function TaskDetailView({ projectId, number, taskKey }: TaskDetailViewPro
         </div>
 
         <OverlapFlag overlaps={overlaps} />
+        <UsageFigure totals={usage} label="Tokens on this task" />
 
         {actionError && (
           <p className={styles.error} role="alert">

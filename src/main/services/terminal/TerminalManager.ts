@@ -1,7 +1,9 @@
 import type { AgentStatus, HookSignal, SubagentUpdate } from '@shared/agentStatus'
+import type { AgentUsage } from '@shared/usage'
 import type { TerminalCreateRequest } from '@shared/ipc/contract'
 import {
   isAgentKind,
+  type AgentKind,
   type TerminalExit,
   type TerminalId,
   type TerminalKind,
@@ -31,6 +33,17 @@ export interface TerminalEvents {
   onAgentSession?(id: TerminalId, sessionId: string): void
   /** A subagent of this terminal's agent started or stopped. */
   onAgentSubagent?(id: TerminalId, update: SubagentUpdate): void
+  /** The agent session's token usage so far, after its transcript grew. */
+  onAgentUsage?(id: TerminalId, usage: AgentUsage): void
+}
+
+/** What an agent terminal's usage is attributed to. */
+export interface AgentTerminalInfo {
+  readonly kind: AgentKind
+  readonly projectId: string
+  readonly cwd: string
+  readonly taskNumber: number | null
+  readonly sessionId: string | null
 }
 
 export interface TerminalManagerDeps {
@@ -75,6 +88,8 @@ interface ManagedTerminal {
   readonly size: { readonly cols: number; readonly rows: number }
   readonly kind: TerminalKind
   readonly projectId: string
+  readonly cwd: string
+  readonly taskNumber: number | null
   readonly events: TerminalEvents
   readonly agentStatus: AgentStatus | null
   /** Current agent session, from its hooks. */
@@ -154,6 +169,8 @@ export class TerminalManager {
       size: { cols: request.cols, rows: request.rows },
       kind: request.kind,
       projectId: request.projectId,
+      cwd: request.cwd,
+      taskNumber: request.taskNumber ?? null,
       events,
       agentStatus: hasStatus ? 'starting' : null,
       sessionId: null,
@@ -265,6 +282,22 @@ export class TerminalManager {
   /** The project a terminal belongs to, e.g. to scope an agent's task tools. */
   projectOf(id: TerminalId): string | null {
     return this.terminals.get(id)?.projectId ?? null
+  }
+
+  /** An agent terminal's project, checkout, task and current session; null for shells. */
+  agentInfo(id: TerminalId): AgentTerminalInfo | null {
+    const terminal = this.terminals.get(id)
+    if (!terminal || !isAgentKind(terminal.kind)) return null
+    const { kind, projectId, cwd, taskNumber, sessionId } = terminal
+    return { kind, projectId, cwd, taskNumber, sessionId }
+  }
+
+  /** Passes an agent's usage on to the renderer that owns its terminal. */
+  reportUsage(id: TerminalId, usage: AgentUsage): boolean {
+    const terminal = this.terminals.get(id)
+    if (!terminal) return false
+    terminal.events.onAgentUsage?.(id, usage)
+    return true
   }
 
   agentStatus(id: TerminalId): AgentStatus | null {

@@ -63,6 +63,7 @@ describe('HookServer', () => {
       agent_id: 'a-1',
       agent_type: 'Explore',
       last_assistant_message: 'Found 3 callers.\nDetails…',
+      agent_transcript_path: '/Users/me/.claude/projects/r/s/subagents/agent-a-1.jsonl',
     }
 
     expect(await post(socketPath, '/hooks/t/subagent-start', TOKEN, JSON.stringify(start))).toBe(
@@ -71,8 +72,12 @@ describe('HookServer', () => {
     expect(await post(socketPath, '/hooks/t/subagent-stop', TOKEN, JSON.stringify(stop))).toBe(204)
 
     expect(onSubagent.mock.calls).toEqual([
-      ['t', { id: 'a-1', type: 'Explore', state: 'running' }],
-      ['t', { id: 'a-1', type: 'Explore', state: 'done', detail: 'Found 3 callers.' }],
+      ['t', { id: 'a-1', type: 'Explore', state: 'running' }, undefined],
+      [
+        't',
+        { id: 'a-1', type: 'Explore', state: 'done', detail: 'Found 3 callers.' },
+        '/Users/me/.claude/projects/r/s/subagents/agent-a-1.jsonl',
+      ],
     ])
     expect(onSignal).not.toHaveBeenCalled()
   })
@@ -86,7 +91,7 @@ describe('HookServer', () => {
     expect(await post(socketPath, '/hooks/t/subagent-start', TOKEN, '{ nope')).toBe(204)
 
     expect(onSubagent.mock.calls).toEqual([
-      ['t', { id: 'a-2', type: 'subagent', state: 'running' }],
+      ['t', { id: 'a-2', type: 'subagent', state: 'running' }, undefined],
     ])
   })
 
@@ -94,6 +99,19 @@ describe('HookServer', () => {
     const payload = JSON.stringify({ hook_event_name: 'SessionStart', session_id: 'abc-123' })
     expect(await post(socketPath, '/hooks/term-1/ready', TOKEN, payload)).toBe(204)
     expect(onSignal).toHaveBeenCalledWith('term-1', 'ready', { sessionId: 'abc-123' })
+  })
+
+  test('passes on the transcript path, only when it is an absolute path', async () => {
+    const send = (transcript: unknown) =>
+      post(socketPath, '/hooks/t/done', TOKEN, JSON.stringify({ transcript_path: transcript }))
+    await send('/Users/me/.claude/projects/r/s.jsonl')
+    await send('relative.jsonl')
+    await send(42)
+    expect(onSignal.mock.calls).toEqual([
+      ['t', 'done', { transcriptPath: '/Users/me/.claude/projects/r/s.jsonl' }],
+      ['t', 'done', {}],
+      ['t', 'done', {}],
+    ])
   })
 
   test('ignores malformed payloads and suspicious session ids but keeps the signal', async () => {

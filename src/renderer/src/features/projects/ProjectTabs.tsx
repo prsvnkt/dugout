@@ -7,6 +7,8 @@ import { AccountButton } from '@renderer/features/github/AccountButton'
 import { InboxButton } from '@renderer/features/inbox/InboxButton'
 import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
 import { ACTIVITY_LABEL } from '@renderer/features/workspace/paneActivity'
+import { projectUsageLines } from '@renderer/features/usage/usageFormat'
+import { useUsageStore } from '@renderer/features/usage/usageStore'
 import { useProjectAttention } from '@renderer/features/workspace/workspaceStore'
 import { projectColorVar } from './projectColor'
 import { useProjectsStore } from './projectsStore'
@@ -141,6 +143,49 @@ function CloseProjectButton({ project }: { project: Project }) {
   )
 }
 
+/** The tab's tooltip: name and shortcut, then the project's token usage once loaded. */
+function useTabTitle(project: Project, index: number): string {
+  const usage = useUsageStore((state) => state.projects[project.id])
+  const name = index < SHORTCUT_LIMIT ? `${project.name} (⌘${index + 1})` : project.name
+  return [name, ...projectUsageLines(usage)].join('\n')
+}
+
+interface ProjectTabProps {
+  readonly project: Project
+  readonly index: number
+  readonly isSelected: boolean
+  onSelect(): void
+}
+
+function ProjectTab({ project, index, isSelected, onSelect }: ProjectTabProps) {
+  const title = useTabTitle(project, index)
+  const loadUsage = useUsageStore((state) => state.load)
+  // Usage is loaded when the tooltip is about to show, so idle tabs cost nothing.
+  const refreshUsage = () => void loadUsage(project.id)
+  return (
+    <li
+      className={styles.tab}
+      data-selected={isSelected}
+      style={{ '--project-color': projectColorVar(project.color) } as CSSProperties}
+    >
+      <button
+        className={styles.select}
+        onClick={onSelect}
+        onMouseEnter={refreshUsage}
+        onFocus={refreshUsage}
+        aria-current={isSelected ? 'page' : undefined}
+        aria-keyshortcuts={index < SHORTCUT_LIMIT ? `Meta+${index + 1}` : undefined}
+        title={title}
+      >
+        <span className={styles.dot} aria-hidden />
+        <span className={styles.name}>{project.name}</span>
+        <TabAttention projectId={project.id} />
+      </button>
+      <CloseProjectButton project={project} />
+    </li>
+  )
+}
+
 /** Chrome-style project tabs in the title bar, with the GitHub account at the far end. */
 export function ProjectTabs({ onAddProject, onCloneProject }: ProjectTabsProps) {
   const { projects, selectedId, select } = useProjectsStore()
@@ -150,25 +195,13 @@ export function ProjectTabs({ onAddProject, onCloneProject }: ProjectTabsProps) 
       <nav className={styles.nav} aria-label="Projects">
         <ul className={styles.tabs}>
           {projects.map((project, index) => (
-            <li
+            <ProjectTab
               key={project.id}
-              className={styles.tab}
-              data-selected={project.id === selectedId}
-              style={{ '--project-color': projectColorVar(project.color) } as CSSProperties}
-            >
-              <button
-                className={styles.select}
-                onClick={() => select(project.id)}
-                aria-current={project.id === selectedId ? 'page' : undefined}
-                aria-keyshortcuts={index < SHORTCUT_LIMIT ? `Meta+${index + 1}` : undefined}
-                title={index < SHORTCUT_LIMIT ? `${project.name} (⌘${index + 1})` : project.name}
-              >
-                <span className={styles.dot} aria-hidden />
-                <span className={styles.name}>{project.name}</span>
-                <TabAttention projectId={project.id} />
-              </button>
-              <CloseProjectButton project={project} />
-            </li>
+              project={project}
+              index={index}
+              isSelected={project.id === selectedId}
+              onSelect={() => select(project.id)}
+            />
           ))}
         </ul>
         {/* With no projects, the welcome screen already offers both. */}

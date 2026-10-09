@@ -89,13 +89,22 @@ export async function clickMenuItem(
   )
 }
 
-/** Claude Code and Codex run the hook commands from their config for each event. */
+/**
+ * Claude Code and Codex run the hook commands from their config for each event, with the path of
+ * the session's transcript, as the real ones do.
+ */
 const RUN_HOOK_COMMANDS = String.raw`
 function fire(event, matchValue, extra = {}) {
   for (const group of hooks[event] ?? []) {
     if (group.matcher && !group.matcher.split('|').includes(matchValue)) continue
     for (const hook of group.hooks) {
-      const input = JSON.stringify({ hook_event_name: event, session_id: sessionId, ...extra })
+      const transcript = transcriptPath()
+      const input = JSON.stringify({
+        hook_event_name: event,
+        session_id: sessionId,
+        ...(transcript && { transcript_path: transcript }),
+        ...extra,
+      })
       spawnSync('bash', ['-c', hook.command], { input, stdio: ['pipe', 'ignore', 'ignore'] })
     }
   }
@@ -120,6 +129,24 @@ const firstPrompt = process.argv
 const { hooks } = JSON.parse(readFileSync(argValue('--settings'), 'utf8'))
 const resumed = argValue('--resume')
 const dugoutServer = () => JSON.parse(readFileSync(argValue('--mcp-config'), 'utf8')).mcpServers.dugout
+
+// A transcript like Claude Code's, under $CLAUDE_CONFIG_DIR (the tests' stand-in for ~/.claude).
+const transcriptPath = () =>
+  process.env.CLAUDE_CONFIG_DIR &&
+  require('node:path').join(process.env.CLAUDE_CONFIG_DIR, 'projects', 'fake', sessionId + '.jsonl')
+let replyCount = 0
+function writeUsage(input, output) {
+  const path = transcriptPath()
+  require('node:fs').mkdirSync(require('node:path').dirname(path), { recursive: true })
+  const message = {
+    id: 'msg_' + process.pid + '_' + ++replyCount,
+    model: 'claude-opus-5-5',
+    usage: { input_tokens: input, output_tokens: output, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+  }
+  const line = { type: 'assistant', isSidechain: false, timestamp: new Date().toISOString(), sessionId, message }
+  // Streamed replies repeat their line; Dugout must count it once.
+  require('node:fs').appendFileSync(path, (JSON.stringify(line) + '\n').repeat(2))
+}
 ` + RUN_HOOK_COMMANDS
 
 /**
@@ -148,6 +175,32 @@ const hooks = Object.fromEntries(
 const dugoutServer = () => overrides['mcp_servers.dugout']
 const mcpNames = Object.keys(overrides).filter((key) => key.startsWith('mcp_servers.'))
 process.stdout.write('mcp=' + mcpNames.map((key) => key.slice('mcp_servers.'.length)).join(',') + '\r\n')
+
+// A session log like Codex's, under $CODEX_HOME (the tests' stand-in for ~/.codex).
+const transcriptPath = () =>
+  process.env.CODEX_HOME &&
+  require('node:path').join(process.env.CODEX_HOME, 'sessions', 'rollout-' + sessionId + '.jsonl')
+const totals = { input_tokens: 0, output_tokens: 0 }
+function writeUsage(input, output) {
+  const path = transcriptPath()
+  const fs = require('node:fs')
+  const at = new Date().toISOString()
+  const lines = []
+  if (!fs.existsSync(path)) {
+    fs.mkdirSync(require('node:path').dirname(path), { recursive: true })
+    lines.push({ timestamp: at, type: 'session_meta', payload: { id: sessionId } })
+    lines.push({ timestamp: at, type: 'turn_context', payload: { model: 'gpt-6-astra' } })
+  }
+  totals.input_tokens += input
+  totals.output_tokens += output
+  const info = {
+    total_token_usage: { ...totals },
+    last_token_usage: { input_tokens: input, output_tokens: output },
+    model_context_window: 258400,
+  }
+  lines.push({ timestamp: at, type: 'event_msg', payload: { type: 'token_count', info } })
+  fs.appendFileSync(path, lines.map((line) => JSON.stringify(line) + '\n').join(''))
+}
 ` + RUN_HOOK_COMMANDS
 
 /**
@@ -169,6 +222,9 @@ const dugoutServer = () => {
   return { command: command[0], args: command.slice(1), env: environment }
 }
 process.stdout.write('mcp=' + Object.keys(config.mcp ?? {}).join(',') + '\r\n')
+// OpenCode has no usage reader in Dugout yet.
+const transcriptPath = () => undefined
+const writeUsage = () => {}
 
 // OpenCode runs on Bun, whose fetch can POST to a Unix socket; Node's cannot, so stand in for it.
 globalThis.fetch = (url, init = {}) =>
@@ -219,7 +275,8 @@ function fire(event, matchValue, extra = {}) {
  * A stand-in for an agent CLI that runs Dugout's hook commands exactly as the real one would,
  * driven by lines typed into the terminal:
  * prompt | ask [command…] | ask-edit [file] | tool [command…] | notify-idle | stop | stop-later |
- * exit | agent-comment | edit | raw-keys | subagent-start <id> <type> | subagent-stop <id> <type>
+ * exit | agent-comment | edit | raw-keys | subagent-start <id> <type> | subagent-stop <id> <type> |
+ * usage <input> <output> (writes a reply with that usage to the transcript, then stops)
  * (`ask` requests approval for a Bash command, `npm install` by default; like the real CLIs it
  * sends no tool id. `tool` finishes a Bash call with a fresh tool id, as PostToolUse does.)
  * (`raw-keys` puts the TTY in raw mode and prints every later input chunk as `keys=<json>`.)
@@ -248,6 +305,11 @@ const actions = {
     }),
   'notify-idle': () => fire('Notification', 'idle_prompt'),
   stop: () => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }),
+  // A reply that used tokens, written to the transcript, then the turn ends.
+  usage: (input = '1000', output = '100') => {
+    writeUsage(Number(input), Number(output))
+    fire('Stop', undefined, { last_assistant_message: 'Used some tokens.' })
+  },
   'stop-later': () =>
     setTimeout(() => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }), 2500),
   exit: () => process.exit(0),

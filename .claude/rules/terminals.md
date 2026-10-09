@@ -24,7 +24,9 @@ paths:
   loads a status plugin through `OPENCODE_CONFIG_CONTENT` (`agents/opencode/statusPlugin.ts`).
   Never scrape output, never edit `~/.claude`, `~/.codex` or `~/.config/opencode`, and never
   bypass Codex hook trust. Every adapter
-  passes `agents/adapters.contract.test.ts`.
+  passes `agents/adapters.contract.test.ts`. An adapter has a `usage` reader exactly when it has
+  `hasUsage`: where its transcripts live and a parser from `services/transcripts/`; token usage
+  comes from the transcript its hooks name, never from terminal output.
   To react to a new hook event, add a `HOOK_BINDINGS` entry and a unit test.
 - Hook commands must stay async, time-limited, silent and `|| true`; they run inside the user's
   Claude session and must never slow or break it.
