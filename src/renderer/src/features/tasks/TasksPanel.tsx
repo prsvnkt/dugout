@@ -1,169 +1,78 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { ChevronsRight, Plus } from 'lucide-react'
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { ChevronsRight, Plus, X } from 'lucide-react'
 import type { Project } from '@shared/project'
-import { TASK_STATUS_LABEL, type Task, type TaskStatus } from '@shared/tasks'
 import { isSignedIn, useAuthStore } from '@renderer/features/github/authStore'
 import { useGitStore } from '@renderer/features/git/gitStore'
-import { ActivityIndicator } from '@renderer/features/terminal/ActivityIndicator'
-import {
-  ACTIVITY_LABEL,
-  projectAttention,
-  type PaneActivity,
-} from '@renderer/features/workspace/paneActivity'
-import { useWorkspaceStore } from '@renderer/features/workspace/workspaceStore'
-import { useEditorStore } from '@renderer/features/editor/editorStore'
-import { AGENT_LABEL, isAgentKind } from '@shared/terminal'
+import { useEditorStore, useProjectTabs } from '@renderer/features/editor/editorStore'
 import { Icon } from '@renderer/lib/Icon'
-import { TaskDetailView } from './TaskDetailView'
+import { NewTaskForm } from './NewTaskForm'
+import { TaskGroups } from './TaskGroups'
+import { filterTasks, groupTasks } from './taskList'
 import { useProjectTasks, useTaskStore } from './taskStore'
+import { useTaskAgents } from './useTaskAgents'
 import styles from './Tasks.module.css'
 
 const REFRESH_INTERVAL_MS = 30_000
-const GROUP_ORDER: readonly TaskStatus[] = ['in-progress', 'in-review', 'todo', 'done']
-const DONE_SHOWN = 10
+const SKELETON_CARDS = 3
 
-/** The most urgent status of the agents working on each task. */
-function useAgentActivityByTask(projectId: string): ReadonlyMap<number, PaneActivity | null> {
-  const panes = useWorkspaceStore((state) => state.layouts[projectId]?.panes)
-  const activities = useWorkspaceStore((state) => state.activities)
-  return useMemo(() => {
-    const byTask = new Map<number, PaneActivity[]>()
-    for (const pane of panes ?? []) {
-      if (!pane.task) continue
-      const activity = activities[pane.id]
-      byTask.set(pane.task.number, [
-        ...(byTask.get(pane.task.number) ?? []),
-        ...(activity ? [activity] : []),
-      ])
-    }
-    return new Map(
-      [...byTask].map(([number, list]) => [number, projectAttention(list) ?? list[0] ?? null]),
-    )
-  }, [panes, activities])
-}
-
-function NewTaskForm({
-  projectId,
-  onDone,
-  onError,
-}: {
-  projectId: string
-  onDone(): void
-  onError(message: string): void
-}) {
-  const create = useTaskStore((state) => state.create)
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    create({ projectId, title, body })
-      .then(onDone)
-      .catch((error: unknown) => onError(error instanceof Error ? error.message : String(error)))
-  }
-  return (
-    <form className={styles.newTask} onSubmit={submit} aria-label="New task">
-      <input
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        placeholder="Title"
-        aria-label="Title"
-        autoFocus
-      />
-      <textarea
-        value={body}
-        onChange={(event) => setBody(event.target.value)}
-        placeholder="Description (optional)"
-        aria-label="Description"
-        rows={4}
-      />
-      <div className={styles.formActions}>
-        <button type="button" onClick={onDone}>
-          Cancel
-        </button>
-        <button type="submit" className={styles.primary} disabled={!title.trim()}>
-          Create task
-        </button>
-      </div>
-    </form>
-  )
-}
-
-function TaskRow({
-  task,
-  agent,
-  onOpen,
-}: {
-  task: Task
-  agent: PaneActivity | null | undefined
-  onOpen(): void
-}) {
-  return (
-    <li>
-      <button className={styles.row} onClick={onOpen} aria-label={`#${task.number} ${task.title}`}>
-        <span className={styles.number}>#{task.number}</span>
-        <span className={styles.title}>{task.title}</span>
-        {agent && (
-          <ActivityIndicator
-            activity={agent}
-            label={ACTIVITY_LABEL[agent]}
-            className={styles.agent}
-          />
-        )}
-      </button>
-    </li>
-  )
-}
-
-/** A project's GitHub Issues as tasks, grouped by status, with agents started from them. */
-export function TasksPanel({ project, isActive }: { project: Project; isActive: boolean }) {
-  const auth = useAuthStore((state) => state.auth)
-  const signIn = useAuthStore((state) => state.signIn)
-  const { tasks, error, selected, detail, isBusy } = useProjectTasks(project.id)
-  const { refresh, select } = useTaskStore()
-  const setPanelOpen = useGitStore((state) => state.setPanelOpen)
-  const agents = useAgentActivityByTask(project.id)
-  const panes = useWorkspaceStore((state) => state.layouts[project.id]?.panes)
-  const openCompare = useEditorStore((state) => state.openCompare)
-  /** Agent worktrees working on a task, labelled by agent (e.g. Claude, Codex). */
-  const compareSides = (number: number) =>
-    (panes ?? [])
-      .filter((pane) => pane.task?.number === number && pane.worktree && isAgentKind(pane.kind))
-      .map((pane) => ({
-        label: isAgentKind(pane.kind) ? AGENT_LABEL[pane.kind] : pane.kind,
-        worktreePath: pane.worktree?.path ?? '',
-      }))
-  const [query, setQuery] = useState('')
-  const [isCreating, setIsCreating] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const signedIn = isSignedIn(auth)
-
+/** Keeps the project's tasks fresh while its panel is shown: on a timer and on window focus. */
+function useTaskRefresh(projectId: string, isEnabled: boolean) {
+  const refresh = useTaskStore((state) => state.refresh)
   useEffect(() => {
-    if (!isActive || !signedIn) return
-    void refresh(project.id)
-    const timer = window.setInterval(() => void refresh(project.id), REFRESH_INTERVAL_MS)
-    const onFocus = () => void refresh(project.id)
+    if (!isEnabled) return
+    void refresh(projectId)
+    const timer = window.setInterval(() => void refresh(projectId), REFRESH_INTERVAL_MS)
+    const onFocus = () => void refresh(projectId)
     window.addEventListener('focus', onFocus)
     return () => {
       window.clearInterval(timer)
       window.removeEventListener('focus', onFocus)
     }
-  }, [isActive, signedIn, project.id, refresh])
+  }, [isEnabled, projectId, refresh])
+}
 
-  const groups = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    const visible = (tasks ?? []).filter(
-      (task) =>
-        !needle ||
-        task.title.toLowerCase().includes(needle) ||
-        String(task.number) === needle.replace('#', ''),
-    )
-    return GROUP_ORDER.map((status) => ({
-      status,
-      tasks: visible
-        .filter((task) => task.status === status)
-        .slice(0, status === 'done' ? DONE_SHOWN : undefined),
-    })).filter((group) => group.tasks.length > 0)
-  }, [tasks, query])
+/** The task open in the project's active editor tab, if any. */
+function useCurrentTask(projectId: string): number | null {
+  const { tabs, activeTabId } = useProjectTabs(projectId)
+  return tabs.find((tab) => tab.id === activeTabId)?.taskNumber ?? null
+}
+
+function LoadingCards() {
+  return (
+    <div className={styles.skeletons} role="status" aria-label="Loading tasks…">
+      {Array.from({ length: SKELETON_CARDS }, (_, index) => (
+        <span key={index} className={styles.skeleton} aria-hidden />
+      ))}
+    </div>
+  )
+}
+
+/** ↓ from the search box moves into the list. */
+function focusFirstCard(event: KeyboardEvent<HTMLInputElement>) {
+  if (event.key !== 'ArrowDown') return
+  const panel = event.currentTarget.closest('aside')
+  const first = panel?.querySelector<HTMLElement>('[data-task-card], [data-task-group]')
+  if (!first) return
+  event.preventDefault()
+  first.focus()
+}
+
+/** A project's GitHub Issues as task cards, grouped by status; each opens in an editor tab. */
+export function TasksPanel({ project, isActive }: { project: Project; isActive: boolean }) {
+  const auth = useAuthStore((state) => state.auth)
+  const signIn = useAuthStore((state) => state.signIn)
+  const { tasks, error } = useProjectTasks(project.id)
+  const setPanelOpen = useGitStore((state) => state.setPanelOpen)
+  const openTask = useEditorStore((state) => state.openTask)
+  const agents = useTaskAgents(project.id)
+  const currentTask = useCurrentTask(project.id)
+  const [query, setQuery] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const signedIn = isSignedIn(auth)
+  useTaskRefresh(project.id, isActive && signedIn)
+
+  const groups = useMemo(() => groupTasks(filterTasks(tasks ?? [], query)), [tasks, query])
 
   const header = (
     <header className={styles.header}>
@@ -198,6 +107,7 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
   }
 
   const message = actionError ?? error
+  const hasTasks = (tasks?.length ?? 0) > 0
   return (
     <aside className={styles.panel} aria-label="Tasks">
       {header}
@@ -205,8 +115,8 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
         <p className={styles.error} role="alert">
           {message}
           {actionError && (
-            <button onClick={() => setActionError(null)} aria-label="Dismiss">
-              ×
+            <button onClick={() => setActionError(null)} aria-label="Dismiss" title="Dismiss">
+              <Icon icon={X} />
             </button>
           )}
         </p>
@@ -218,59 +128,36 @@ export function TasksPanel({ project, isActive }: { project: Project; isActive: 
           onError={setActionError}
         />
       )}
-      {selected !== null && detail ? (
-        <TaskDetailView
-          projectId={project.id}
-          task={detail}
-          isBusy={isBusy}
-          hasAgent={agents.has(detail.number)}
-          canCompare={compareSides(detail.number).length >= 2}
-          onCompare={() => {
-            const sides = compareSides(detail.number)
-            const [first, second] = sides
-            if (!first || !second) return
-            openCompare(project.id, `task-${detail.number}`, {
-              title: `Compare #${detail.number}`,
-              sides: [first, second],
-            })
-          }}
-          onError={setActionError}
+      {hasTasks && (
+        <input
+          className={`${styles.input} ${styles.search}`}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={focusFirstCard}
+          placeholder="Search tasks"
+          aria-label="Search tasks"
         />
-      ) : (
-        <>
-          <input
-            className={styles.search}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search tasks"
-            aria-label="Search tasks"
-          />
-          <div className={styles.scroll}>
-            {tasks === null && !error && <p className={styles.muted}>Loading tasks…</p>}
-            {tasks?.length === 0 && (
-              <p className={styles.muted}>No tasks yet. Create one with +.</p>
-            )}
-            {groups.map((group) => (
-              <section key={group.status} aria-label={TASK_STATUS_LABEL[group.status]}>
-                <h4 className={styles.group}>
-                  {TASK_STATUS_LABEL[group.status]}{' '}
-                  <span className={styles.count}>{group.tasks.length}</span>
-                </h4>
-                <ul className={styles.list}>
-                  {group.tasks.map((task) => (
-                    <TaskRow
-                      key={task.number}
-                      task={task}
-                      agent={agents.get(task.number)}
-                      onOpen={() => void select(project.id, task.number)}
-                    />
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </>
       )}
+      <div className={styles.scroll}>
+        {tasks === null && !error && <LoadingCards />}
+        {tasks?.length === 0 && !isCreating && (
+          <div className={styles.empty}>
+            <p>No tasks yet. A task is a GitHub issue that you can start an agent on.</p>
+            <button className={styles.primary} onClick={() => setIsCreating(true)}>
+              Create a task
+            </button>
+          </div>
+        )}
+        {hasTasks && groups.length === 0 && (
+          <p className={styles.muted}>No tasks match “{query.trim()}”.</p>
+        )}
+        <TaskGroups
+          groups={groups}
+          agents={agents}
+          currentTask={currentTask}
+          onOpen={(task, isPreview) => openTask(project.id, task.number, task.title, isPreview)}
+        />
+      </div>
     </aside>
   )
 }

@@ -1,0 +1,141 @@
+/* The status edge: to do / in progress / in review / done (the group heading says it in words). */
+.card {
+  --edge: var(--status-idle);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) - 1px);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--edge);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+}
+
+.card[data-status='in-progress'] {
+  --edge: var(--status-working);
+}
+
+.card[data-status='in-review'] {
+  --edge: var(--status-needs-input-dot);
+}
+
+.card[data-status='done'] {
+  --edge: var(--status-done);
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+  border-left-color: var(--edge);
+  box-shadow: var(--shadow-menu);
+  transform: translateY(-1px);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.card[aria-current='page'] {
+  border-color: var(--accent);
+  border-left-color: var(--edge);
+  background: var(--bg-canvas);
+}
+
+.title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-weight: 550;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.card[data-status='done'] .title {
+  color: var(--text-secondary);
+}
+
+.meta,
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.number {
+  font-family: var(--font-mono);
+}
+
+.comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.comments svg {
+  width: 12px;
+  height: 12px;
+}
+
+.priority {
+  font-weight: 600;
+}
+
+.priority[data-priority='high'] {
+  color: var(--status-error);
+}
+
+.priority[data-priority='medium'] {
+  color: var(--status-needs-input);
+}
+
+.footer {
+  margin-top: 2px;
+}
+
+.label {
+  max-width: 100%;
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agents {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.agentKinds {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}
