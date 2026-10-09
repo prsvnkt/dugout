@@ -524,6 +524,7 @@ worktree) and in the header of every worktree agent.
 - Failures (app removed, folder gone) show inside the menu, which stays open.
 - The button and the menu items use `<Icon>` (decision 035): an external-link icon next to
   "Open in…", a code icon for the editors and a folder icon for Finder.
+
 ## 040 — One-click MCP server presets in Agent settings (2026-10-09)
 
 **Context.** Adding a common MCP server meant looking up its config and hand-writing `.mcp.json`
@@ -534,7 +535,8 @@ worktree) and in the header of every worktree agent.
 - A "Presets" list under the project's MCP servers in Agent settings: Playwright, Context7,
   GitHub, Sentry, Linear, Figma and Postgres. "Add" saves the server straight to `.mcp.json`
   through the same atomic, conflict-checked write as the server form (decision 022); a preset
-  whose name is already in the file shows "Added". To change it afterwards, edit the server.
+  whose name is already in the file shows "Added" (a plus or check `<Icon>`, decision 035). To
+  change it afterwards, edit the server.
 - The presets are data in one file, `src/shared/mcpPresets.ts`; the server name is the preset's
   id. Each entry was checked against the vendor's docs or registry: `npx @playwright/mcp@latest`;
   the hosted HTTP servers of Context7 (`https://mcp.context7.com/mcp`), GitHub
