@@ -3,14 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { gitHubTestEnv, startGitHubStub } from './githubStub'
-import { launchApp, makeTempDir, stubFolderPicker } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'T',
-  GIT_AUTHOR_EMAIL: 't@example.com',
-  GIT_COMMITTER_NAME: 'T',
-  GIT_COMMITTER_EMAIL: 't@example.com',
-}
+import { launchApp, makeTempDir, stubFolderPicker, GIT_IDENTITY } from './helpers'
 
 let app: ElectronApplication
 let page: Page
@@ -31,7 +24,7 @@ test.beforeEach(async () => {
   const root = join(makeTempDir(), 'app')
   mkdirSync(root)
   const git = (...args: string[]) =>
-    execFileSync('git', args, { cwd: root, env: { ...process.env, ...IDENTITY } })
+    execFileSync('git', args, { cwd: root, env: { ...process.env, ...GIT_IDENTITY } })
   git('init', '-q', '-b', 'main')
   writeFileSync(join(root, 'readme.md'), '# app\n')
   git('add', '.')
@@ -39,7 +32,7 @@ test.beforeEach(async () => {
   git('remote', 'add', 'origin', `${stub.baseUrl}/octocat/app.git`)
   git('checkout', '-q', '-b', 'feat/login')
 
-  app = await launchApp(makeTempDir(), { ...IDENTITY, ...gitHubTestEnv(stub.baseUrl) })
+  app = await launchApp(makeTempDir(), { ...GIT_IDENTITY, ...gitHubTestEnv(stub.baseUrl) })
   page = await app.firstWindow()
   await app.evaluate(({ shell }) => {
     const opened: string[] = []

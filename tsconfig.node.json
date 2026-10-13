@@ -2,7 +2,10 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023"],
-    "types": ["node"]
+    "types": ["node"],
+    // Type-check the build scripts (postinstall, icons) too, through their JSDoc.
+    "allowJs": true,
+    "checkJs": true
   },
   "include": [
     "electron.vite.config.ts",
@@ -14,5 +17,7 @@
     "src/shared/**/*",
     "tests/**/*",
     "playwright.config.ts"
-  ]
+  ],
+  // The demo's scripted fake agent is untyped JS that only the demo recording runs.
+  "exclude": ["scripts/demo/**/*.mjs"]
 }

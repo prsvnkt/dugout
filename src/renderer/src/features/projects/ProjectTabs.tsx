@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type CSSProperties } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Icon } from '@renderer/lib/Icon'
+import { useMenuKeys } from '@renderer/lib/useArrowNavigation'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import type { Project } from '@shared/project'
 import { AccountButton } from '@renderer/features/github/AccountButton'
@@ -12,12 +13,10 @@ import { useUsageStore } from '@renderer/features/usage/usageStore'
 import { useProjectAttention } from '@renderer/features/workspace/workspaceStore'
 import { projectColorVar } from './projectColor'
 import { useProjectsStore } from './projectsStore'
-import { useCloseProject, useOpenPaneCount } from './useCloseProject'
+import { CloseProjectButton } from './CloseProjectButton'
 import styles from './ProjectTabs.module.css'
 
 const SHORTCUT_LIMIT = 9
-const CONFIRM_WIDTH_PX = 260
-const CONFIRM_GAP_PX = 4
 
 interface ProjectTabsProps {
   onAddProject(): void
@@ -41,12 +40,16 @@ function TabAttention({ projectId }: { projectId: string }) {
 function NewProjectMenu({ onAddProject, onCloneProject }: ProjectTabsProps) {
   const [isOpen, setIsOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useDismiss(
     wrapRef,
     isOpen,
     useCallback(() => setIsOpen(false), []),
+    triggerRef,
   )
+  const onMenuKeyDown = useMenuKeys(menuRef, isOpen)
 
   const choose = (action: () => void) => {
     setIsOpen(false)
@@ -56,6 +59,7 @@ function NewProjectMenu({ onAddProject, onCloneProject }: ProjectTabsProps) {
   return (
     <div className={styles.newWrap} ref={wrapRef}>
       <button
+        ref={triggerRef}
         className={styles.newTab}
         onClick={() => setIsOpen(!isOpen)}
         aria-haspopup="menu"
@@ -66,77 +70,19 @@ function NewProjectMenu({ onAddProject, onCloneProject }: ProjectTabsProps) {
         <Icon icon={Plus} />
       </button>
       {isOpen && (
-        <div className={styles.menu} role="menu">
+        <div
+          className={styles.menu}
+          role="menu"
+          aria-label="New project"
+          ref={menuRef}
+          onKeyDown={onMenuKeyDown}
+        >
           <button role="menuitem" onClick={() => choose(onAddProject)}>
             Add project… <kbd>⇧⌘O</kbd>
           </button>
           <button role="menuitem" onClick={() => choose(onCloneProject)}>
             Clone repository… <kbd>⇧⌘C</kbd>
           </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** The close button on a tab: closes the project, asking first when agents or shells would stop. */
-function CloseProjectButton({ project }: { project: Project }) {
-  const openPanes = useOpenPaneCount(project.id)
-  const closeProject = useCloseProject()
-  // Where the confirmation opens. Fixed to the window: the scrolling tab strip would clip it.
-  const [confirmAt, setConfirmAt] = useState<CSSProperties | null>(null)
-  const isConfirming = confirmAt !== null
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  useDismiss(
-    wrapRef,
-    isConfirming,
-    useCallback(() => setConfirmAt(null), []),
-  )
-
-  const askToClose = (button: HTMLElement) => {
-    const rect = button.getBoundingClientRect()
-    setConfirmAt({
-      top: rect.bottom + CONFIRM_GAP_PX,
-      left: Math.max(CONFIRM_GAP_PX, rect.right - CONFIRM_WIDTH_PX),
-    })
-  }
-
-  const close = () => {
-    setConfirmAt(null)
-    closeProject(project.id).catch((error: unknown) =>
-      console.error('[projects] could not close the project', error),
-    )
-  }
-
-  return (
-    <div className={styles.closeWrap} ref={wrapRef}>
-      <button
-        className={styles.close}
-        onClick={(event) => (openPanes > 0 ? askToClose(event.currentTarget) : close())}
-        aria-label={`Close ${project.name}`}
-        title="Close project (the folder stays on disk)"
-      >
-        <Icon icon={X} />
-      </button>
-      {confirmAt && (
-        <div
-          className={styles.confirm}
-          style={confirmAt}
-          role="dialog"
-          aria-label={`Close ${project.name}?`}
-        >
-          <p>
-            Close {project.name}? Its{' '}
-            {openPanes === 1 ? 'agent or shell' : `${openPanes} agents and shells`} will stop. The
-            folder stays on disk.
-          </p>
-          <div className={styles.confirmActions}>
-            <button onClick={() => setConfirmAt(null)}>Cancel</button>
-            <button className={styles.danger} onClick={close} autoFocus>
-              Close project
-            </button>
-          </div>
         </div>
       )}
     </div>

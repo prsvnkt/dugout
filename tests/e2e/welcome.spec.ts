@@ -3,14 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { gitHubTestEnv, startGitHubStub } from './githubStub'
-import { launchApp, makeFakeClaude, makeFakeOpenCode, makeTempDir } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'T',
-  GIT_AUTHOR_EMAIL: 't@example.com',
-  GIT_COMMITTER_NAME: 'T',
-  GIT_COMMITTER_EMAIL: 't@example.com',
-}
+import { launchApp, makeFakeClaude, makeFakeOpenCode, makeTempDir, GIT_IDENTITY } from './helpers'
 
 let app: ElectronApplication
 let page: Page
@@ -36,7 +29,7 @@ function makeRemote(name: string): string {
   const work = join(makeTempDir(), name)
   mkdirSync(work)
   const git = (...args: string[]) =>
-    execFileSync('git', args, { cwd: work, env: { ...process.env, ...IDENTITY } })
+    execFileSync('git', args, { cwd: work, env: { ...process.env, ...GIT_IDENTITY } })
   git('init', '-q', '-b', 'main')
   writeFileSync(join(work, 'readme.md'), `# ${name}\n`)
   git('add', '.')

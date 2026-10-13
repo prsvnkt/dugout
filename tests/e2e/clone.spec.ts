@@ -3,21 +3,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { gitHubTestEnv, startGitHubStub } from './githubStub'
-import { launchApp, makeTempDir, stubFolderPicker } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'T',
-  GIT_AUTHOR_EMAIL: 't@example.com',
-  GIT_COMMITTER_NAME: 'T',
-  GIT_COMMITTER_EMAIL: 't@example.com',
-}
+import { launchApp, makeTempDir, stubFolderPicker, GIT_IDENTITY } from './helpers'
 
 /** A bare repository with one commit, usable as a clone URL (absolute path). */
 function makeBareRepo(name: string): string {
   const work = join(makeTempDir(), 'work')
   mkdirSync(work)
   const run = (cwd: string, ...args: string[]) =>
-    execFileSync('git', args, { cwd, env: { ...process.env, ...IDENTITY } })
+    execFileSync('git', args, { cwd, env: { ...process.env, ...GIT_IDENTITY } })
   run(work, 'init', '-q', '-b', 'main')
   writeFileSync(join(work, 'readme.md'), `# ${name}\n`)
   run(work, 'add', '.')

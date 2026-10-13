@@ -20,15 +20,18 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 
 ## Commands
 
-| Command            | What it does                                   |
-| ------------------ | ---------------------------------------------- |
-| `npm run dev`      | Run the app with hot reload                    |
-| `npm run check`    | Typecheck + lint + format check + unit tests   |
-| `npm test`         | Unit tests (Vitest)                            |
-| `npm run test:e2e` | Build, then drive the real app with Playwright |
-| `npm run build`    | Typecheck and production build into `out/`     |
-| `npm run dist`     | Package the macOS app (DMG, zip) into `dist/`  |
-| `npm run demo:gif` | Record raw demo footage (`scripts/demo/`)      |
+Needs Node 24+, see `.nvmrc` (Electron 44 bundles Node 24; `@types/node` follows it).
+
+| Command                 | What it does                                                         |
+| ----------------------- | -------------------------------------------------------------------- |
+| `npm run dev`           | Run the app with hot reload                                          |
+| `npm run check`         | Typecheck + lint + format check + unit tests with the coverage floor |
+| `npm test`              | Unit tests (Vitest), without coverage                                |
+| `npm run test:coverage` | Unit tests with coverage (`coverage/`), failing below the floor      |
+| `npm run test:e2e`      | Build, then drive the real app with Playwright                       |
+| `npm run build`         | Typecheck and production build into `out/`                           |
+| `npm run dist`          | Package the macOS app (DMG, zip) into `dist/`                        |
+| `npm run demo:gif`      | Record raw demo footage (`scripts/demo/`)                            |
 
 **Definition of done:** `npm run check` and `npm run test:e2e` both pass, and the docs are
 updated as `.claude/rules/docs.md` describes. CI (`.github/workflows/ci.yml`) runs both checks on
@@ -52,7 +55,8 @@ src/
                 openIn/ (open a checkout in VS Code, Cursor, Zed or Finder),
                 tasks/ (TaskService: a project's tasks from its source, GitHub Issues or
                 Linear, decision 051), linear/ (Linear GraphQL API, encrypted API key),
-                agentConfig/ (.mcp.json servers, AGENTS.md / CLAUDE.md instructions),
+                agentConfig/ (.mcp.json servers and their approval for Codex: decision 057,
+                AGENTS.md / CLAUDE.md instructions),
                 transcripts/ (Claude / Codex transcript parsers for usage and timelines,
                 finding transcripts and their path checks),
                 usage/ (token ledger in app data, rollups, price table: decision 046),
@@ -66,6 +70,7 @@ src/
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
     devOverrides.ts  Every test/dev env override, ignored by a packaged build (decision 060).
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
+              api.ts builds it from an injected ipcRenderer (unit-tested); index.ts exposes it.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
               `agents.ts` is the agent registry the UI reads (labels, capabilities).
   renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.
@@ -120,7 +125,8 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 - **Dev app name and data:** `postinstall` renames `node_modules/electron/dist/Electron.app` to
   "Dugout Dev" (and re-signs it ad hoc), and unpackaged runs keep their data in "Dugout Dev", so
   `npm run dev` is never confused with the installed app. If the Dock says "Electron" again after
-  an Electron upgrade, run `npm install`.
+  an Electron upgrade, run `npm install`. The rename is skipped when `CI` is set, and a failure
+  only warns (`[brand-dev-electron] skipped: …`); it never fails an install.
 - **The preload is sandboxed:** it cannot `require` npm packages. Import only dependency-free
   modules into it (e.g. `@shared/ipc/channels`, never `@shared/ipc/contract`, which pulls zod).
 - **node-pty `spawn-helper`** can install without its executable bit; `postinstall` fixes it.
@@ -139,7 +145,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   decision 037). E2E tests use the fake `claude` / `codex` / `opencode` from
   `tests/e2e/helpers.ts` via `DUGOUT_<AGENT>_COMMAND`; never scrape terminal output.
 - **All git commands go through `GitService`/`runGit`** so they inherit the no-lock, no-prompt,
-  literal-pathspec environment (decision 009). Never call `git` from elsewhere.
+  literal-pathspec environment (decision 009) and never run the repo's hooks, fsmonitor or other
+  commands its `.git/config` names (decision 054). Never call `git` from elsewhere, and never
+  pass `hooks: 'repo'` to a command that carries the GitHub token.
 - **Shell command lines use only plain `"$VAR"` expansions** (decision 013). `${VAR:+…}` splits
   differently in zsh and bash and does not exist in fish.
 - **Store updates that change nothing must return the same object.** Panes report values from
@@ -167,6 +175,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   Add a new override there, never as a `process.env` read elsewhere.
 - **Pinned versions:** Vite 7 (electron-vite 5 does not support Vite 8) and TypeScript 5.9
   (typescript-eslint does not support TS 7 yet). Check peers before upgrading.
+- **`overrides` in package.json pins `dompurify` to 3.4.16:** `monaco-editor@0.57.0` pins 3.4.15,
+  which has an advisory. Drop the override once monaco's own dependency moves past 3.4.15.
+  Dependabot does not bump `overrides`: check them on every monaco upgrade (`npm ls dompurify`).
 - **Renderer packages are devDependencies on purpose:** Vite bundles them; only main-process
   runtime packages (node-pty, zod, MCP SDK) belong in `dependencies`, or electron-builder ships
   them twice (decision 052).

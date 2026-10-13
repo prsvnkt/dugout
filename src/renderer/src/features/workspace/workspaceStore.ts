@@ -97,6 +97,17 @@ function withoutKeys<V>(record: Readonly<Record<string, V>>, keys: readonly stri
   return Object.fromEntries(Object.entries(record).filter(([key]) => !keys.includes(key)))
 }
 
+/** Every per-pane map without `paneIds`, for panes that closed or went with their project. */
+function withoutPanes(state: WorkspaceState, paneIds: readonly PaneId[]) {
+  return {
+    activities: withoutKeys(state.activities, paneIds),
+    terminalIds: withoutKeys(state.terminalIds, paneIds),
+    subagents: withoutKeys(state.subagents, paneIds),
+    details: withoutKeys(state.details, paneIds),
+    focusRequests: withoutKeys(state.focusRequests, paneIds),
+  }
+}
+
 export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
   /** Applies a pure layout change; unchanged results leave state alone (no re-render). */
   const updateLayout = (projectId: ProjectId, change: (layout: ProjectLayout) => ProjectLayout) =>
@@ -159,18 +170,18 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
         ),
       }),
     selectCheckout: (projectId, worktreePath) =>
-      set((state) => ({ gitCheckouts: { ...state.gitCheckouts, [projectId]: worktreePath } })),
+      set((state) =>
+        state.gitCheckouts[projectId] === worktreePath
+          ? state
+          : { gitCheckouts: { ...state.gitCheckouts, [projectId]: worktreePath } },
+      ),
     closeWorktreePanes: (projectId, worktreePath) => {
       const before = get().layouts[projectId]?.panes ?? []
       const closed = before.filter((pane) => pane.worktree?.path === worktreePath)
       updateLayout(projectId, (layout) => closeWorktreePanes(layout, worktreePath))
       updateRecent(projectId, (list) => forgetWorktreeSessions(list, worktreePath))
       const ids = closed.map((pane) => pane.id)
-      set((state) => ({
-        activities: withoutKeys(state.activities, ids),
-        terminalIds: withoutKeys(state.terminalIds, ids),
-        subagents: withoutKeys(state.subagents, ids),
-      }))
+      set((state) => withoutPanes(state, ids))
     },
     terminalIds: {},
     setTerminalId: (paneId, terminalId) =>
@@ -202,11 +213,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
       const recent = pane ? toRecentSession(pane, Date.now()) : null
       if (recent) updateRecent(projectId, (list) => rememberSession(list, recent))
       updateLayout(projectId, (layout) => closePane(layout, paneId))
-      set((state) => ({
-        activities: withoutKeys(state.activities, [paneId]),
-        terminalIds: withoutKeys(state.terminalIds, [paneId]),
-        subagents: withoutKeys(state.subagents, [paneId]),
-      }))
+      set((state) => withoutPanes(state, [paneId]))
     },
     recentSessions: {},
     resumeSession: (projectId, sessionId) => {
@@ -269,9 +276,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => {
         return {
           layouts: withoutKeys(state.layouts, [projectId]),
           recentSessions: withoutKeys(state.recentSessions, [projectId]),
-          activities: withoutKeys(state.activities, paneIds),
-          terminalIds: withoutKeys(state.terminalIds, paneIds),
-          subagents: withoutKeys(state.subagents, paneIds),
+          gitCheckouts: withoutKeys(state.gitCheckouts, [projectId]),
+          focusedAreas: withoutKeys(state.focusedAreas, [projectId]),
+          ...withoutPanes(state, paneIds),
         }
       }),
   }

@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
-import type { CompareTarget, WorktreeChanges } from '@shared/compare'
+import type { CompareTarget } from '@shared/compare'
 import type { ProjectId } from '@shared/project'
 import { dugout } from '@renderer/lib/dugout'
+import { useRequest } from '@renderer/lib/useRequest'
 import {
   ReviewComments,
   type CommentTarget,
@@ -33,23 +34,18 @@ async function readSide(projectId: ProjectId, worktreePath: string, path: string
 /** Two agents' worktrees side by side: which files each changed, and how they differ. */
 export function CompareView({ projectId, tabId, target }: CompareViewProps) {
   const [left, right] = target.sides
-  const [changes, setChanges] = useState<readonly WorktreeChanges[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const changesRequest = useRequest(
+    () => dugout.compare.changes(projectId, [left.worktreePath, right.worktreePath]),
+    [projectId, left.worktreePath, right.worktreePath],
+  )
+  const changes = changesRequest.kind === 'loaded' ? changesRequest.value : null
+  const error = changesRequest.kind === 'failed' ? changesRequest.message : null
   const [selected, setSelected] = useState<string | null>(null)
   const [contents, setContents] = useState<{
     path: string
     left: string
     right: string
   } | null>(null)
-
-  useEffect(() => {
-    void dugout.compare
-      .changes(projectId, [left.worktreePath, right.worktreePath])
-      .then((result) => {
-        if (result.ok) setChanges(result.data)
-        else setError(result.error)
-      })
-  }, [projectId, left.worktreePath, right.worktreePath])
 
   useEffect(() => {
     if (!selected) return

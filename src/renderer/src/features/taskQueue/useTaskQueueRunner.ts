@@ -45,9 +45,22 @@ function runProjectQueue(project: Project, panes: readonly Pane[]): void {
 }
 
 /**
- * Starts each project's queued tasks while it has free agent slots (decision 047): when an
- * agent reaches Done or Ready, or closes. Runs only once saved agents are back, so a relaunch
- * never starts more than the limit.
+ * Starts each project's queued tasks while it has free agent slots. Does nothing until saved
+ * agents are back (`isRestored`), so a relaunch never starts more than the limit.
+ */
+export function runTaskQueues(
+  isRestored: boolean,
+  projects: readonly Project[],
+  layouts: Readonly<Record<ProjectId, { readonly panes: readonly Pane[] }>>,
+): void {
+  if (!isRestored) return
+  for (const project of projects) {
+    runProjectQueue(project, layouts[project.id]?.panes ?? NO_PANES)
+  }
+}
+
+/**
+ * Runs the task queues (decision 047) whenever an agent reaches Done or Ready, or closes.
  */
 export function useTaskQueueRunner(): void {
   const isRestored = useWorkspaceStore((state) => state.isRestored)
@@ -56,10 +69,7 @@ export function useTaskQueueRunner(): void {
   const activities = useWorkspaceStore((state) => state.activities)
   const launches = useTaskQueueStore((state) => state.launches)
   useEffect(() => {
-    if (!isRestored) return
-    for (const project of projects) {
-      runProjectQueue(project, layouts[project.id]?.panes ?? NO_PANES)
-    }
+    runTaskQueues(isRestored, projects, layouts)
   }, [isRestored, projects, layouts, activities, launches])
 }
 

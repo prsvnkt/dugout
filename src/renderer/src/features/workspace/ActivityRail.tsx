@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type ReactNode, type Ref } from 'react'
 import { BookOpen, Files, GitBranch, ListChecks, Plus, type LucideIcon } from 'lucide-react'
 import { AGENT_LIST, NEW_AGENT_SHORTCUT, NEW_WORKTREE_AGENT_SHORTCUT } from '@shared/agents'
 import type { Project } from '@shared/project'
@@ -11,6 +11,7 @@ import { useGitStore } from '@renderer/features/git/gitStore'
 import { useDefaultAgent } from '@renderer/features/start/defaultAgentStore'
 import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { Icon } from '@renderer/lib/Icon'
+import { useMenuKeys } from '@renderer/lib/useArrowNavigation'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import { MAX_PANES_PER_PROJECT } from './layout'
 import { useProjectLayout } from './workspaceStore'
@@ -22,15 +23,23 @@ interface RailButtonProps {
   readonly title: string
   readonly isActive: boolean
   readonly badge?: number
+  readonly ref?: Ref<HTMLButtonElement>
+  /** Set on a button that opens a menu: whether the menu is open. */
+  readonly expanded?: boolean
   onClick(): void
 }
 
-function RailButton({ icon, label, title, isActive, badge, onClick }: RailButtonProps) {
+function RailButton(props: RailButtonProps) {
+  const { icon, label, title, isActive, badge, ref, expanded, onClick } = props
+  const isMenuButton = expanded !== undefined
   return (
     <button
+      ref={ref}
+      aria-haspopup={isMenuButton ? 'menu' : undefined}
+      aria-expanded={expanded}
       className={styles.button}
       data-active={isActive}
-      aria-pressed={isActive}
+      aria-pressed={isMenuButton ? undefined : isActive}
       aria-label={label}
       title={title}
       onClick={onClick}
@@ -67,8 +76,11 @@ function MenuItem(props: {
 function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: TerminalKind): void }) {
   const [isOpen, setIsOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setIsOpen(false), [])
-  useDismiss(wrapRef, isOpen, close)
+  useDismiss(wrapRef, isOpen, close, triggerRef)
+  const onMenuKeyDown = useMenuKeys(menuRef, isOpen)
   const canAddPane = useProjectLayout(project.id).panes.length < MAX_PANES_PER_PROJECT
   const startWorktreeSession = useWorktreeStore((state) => state.startSession)
   const openAgentSettings = useEditorStore((state) => state.openAgentSettings)
@@ -86,10 +98,18 @@ function NewPaneMenu({ project, onAdd }: { project: Project; onAdd(kind: Termina
         label="New agent"
         title="New agent"
         isActive={isOpen}
+        expanded={isOpen}
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
       />
       {isOpen && (
-        <div className={styles.menu} role="menu" aria-label="New agent">
+        <div
+          className={styles.menu}
+          role="menu"
+          aria-label="New agent"
+          ref={menuRef}
+          onKeyDown={onMenuKeyDown}
+        >
           {AGENT_LIST.map((agent) => (
             <MenuItem
               key={agent.kind}

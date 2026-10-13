@@ -6,45 +6,25 @@ import {
   isSignedIn as isSignedInState,
   useAuthStore,
 } from '@renderer/features/github/authStore'
+import { useGitHubRepos } from '@renderer/features/github/useGitHubRepos'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
 import { dugout } from '@renderer/lib/dugout'
 import { folderNameFromUrl } from './folderName'
+import { useCloneDefaultParent } from './useCloneDefaults'
 import styles from './CloneDialog.module.css'
 
 type Source = 'repos' | 'url'
 
-function RepoList({ onPick, picked }: { onPick(repo: GitHubRepo): void; picked: string }) {
+interface RepoListProps {
+  readonly picked: string
+  onPick(repo: GitHubRepo): void
+}
+
+function RepoList({ onPick, picked }: RepoListProps) {
   const auth = useAuthStore((state) => state.auth)
   const signIn = useAuthStore((state) => state.signIn)
-  const [repos, setRepos] = useState<readonly GitHubRepo[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
-  const isSignedIn = isSignedInState(auth)
 
-  useEffect(() => {
-    if (!isSignedIn) return
-    let isCancelled = false
-    void dugout.github.listRepos().then((result) => {
-      if (isCancelled) return
-      if (result.ok) setRepos(result.data)
-      else setError(result.error)
-    })
-    return () => {
-      isCancelled = true
-    }
-  }, [isSignedIn])
-
-  const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    return (repos ?? []).filter(
-      (repo) =>
-        !needle ||
-        repo.fullName.toLowerCase().includes(needle) ||
-        (repo.description ?? '').toLowerCase().includes(needle),
-    )
-  }, [repos, query])
-
-  if (!isSignedIn) {
+  if (!isSignedInState(auth)) {
     return (
       <div className={styles.signIn}>
         <p>Sign in to GitHub to pick from your repositories.</p>
@@ -54,8 +34,26 @@ function RepoList({ onPick, picked }: { onPick(repo: GitHubRepo): void; picked: 
       </div>
     )
   }
-  if (error) return <p className={styles.error}>{error}</p>
-  if (!repos) return <p className={styles.muted}>Loading your repositories…</p>
+  return <SignedInRepoList onPick={onPick} picked={picked} />
+}
+
+/** Mounted once signed in, so the repos load then (and again after signing in anew). */
+function SignedInRepoList({ onPick, picked }: RepoListProps) {
+  const state = useGitHubRepos()
+  const [query, setQuery] = useState('')
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return (state.kind === 'loaded' ? state.value : []).filter(
+      (repo) =>
+        !needle ||
+        repo.fullName.toLowerCase().includes(needle) ||
+        (repo.description ?? '').toLowerCase().includes(needle),
+    )
+  }, [state, query])
+
+  if (state.kind === 'failed') return <p className={styles.error}>{state.message}</p>
+  if (state.kind === 'loading') return <p className={styles.muted}>Loading your repositories…</p>
 
   return (
     <>
@@ -98,16 +96,15 @@ export function CloneDialog({ onClose }: { onClose(): void }) {
   const [source, setSource] = useState<Source>('repos')
   const [url, setUrl] = useState('')
   const [folderName, setFolderName] = useState('')
-  const [parentDir, setParentDir] = useState('')
+  const defaultParent = useCloneDefaultParent()
+  const [chosenParent, setChosenParent] = useState<string | null>(null)
+  const parentDir = chosenParent ?? defaultParent ?? ''
   const [progress, setProgress] = useState<CloneProgress | null>(null)
   const [isCloning, setIsCloning] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     dialogRef.current?.showModal()
-    void dugout.clone.defaults().then((result) => {
-      if (result.ok) setParentDir(result.data.parentDir)
-    })
     return dugout.clone.onProgress(setProgress)
   }, [])
 
@@ -119,7 +116,7 @@ export function CloneDialog({ onClose }: { onClose(): void }) {
 
   const chooseParent = async () => {
     const folder = await dugout.dialog.pickFolder()
-    if (folder) setParentDir(folder)
+    if (folder) setChosenParent(folder)
   }
 
   const submit = async (event: FormEvent) => {

@@ -3,8 +3,10 @@ import { ipcMain, type WebContents } from 'electron'
 import { IpcChannel } from '@shared/ipc/channels'
 import {
   terminalCreateRequestSchema,
+  terminalFlowRequestSchema,
   terminalKillRequestSchema,
   terminalResizeRequestSchema,
+  terminalWithheldServersRequestSchema,
   terminalWriteRequestSchema,
 } from '@shared/ipc/contract'
 import { isAgentKind, type TerminalId } from '@shared/terminal'
@@ -109,6 +111,12 @@ export function registerTerminalIpc(
     return id
   })
 
+  handleRequest(
+    IpcChannel.terminalWithheldServers,
+    terminalWithheldServersRequestSchema,
+    ({ id }) => manager.withheldServers(id),
+  )
+
   ipcMain.on(IpcChannel.terminalWrite, (_event, payload: unknown) => {
     const request = parsePayload(terminalWriteRequestSchema, payload, IpcChannel.terminalWrite)
     if (request) manager.write(request.id, request.data)
@@ -122,5 +130,16 @@ export function registerTerminalIpc(
   ipcMain.on(IpcChannel.terminalKill, (_event, payload: unknown) => {
     const request = parsePayload(terminalKillRequestSchema, payload, IpcChannel.terminalKill)
     if (request) manager.kill(request.id)
+  })
+
+  // Unknown ids (a pane closed while paused) are no-ops in the manager.
+  ipcMain.on(IpcChannel.terminalPause, (_event, payload: unknown) => {
+    const request = parsePayload(terminalFlowRequestSchema, payload, IpcChannel.terminalPause)
+    if (request) manager.pause(request.id)
+  })
+
+  ipcMain.on(IpcChannel.terminalResume, (_event, payload: unknown) => {
+    const request = parsePayload(terminalFlowRequestSchema, payload, IpcChannel.terminalResume)
+    if (request) manager.resume(request.id)
   })
 }
