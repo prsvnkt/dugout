@@ -73,6 +73,26 @@ describe('trackApprovals', () => {
     expect(pending[0]?.toolCall.toolUseId).toBeNull()
   })
 
+  test('gives each pending call an id that stays while it waits, unique among identical calls', () => {
+    const twice = run(['needs-input', ask('npm test')], ['needs-input', ask('npm test')])
+    const [first, second] = twice
+    expect(first?.id).not.toBe(second?.id)
+
+    const afterHead = trackApprovals(twice, 'tool-done', finished('npm test', 't1'))
+    expect(afterHead.map((approval) => approval.id)).toEqual([second?.id])
+    const again = trackApprovals(afterHead, 'needs-input', ask('npm test'))
+    expect(new Set(again.map((approval) => approval.id)).size).toBe(2)
+    expect(again[0]?.id).toBe(second?.id)
+  })
+
+  test('uses the tool id as the id when the request carried one', () => {
+    const withId: HookDetails = {
+      ...ask('npm test'),
+      toolCall: { toolUseId: 't9', key: 'Bash\u0000npm test' },
+    }
+    expect(run(['needs-input', withId])[0]?.id).toBe('t9')
+  })
+
   test('a finished tool we cannot identify changes nothing', () => {
     const pending = run(['needs-input', ask('npm install')], ['tool-done', {}])
     expect(commands(pending)).toEqual(['npm install'])

@@ -3,6 +3,7 @@ import type { Project } from '@shared/project'
 import { inboxEntries } from './inbox'
 
 const npmInstall = {
+  id: 'toolu_1',
   kind: 'command',
   tool: 'Bash',
   command: 'npm install',

@@ -9,7 +9,7 @@ import {
   type TerminalId,
   type TerminalKind,
 } from '@shared/terminal'
-import type { ToolCallPreview } from '@shared/toolCall'
+import type { PendingToolCall } from '@shared/toolCall'
 import type { HookDetails } from '../agentHooks/HookServer'
 import { NO_APPROVALS, trackApprovals, type PendingApproval } from '../agentHooks/pendingApprovals'
 import type { AgentHooksConfig } from '../agentHooks/setupAgentHooks'
@@ -28,7 +28,7 @@ export interface TerminalEvents {
     id: TerminalId,
     status: AgentStatus,
     detail: string | undefined,
-    approvals: readonly ToolCallPreview[],
+    approvals: readonly PendingToolCall[],
   ): void
   /** The agent's session id, reported when it starts or changes (e.g. after /clear). */
   onAgentSession?(id: TerminalId, sessionId: string): void
@@ -366,7 +366,7 @@ export class TerminalManager {
     const isNewStatus = next.agentStatus !== terminal.agentStatus
     const isNewDetail = detail !== undefined && detail !== terminal.detail
     if (isNewStatus || isNewDetail || approvals !== terminal.approvals) {
-      const previews = approvals.map((approval) => approval.preview)
+      const previews = approvals.map((approval) => ({ ...approval.preview, id: approval.id }))
       terminal.events.onAgentStatus?.(id, status, detail, previews)
     }
     if (isNewStatus || isNewDetail) {

@@ -17,7 +17,12 @@ import { dugout } from '@renderer/lib/dugout'
 import styles from './App.module.css'
 
 export function App() {
-  const { projects, selectedId, isLoaded, loadError, load, add } = useProjectsStore()
+  const projects = useProjectsStore((state) => state.projects)
+  const selectedId = useProjectsStore((state) => state.selectedId)
+  const isLoaded = useProjectsStore((state) => state.isLoaded)
+  const loadError = useProjectsStore((state) => state.loadError)
+  const load = useProjectsStore((state) => state.load)
+  const add = useProjectsStore((state) => state.add)
   const [pickError, setPickError] = useState<string | null>(null)
 
   useEffect(() => {

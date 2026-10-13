@@ -46,7 +46,9 @@ interface LinearConnectProps {
 
 /** Linear's part of the task source form: connect with an API key, then pick a team. */
 export function LinearConnect({ state, teamKey, onTeamChange }: LinearConnectProps) {
-  const { teams, loadTeams, disconnect } = useLinearStore()
+  const teams = useLinearStore((state) => state.teams)
+  const loadTeams = useLinearStore((state) => state.loadTeams)
+  const disconnect = useLinearStore((state) => state.disconnect)
   const [error, setError] = useState<string | null>(null)
   const isConnected = state?.status === 'connected'
 

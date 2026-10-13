@@ -501,6 +501,8 @@ describe('TerminalManager status details', () => {
 describe('TerminalManager pending approvals', () => {
   const preview = (command: string) =>
     ({ kind: 'command', tool: 'Bash', command, description: null }) as const
+  /** What the renderer gets: the preview plus its id (the tool key, as requests carry no id). */
+  const sent = (command: string) => ({ ...preview(command), id: `Bash\u0000${command}` })
   const ask = (command: string) => ({
     detail: `Bash: ${command}`,
     toolCall: { toolUseId: null, key: `Bash\u0000${command}` },
@@ -528,7 +530,7 @@ describe('TerminalManager pending approvals', () => {
     // Assert
     expect(manager.agentStatus(id)).toBe('needs-input')
     expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm install', [
-      preview('npm install'),
+      sent('npm install'),
     ])
   })
 
@@ -544,8 +546,8 @@ describe('TerminalManager pending approvals', () => {
   test('with two approvals pending, shows the one still waiting after the other finishes', () => {
     const { manager, events, onAgentStatusChange, id } = asking('npm install', 'npm test')
     expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm install', [
-      preview('npm install'),
-      preview('npm test'),
+      sent('npm install'),
+      sent('npm test'),
     ])
     const notified = onAgentStatusChange.mock.calls.length
 
@@ -553,7 +555,7 @@ describe('TerminalManager pending approvals', () => {
 
     expect(manager.agentStatus(id)).toBe('needs-input')
     expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm test', [
-      preview('npm test'),
+      sent('npm test'),
     ])
     expect(onAgentStatusChange).toHaveBeenCalledTimes(notified + 1)
 

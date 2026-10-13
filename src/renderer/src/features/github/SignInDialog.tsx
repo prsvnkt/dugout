@@ -26,7 +26,11 @@ function Unconfigured() {
 
 /** GitHub device-flow sign-in: show the code, open GitHub, wait for approval. */
 export function SignInDialog() {
-  const { auth, isDialogOpen, startError, closeDialog, signIn } = useAuthStore()
+  const auth = useAuthStore((state) => state.auth)
+  const isDialogOpen = useAuthStore((state) => state.isDialogOpen)
+  const startError = useAuthStore((state) => state.startError)
+  const closeDialog = useAuthStore((state) => state.closeDialog)
+  const signIn = useAuthStore((state) => state.signIn)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [copyState, setCopyState] = useState<CopyState>('idle')
 

@@ -134,7 +134,9 @@ function ProjectTab({ project, index, isSelected, onSelect }: ProjectTabProps) {
 
 /** Chrome-style project tabs in the title bar, with the GitHub account at the far end. */
 export function ProjectTabs({ onAddProject, onCloneProject }: ProjectTabsProps) {
-  const { projects, selectedId, select } = useProjectsStore()
+  const projects = useProjectsStore((state) => state.projects)
+  const selectedId = useProjectsStore((state) => state.selectedId)
+  const select = useProjectsStore((state) => state.select)
 
   return (
     <header className={styles.bar} aria-label="Title bar">
