@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useCallback, useId } from 'react'
 import { BookOpen, CircleDot, ListTree, X } from 'lucide-react'
 import type { ProjectId } from '@shared/project'
 import { displayTaskKey } from '@shared/tasks'
@@ -13,6 +13,7 @@ import { TaskDetailView } from '@renderer/features/tasks/TaskDetailView'
 import { TimelineView } from '@renderer/features/timeline/TimelineView'
 import { UsageView } from '@renderer/features/usage/UsageView'
 import { Icon } from '@renderer/lib/Icon'
+import { useArrowNavigation } from '@renderer/lib/useArrowNavigation'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
 import { checkoutOf, fileKeyOf } from './fileKey'
 import type { EditorTab } from './tabs'
@@ -105,6 +106,21 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
   const diffs = useEditorStore((state) => state.diffs)
   const pendingClose = useEditorStore((state) => state.pendingClose[projectId] ?? null)
   const setFocusedArea = useWorkspaceStore((state) => state.setFocusedArea)
+  const idBase = useId()
+  const tabId = (index: number) => `${idBase}-tab-${index}`
+  const panelId = `${idBase}-panel`
+  // APG tabs with automatic activation: arrows focus a tab and show it.
+  const onTabKeyDown = useArrowNavigation({
+    itemSelector: '[role="tab"]',
+    orientation: 'horizontal',
+    wrap: true,
+    onMove: useCallback(
+      (item: HTMLElement) => {
+        if (item.dataset.tabId) activate(projectId, item.dataset.tabId)
+      },
+      [activate, projectId],
+    ),
+  })
 
   const active = tabs.find((tab) => tab.id === activeTabId)
   if (!active) return null
@@ -126,8 +142,13 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
       onFocusCapture={() => setFocusedArea(projectId, 'editor')}
       onMouseDownCapture={() => setFocusedArea(projectId, 'editor')}
     >
-      <div className={styles.tabStrip} role="tablist">
-        {tabs.map((tab) => {
+      <div
+        className={styles.tabStrip}
+        role="tablist"
+        aria-label="Open files"
+        onKeyDown={onTabKeyDown}
+      >
+        {tabs.map((tab, index) => {
           const tabBuffer = buffers[fileKeyOf(checkoutOf(projectId, tab.worktreePath), tab.path)]
           const isDirty = tabBuffer?.isDirty && !(tab.kind === 'diff' && tab.staged)
           return (
@@ -139,7 +160,11 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
             >
               <button
                 role="tab"
+                id={tabId(index)}
+                data-tab-id={tab.id}
                 aria-selected={tab.id === activeTabId}
+                aria-controls={tab.id === activeTabId ? panelId : undefined}
+                tabIndex={tab.id === activeTabId ? 0 : -1}
                 className={styles.tabButton}
                 onClick={() => activate(projectId, tab.id)}
                 onDoubleClick={() => pin(projectId, tab.id)}
@@ -176,43 +201,50 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
         })}
       </div>
       {pendingTab && <ClosePrompt projectId={projectId} path={pendingTab.path} />}
-      {buffer && needsBuffer && <DiskBanner buffer={buffer} />}
-      {isAgentSettings ? (
-        <AgentSettingsView projectId={projectId} />
-      ) : isUsage ? (
-        <UsageView projectId={projectId} />
-      ) : isContext ? (
-        <ContextView projectId={projectId} />
-      ) : active.kind === 'timeline' && active.timeline ? (
-        <TimelineView key={active.id} projectId={projectId} target={active.timeline} />
-      ) : isTask && active.taskNumber !== undefined ? (
-        <TaskDetailView
-          key={active.id}
-          projectId={projectId}
-          number={active.taskNumber}
-          taskKey={displayTaskKey({ number: active.taskNumber, key: active.taskKey })}
-        />
-      ) : isCompare && active.compare ? (
-        <CompareView projectId={projectId} tabId={active.id} target={active.compare} />
-      ) : needsBuffer && !isEditable ? (
-        <Notice buffer={buffer} />
-      ) : (
-        <Suspense fallback={<p className={styles.notice}>Loading editor…</p>}>
-          <EditorSurface
+      <div
+        className={styles.panel}
+        role="tabpanel"
+        id={panelId}
+        aria-labelledby={tabId(tabs.indexOf(active))}
+      >
+        {buffer && needsBuffer && <DiskBanner buffer={buffer} />}
+        {isAgentSettings ? (
+          <AgentSettingsView projectId={projectId} />
+        ) : isUsage ? (
+          <UsageView projectId={projectId} />
+        ) : isContext ? (
+          <ContextView projectId={projectId} />
+        ) : active.kind === 'timeline' && active.timeline ? (
+          <TimelineView key={active.id} projectId={projectId} target={active.timeline} />
+        ) : isTask && active.taskNumber !== undefined ? (
+          <TaskDetailView
+            key={active.id}
             projectId={projectId}
-            tab={active}
-            fileKey={fileKey}
-            modelRevision={buffer?.revision ?? 0}
-            diff={diffs[active.id]}
+            number={active.taskNumber}
+            taskKey={displayTaskKey({ number: active.taskNumber, key: active.taskKey })}
           />
-        </Suspense>
-      )}
-      {active.kind === 'diff' && (
-        <ReviewComments
-          targets={[{ checkout: { projectId, worktreePath: active.worktreePath }, label: null }]}
-          hint={DIFF_COMMENT_HINT}
-        />
-      )}
+        ) : isCompare && active.compare ? (
+          <CompareView projectId={projectId} tabId={active.id} target={active.compare} />
+        ) : needsBuffer && !isEditable ? (
+          <Notice buffer={buffer} />
+        ) : (
+          <Suspense fallback={<p className={styles.notice}>Loading editor…</p>}>
+            <EditorSurface
+              projectId={projectId}
+              tab={active}
+              fileKey={fileKey}
+              modelRevision={buffer?.revision ?? 0}
+              diff={diffs[active.id]}
+            />
+          </Suspense>
+        )}
+        {active.kind === 'diff' && (
+          <ReviewComments
+            targets={[{ checkout: { projectId, worktreePath: active.worktreePath }, label: null }]}
+            hint={DIFF_COMMENT_HINT}
+          />
+        )}
+      </div>
     </section>
   )
 }

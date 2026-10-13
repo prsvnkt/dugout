@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import {
@@ -10,12 +10,21 @@ import {
   type Page,
 } from '@playwright/test'
 import type { DugoutApi } from '../../src/shared/api'
+import type { WorkspaceSnapshot } from '../../src/shared/ipc/contract'
 
 interface TestWindow {
   readonly dugout: DugoutApi
   terminalOutput: string[]
   terminalIds: string[]
 }
+
+/** Author and committer for the commits specs make, so they never depend on the user's config. */
+export const GIT_IDENTITY = {
+  GIT_AUTHOR_NAME: 'Dugout Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Dugout Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
+} as const
 
 export function makeTempDir(prefix = 'dugout-e2e-'): string {
   return realpathSync(mkdtempSync(join(tmpdir(), prefix)))
@@ -41,9 +50,34 @@ export async function launchApp(
       DUGOUT_USER_DATA_DIR: userDataDir,
       // The welcome screen searches the home folder for repos; never the real one in tests.
       DUGOUT_HOME_DIR: makeTempDir('dugout-home-'),
+      // Agent config folders (transcripts, hooks): never the developer's real ~/.claude or ~/.codex.
+      CLAUDE_CONFIG_DIR: makeTempDir('dugout-claude-'),
+      CODEX_HOME: makeTempDir('dugout-codex-'),
       ...extraEnv,
     },
   })
+}
+
+/** The saved layout (`workspace.json` in the app's data folder), or null before the first save. */
+export function readWorkspaceFile(userDataDir: string): WorkspaceSnapshot | null {
+  try {
+    return JSON.parse(
+      readFileSync(join(userDataDir, 'workspace.json'), 'utf8'),
+    ) as WorkspaceSnapshot
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Every project's saved panes as `{ kind, sessionId }`, for `expect.poll` to wait on the debounced
+ * layout save instead of sleeping. Empty before the first save.
+ */
+export function savedPanes(userDataDir: string): { kind: string; sessionId?: string }[] {
+  const projects = Object.values(readWorkspaceFile(userDataDir)?.projects ?? {})
+  return projects.flatMap(({ panes }) =>
+    panes.map(({ kind, sessionId }) => ({ kind, ...(sessionId && { sessionId }) })),
+  )
 }
 
 /** Playwright cannot drive native dialogs, so make the folder picker return `path`. */

@@ -22,14 +22,23 @@ export const useUsageStore = create<UsageState>()((set) => ({
   async load(projectId) {
     const result = await dugout.usage.project(projectId)
     if (result.ok) {
-      set((state) => ({
-        projects: { ...state.projects, [projectId]: result.data },
-        errors: withoutKey(state.errors, projectId),
-      }))
+      set((state) => {
+        const current = state.projects[projectId]
+        const isSame = current && JSON.stringify(current) === JSON.stringify(result.data)
+        if (isSame && !(projectId in state.errors)) return state
+        return {
+          projects: isSame ? state.projects : { ...state.projects, [projectId]: result.data },
+          errors: withoutKey(state.errors, projectId),
+        }
+      })
       return
     }
     console.warn('[usage] could not load usage:', result.error)
-    set((state) => ({ errors: { ...state.errors, [projectId]: result.error } }))
+    set((state) =>
+      state.errors[projectId] === result.error
+        ? state
+        : { errors: { ...state.errors, [projectId]: result.error } },
+    )
   },
 }))
 

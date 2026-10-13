@@ -8,17 +8,15 @@ import {
   makeFakeClaude,
   makeTempDir,
   stubFolderPicker,
+  GIT_IDENTITY,
 } from './helpers'
 
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'Dugout Test',
-  GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'Dugout Test',
-  GIT_COMMITTER_EMAIL: 'test@example.com',
-}
-
 function git(cwd: string, ...args: string[]): string {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...IDENTITY } })
+  return execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, ...GIT_IDENTITY },
+  })
 }
 
 function makeRepo(): string {
@@ -43,7 +41,7 @@ let app: ElectronApplication
 let page: Page
 
 test.beforeEach(async () => {
-  app = await launchApp(makeTempDir(), { ...IDENTITY, DUGOUT_CLAUDE_COMMAND: makeFakeClaude() })
+  app = await launchApp(makeTempDir(), { ...GIT_IDENTITY, DUGOUT_CLAUDE_COMMAND: makeFakeClaude() })
   page = await app.firstWindow()
 })
 

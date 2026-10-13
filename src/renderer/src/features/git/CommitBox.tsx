@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Icon } from '@renderer/lib/Icon'
+import { useMenuKeys } from '@renderer/lib/useArrowNavigation'
 import { useDismiss } from '@renderer/lib/useDismiss'
 import { commitPlan } from './commitPlan'
 import type { CommitOptions } from './gitStore'
@@ -24,8 +25,11 @@ interface CommitMenuProps {
 function CommitMenu({ disabled, onChoose }: CommitMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setIsOpen(false), [])
-  useDismiss(wrapRef, isOpen, close)
+  useDismiss(wrapRef, isOpen, close, triggerRef)
+  const onMenuKeyDown = useMenuKeys(menuRef, isOpen)
   const choose = (andPush: boolean) => {
     close()
     onChoose(andPush)
@@ -34,6 +38,7 @@ function CommitMenu({ disabled, onChoose }: CommitMenuProps) {
   return (
     <div className={styles.commitMenuWrap} ref={wrapRef}>
       <button
+        ref={triggerRef}
         className={styles.commitMore}
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
@@ -45,7 +50,13 @@ function CommitMenu({ disabled, onChoose }: CommitMenuProps) {
         <Icon icon={ChevronDown} />
       </button>
       {isOpen && (
-        <div className={styles.commitMenu} role="menu">
+        <div
+          className={styles.commitMenu}
+          role="menu"
+          aria-label="Commit actions"
+          ref={menuRef}
+          onKeyDown={onMenuKeyDown}
+        >
           <button role="menuitem" onClick={() => choose(false)}>
             Commit
           </button>

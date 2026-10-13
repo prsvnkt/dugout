@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AGENT_KINDS } from '@shared/agents'
 import type { CloneProgress } from '@shared/clone'
 import type { GitHubRepo } from '@shared/github'
 import type { AgentCliCheck, LocalRepo } from '@shared/welcome'
 import { useProjectsStore } from '@renderer/features/projects/projectsStore'
+import { useCloneDefaultParent } from '@renderer/features/clone/useCloneDefaults'
 import { dugout } from '@renderer/lib/dugout'
+import { useRequest } from '@renderer/lib/useRequest'
 import { mergeLocalRepos } from './repoLists'
 
 const UNKNOWN_CHECK = Object.fromEntries(
@@ -34,82 +36,42 @@ export interface LocalRepoSearch {
   searchDocuments(): void
 }
 
+const NO_REPOS: readonly LocalRepo[] = []
+
 /** Repos in the usual code folders now; Documents and Desktop only when asked (macOS prompts). */
 export function useLocalRepos(): LocalRepoSearch {
-  const [repos, setRepos] = useState<readonly LocalRepo[] | null>(null)
+  const common = useRequest(() => dugout.welcome.findRepos('common'), [])
+  const [documents, setDocuments] = useState<readonly LocalRepo[]>(NO_REPOS)
   const [hasSearchedDocuments, setHasSearchedDocuments] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let isCancelled = false
-    void dugout.welcome.findRepos('common').then((result) => {
-      if (isCancelled) return
-      setRepos(result.ok ? result.data : [])
-      if (!result.ok) setError(result.error)
-    })
-    return () => {
-      isCancelled = true
-    }
-  }, [])
+  const [documentsError, setDocumentsError] = useState<string | null>(null)
 
   const searchDocuments = useCallback(() => {
     setHasSearchedDocuments(true)
     void dugout.welcome.findRepos('documents').then((result) => {
-      if (result.ok) setRepos((current) => mergeLocalRepos(current ?? [], result.data))
-      else setError(result.error)
+      if (result.ok) setDocuments(result.data)
+      else setDocumentsError(result.error)
     })
   }, [])
+
+  const repos = useMemo(() => {
+    if (common.kind === 'loading') return null
+    return mergeLocalRepos(common.kind === 'loaded' ? common.value : NO_REPOS, documents)
+  }, [common, documents])
+  const error = documentsError ?? (common.kind === 'failed' ? common.message : null)
 
   return { repos, hasSearchedDocuments, error, searchDocuments }
 }
 
 /** null while checking. `recheck` runs the check again (e.g. after installing a CLI). */
 export function useAgentCheck(): { check: AgentCliCheck | null; recheck(): void } {
-  const [check, setCheck] = useState<AgentCliCheck | null>(null)
   const [round, setRound] = useState(0)
-
-  useEffect(() => {
-    let isCancelled = false
-    void dugout.welcome.checkAgents().then((result) => {
-      if (!isCancelled) setCheck(result.ok ? result.data : UNKNOWN_CHECK)
-    })
-    return () => {
-      isCancelled = true
-    }
-  }, [round])
-
-  const recheck = useCallback(() => {
-    setCheck(null)
-    setRound((value) => value + 1)
-  }, [])
+  // `round` is only a trigger: bumping it runs the check again.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const state = useRequest(() => dugout.welcome.checkAgents(), [round])
+  const recheck = useCallback(() => setRound((value) => value + 1), [])
+  const check =
+    state.kind === 'loading' ? null : state.kind === 'loaded' ? state.value : UNKNOWN_CHECK
   return { check, recheck }
-}
-
-export type RepoListState =
-  | { readonly kind: 'loading' }
-  | { readonly kind: 'loaded'; readonly repos: readonly GitHubRepo[] }
-  | { readonly kind: 'failed'; readonly error: string }
-
-/** The signed-in user's GitHub repositories. */
-export function useGitHubRepos(): RepoListState {
-  const [state, setState] = useState<RepoListState>({ kind: 'loading' })
-
-  useEffect(() => {
-    let isCancelled = false
-    void dugout.github.listRepos().then((result) => {
-      if (isCancelled) return
-      setState(
-        result.ok
-          ? { kind: 'loaded', repos: result.data }
-          : { kind: 'failed', error: result.error },
-      )
-    })
-    return () => {
-      isCancelled = true
-    }
-  }, [])
-
-  return state
 }
 
 export interface QuickClone {
@@ -125,17 +87,12 @@ export interface QuickClone {
 /** One-click clone into the remembered folder, then open it as a project. */
 export function useQuickClone(): QuickClone {
   const addFolder = useAddFolder()
-  const [parentDir, setParentDir] = useState<string | null>(null)
+  const parentDir = useCloneDefaultParent()
   const [cloningUrl, setCloningUrl] = useState<string | null>(null)
   const [progress, setProgress] = useState<CloneProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    void dugout.clone.defaults().then((result) => {
-      if (result.ok) setParentDir(result.data.parentDir)
-    })
-    return dugout.clone.onProgress(setProgress)
-  }, [])
+  useEffect(() => dugout.clone.onProgress(setProgress), [])
 
   const clone = useCallback(
     (repo: GitHubRepo) => {

@@ -13,7 +13,7 @@ Thanks for your interest! Dugout is a small project, so the process is light.
 
 ## Setup
 
-Requires macOS, Node 24 (see `.nvmrc`) and git.
+Requires macOS, Node 24+ (see `.nvmrc`) and git.
 
 ```sh
 npm install
@@ -69,8 +69,9 @@ features, `major` for breaking changes.
    git push origin v0.2.0
    ```
 
-3. The Release workflow checks that the tag matches `package.json`, builds the app, and creates a
-   draft release with the DMG and zip. Review the generated notes, then publish it.
+3. The Release workflow checks that the tag matches `package.json`, runs `npm run check`, builds
+   the app, and creates a draft release with the DMG, the zip and a `SHA256SUMS` file of their
+   checksums. Review the generated notes, then publish it.
 
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE)
 and that you will follow the [Code of Conduct](CODE_OF_CONDUCT.md).

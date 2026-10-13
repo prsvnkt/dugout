@@ -39,6 +39,30 @@ describe('AgentConfigService', () => {
     })
   })
 
+  test('says whether the servers in the file are the approved ones (decision 057)', async () => {
+    write('.mcp.json', JSON.stringify({ mcpServers: { a: { command: 'run-a' } } }))
+    const { mcp } = await service.read(root)
+    if (!mcp.ok) throw new Error('expected servers')
+
+    expect(mcp.approval).toEqual({
+      hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      isApproved: false,
+    })
+    expect((await service.read(root, mcp.approval.hash)).mcp).toMatchObject({
+      approval: { hash: mcp.approval.hash, isApproved: true },
+    })
+  })
+
+  test('approves only the servers the user saw: refuses once the file changed', async () => {
+    write('.mcp.json', JSON.stringify({ mcpServers: { a: { command: 'run-a' } } }))
+    const { mcp } = await service.read(root)
+    if (!mcp.ok) throw new Error('expected servers')
+
+    await expect(service.checkApproval(root, mcp.approval.hash)).resolves.toBeUndefined()
+    write('.mcp.json', JSON.stringify({ mcpServers: { a: { command: 'sh' } } }))
+    await expect(service.checkApproval(root, mcp.approval.hash)).rejects.toThrow(/changed on disk/)
+  })
+
   test('reports an unreadable .mcp.json instead of failing', async () => {
     write('.mcp.json', '{ broken')
     expect((await service.read(root)).mcp).toEqual({

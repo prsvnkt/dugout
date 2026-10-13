@@ -27,6 +27,12 @@ function createRenderWindow() {
   })
 }
 
+/**
+ * @param {BrowserWindow} window
+ * @param {string} svgPath
+ * @param {number} px
+ * @param {string} outPath
+ */
 async function renderPng(window, svgPath, px, outPath) {
   const svg = readFileSync(svgPath, 'utf8')
   const html = `<style>html,body{margin:0;background:transparent;overflow:hidden}svg{display:block;width:${px}px;height:${px}px}</style>${svg}`
@@ -35,6 +41,10 @@ async function renderPng(window, svgPath, px, outPath) {
   writeFileSync(outPath, image.resize({ width: px, height: px, quality: 'best' }).toPNG())
 }
 
+/**
+ * @param {BrowserWindow} window
+ * @param {string} iconsetDir
+ */
 async function renderIconset(window, iconsetDir) {
   for (const size of ICONSET_SIZES) {
     for (const scale of SCALES) {

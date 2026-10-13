@@ -11,17 +11,15 @@ import {
   makeGitRepo,
   makeTempDir,
   recordTerminalOutput,
+  GIT_IDENTITY,
 } from './helpers'
 
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'Dugout Test',
-  GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'Dugout Test',
-  GIT_COMMITTER_EMAIL: 'test@example.com',
-}
-
 function git(cwd: string, ...args: string[]): string {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...IDENTITY } })
+  return execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, ...GIT_IDENTITY },
+  })
 }
 
 /** Dugout's worktrees of `repo`, newest last. */
@@ -44,7 +42,7 @@ test.beforeEach(async () => {
   git(repo, 'commit', '-qm', 'init')
   // A local file a clean checkout would not have.
   writeFileSync(join(repo, '.env'), 'API_URL=http://localhost\n')
-  app = await launchApp(makeTempDir(), { ...IDENTITY, DUGOUT_CLAUDE_COMMAND: makeFakeClaude() })
+  app = await launchApp(makeTempDir(), { ...GIT_IDENTITY, DUGOUT_CLAUDE_COMMAND: makeFakeClaude() })
   page = await app.firstWindow()
   await addProjectFolder(app, page, repo)
 })

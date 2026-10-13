@@ -1,5 +1,11 @@
 import { spawn } from 'node:child_process'
 
+/**
+ * Whether git may run the repository's hooks. Only a user action whose hooks the user expects
+ * (a commit from the Git panel) asks for `repo`; everything else gets `none` (decision 054).
+ */
+export type GitHooks = 'none' | 'repo'
+
 export interface RunGitOptions {
   readonly cwd: string
   readonly args: readonly string[]
@@ -14,6 +20,8 @@ export interface RunGitOptions {
   readonly onStderr?: (text: string) => void
   /** Kills git and rejects with "cancelled". */
   readonly signal?: AbortSignal
+  /** Defaults to `none`. Never `repo` for a command that carries credentials. */
+  readonly hooks?: GitHooks
 }
 
 export interface RunGitResult {
@@ -37,6 +45,26 @@ function readableError(stderr: string, stdout: string, args: readonly string[]):
   return message || `git ${args[0] ?? ''} failed.`
 }
 
+/**
+ * Overrides for every git Dugout runs, so a repository's own `.git/config` cannot make Dugout
+ * run a command (decision 054). `-c` beats repo config, and child gits inherit it.
+ */
+const HARDENED_CONFIG: readonly string[] = [
+  ...['-c', 'core.quotePath=false'],
+  ...['-c', 'core.fsmonitor=false'],
+  // Empty means no askpass program: a credential prompt fails (GIT_TERMINAL_PROMPT=0) instead.
+  ...['-c', 'core.askPass='],
+  ...['-c', 'protocol.ext.allow=never'],
+]
+const NO_HOOKS: readonly string[] = ['-c', 'core.hooksPath=/dev/null']
+/** Set, even empty, it wins over `core.gitProxy` from repo config. */
+const HARDENED_ENV = { GIT_PROXY_COMMAND: '' }
+
+/** The full argument list for `args`, hardened. */
+function gitArgs(args: readonly string[], hooks: GitHooks = 'none'): string[] {
+  return [...HARDENED_CONFIG, ...(hooks === 'repo' ? [] : NO_HOOKS), ...args]
+}
+
 export function runGit(options: RunGitOptions): Promise<RunGitResult> {
   const maxBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES
   const okCodes = options.okExitCodes ?? [0]
@@ -45,9 +73,9 @@ export function runGit(options: RunGitOptions): Promise<RunGitResult> {
     return Promise.reject(new GitError(`git ${options.args[0] ?? ''} was cancelled.`))
   }
   return new Promise((resolve, reject) => {
-    const child = spawn('git', ['-c', 'core.quotePath=false', ...options.args], {
+    const child = spawn('git', gitArgs(options.args, options.hooks), {
       cwd: options.cwd,
-      env: options.env,
+      env: { ...options.env, ...HARDENED_ENV },
       stdio: ['pipe', 'pipe', 'pipe'],
     })
     const stdout: Buffer[] = []

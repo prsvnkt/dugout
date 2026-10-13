@@ -18,7 +18,7 @@ resumable sessions, task tools); more agents will get the same support one by on
 
 ## Getting started
 
-Requires macOS and Node 22+, plus the CLI of each agent you want to run on your shell's PATH,
+Requires macOS and Node 24+ (see `.nvmrc`), plus the CLI of each agent you want to run on your shell's PATH,
 for example [Claude Code](https://docs.claude.com/en/docs/claude-code),
 [Codex](https://github.com/openai/codex) or [OpenCode](https://opencode.ai).
 
@@ -33,7 +33,8 @@ npm run dev
 
 Download `Dugout-<version>-arm64.dmg` from the
 [latest release](https://github.com/prsvnkt/dugout/releases/latest), open it and drag Dugout to
-Applications. Dugout needs a Mac with Apple silicon.
+Applications. Dugout needs a Mac with Apple silicon. To check the download, save `SHA256SUMS`
+from the same release next to it and run `shasum -a 256 -c SHA256SUMS --ignore-missing`.
 
 Dugout is not notarized by Apple yet, so the first launch is blocked with "Apple could not verify
 Dugout…". Click **Done**, then open **System Settings → Privacy & Security** and click

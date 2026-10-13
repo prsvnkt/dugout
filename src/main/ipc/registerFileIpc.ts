@@ -8,7 +8,7 @@ import {
 import type { FileService } from '../services/files/FileService'
 import type { ProjectStore } from '../services/projects/ProjectStore'
 import type { WorktreeManager } from '../services/worktrees/WorktreeManager'
-import { handleRequest } from './handle'
+import { handleRequest, type IpcMainLike } from './handle'
 import { findProject } from './registerGitIpc'
 
 /** File access is addressed by project (and worktree); main resolves and validates the root. */
@@ -16,23 +16,37 @@ export function registerFileIpc(
   projects: ProjectStore,
   worktrees: WorktreeManager,
   files: FileService,
+  ipc?: IpcMainLike,
 ): void {
   const rootOf = (request: { projectId: string; worktreePath?: string | undefined }) =>
     worktrees.resolveCheckout(findProject(projects, request.projectId), request.worktreePath)
 
-  handleRequest(IpcChannel.filesReadDir, filesReadDirRequestSchema, async (request) =>
-    files.readDir(await rootOf(request), request.path),
+  handleRequest(
+    IpcChannel.filesReadDir,
+    filesReadDirRequestSchema,
+    async (request) => files.readDir(await rootOf(request), request.path),
+    ipc,
   )
-  handleRequest(IpcChannel.filesRead, filesReadRequestSchema, async (request) =>
-    files.readFile(await rootOf(request), request.path),
+  handleRequest(
+    IpcChannel.filesRead,
+    filesReadRequestSchema,
+    async (request) => files.readFile(await rootOf(request), request.path),
+    ipc,
   )
-  handleRequest(IpcChannel.filesStat, filesStatRequestSchema, async (request) =>
-    files.stat(await rootOf(request), request.paths),
+  handleRequest(
+    IpcChannel.filesStat,
+    filesStatRequestSchema,
+    async (request) => files.stat(await rootOf(request), request.paths),
+    ipc,
   )
-  handleRequest(IpcChannel.filesWrite, filesWriteRequestSchema, async (request) =>
-    files.writeFile(await rootOf(request), request.path, request.content, {
-      expectedMtimeMs: request.expectedMtimeMs,
-      force: request.force,
-    }),
+  handleRequest(
+    IpcChannel.filesWrite,
+    filesWriteRequestSchema,
+    async (request) =>
+      files.writeFile(await rootOf(request), request.path, request.content, {
+        expectedMtimeMs: request.expectedMtimeMs,
+        force: request.force,
+      }),
+    ipc,
   )
 }

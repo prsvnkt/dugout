@@ -2,11 +2,21 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
+import { readProjectServers } from '../../agentConfig/serverApproval'
 import { launchContext, MCP_ENTRY, memoryFiles } from '../testContext'
 import { codexAdapter } from './codexAdapter'
 import { codexConfigOverrides } from './codexConfig'
 
 const withMcp = () => ({ mcp: { server: MCP_ENTRY, files: memoryFiles() } })
+
+function checkoutWithDocsServer(): string {
+  const cwd = mkdtempSync(join(tmpdir(), 'dugout-codex-'))
+  writeFileSync(
+    join(cwd, '.mcp.json'),
+    JSON.stringify({ mcpServers: { docs: { type: 'http', url: 'https://docs.dev/mcp' } } }),
+  )
+  return cwd
+}
 
 describe('codexAdapter', () => {
   test('starts Codex with its config overrides and first prompt', () => {
@@ -23,13 +33,10 @@ describe('codexAdapter', () => {
     )
   })
 
-  test('passes each override in its own variable: hooks, the dugout server, then project servers', () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'dugout-codex-'))
-    writeFileSync(
-      join(cwd, '.mcp.json'),
-      JSON.stringify({ mcpServers: { docs: { type: 'http', url: 'https://docs.dev/mcp' } } }),
-    )
-    const launch = codexAdapter.launch(launchContext({ cwd, ...withMcp() }))
+  test('passes each override in its own variable: hooks, the dugout server, then approved project servers', () => {
+    const cwd = checkoutWithDocsServer()
+    const approvedProjectServers = readProjectServers(cwd)?.hash
+    const launch = codexAdapter.launch(launchContext({ cwd, approvedProjectServers, ...withMcp() }))
 
     const expected = [
       ...codexConfigOverrides(MCP_ENTRY),
@@ -38,6 +45,20 @@ describe('codexAdapter', () => {
     expect(launch.env).toEqual({
       DUGOUT_CODEX_COMMAND: '/opt/fake/agent',
       ...Object.fromEntries(expected.map((value, i) => [`DUGOUT_CODEX_C${i}`, value])),
+    })
+    expect(launch.withheldServers).toBeUndefined()
+  })
+
+  test('leaves unapproved project servers out, and reports them as withheld', () => {
+    const cwd = checkoutWithDocsServer()
+    const launch = codexAdapter.launch(launchContext({ cwd, ...withMcp() }))
+
+    expect(Object.values(launch.env).filter((value) => value.startsWith('mcp_servers.'))).toEqual([
+      expect.stringMatching(/^mcp_servers\.dugout=/),
+    ])
+    expect(launch.withheldServers).toEqual({
+      servers: [{ name: 'docs', type: 'http', url: 'https://docs.dev/mcp', headers: {} }],
+      hash: readProjectServers(cwd)?.hash,
     })
   })
 

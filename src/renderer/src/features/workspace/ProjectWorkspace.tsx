@@ -80,6 +80,7 @@ function TerminalsArea({ project, isActive, onAdd }: TerminalsAreaProps) {
               projectColor={projectColor}
               isFocused={layout.focusedPaneId === pane.id}
               shouldFocus={isActive && layout.focusedPaneId === pane.id}
+              isVisible={isActive}
               onFocus={() => focusPane(project.id, pane.id)}
               onClose={() => closePane(project.id, pane.id)}
               focusRequest={focusRequests[pane.id] ?? 0}

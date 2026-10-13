@@ -1,5 +1,6 @@
 // node-pty's prebuilt `spawn-helper` can ship without the executable bit on macOS,
 // which makes every spawn fail with "posix_spawnp failed". Restore it after install.
+// A missing node-pty or helper cannot abort the install: every path is checked with existsSync.
 import { chmodSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 

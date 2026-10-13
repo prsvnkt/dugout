@@ -25,6 +25,12 @@ const SHARED_OPTIONS: monaco.editor.IEditorOptions = {
   renderWhitespace: 'selection',
 }
 
+/** A keyboard user moving through the editor tabs keeps focus on them (APG tabs). */
+function isArrowingThroughTabs(): boolean {
+  const active = document.activeElement
+  return active?.getAttribute('role') === 'tab' && active.matches(':focus-visible')
+}
+
 /** One code editor and one diff editor, re-pointed at models as tabs change. */
 export default function EditorSurface(props: EditorSurfaceProps) {
   const { projectId, tab, fileKey, modelRevision, diff } = props
@@ -68,7 +74,7 @@ export default function EditorSurface(props: EditorSurfaceProps) {
     shownKey.current = model ? fileKey : null
     const state = viewStates.current.get(fileKey)
     if (model && state) editor.restoreViewState(state)
-    if (model) editor.focus()
+    if (model && !isArrowingThroughTabs()) editor.focus()
   }, [tab.kind, fileKey, modelRevision])
 
   // Diff tabs: HEAD or index on the left; the editable working file (or index) on the right.

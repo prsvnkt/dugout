@@ -10,14 +10,8 @@ import {
   makeTempDir,
   recordTerminalOutput,
   stubFolderPicker,
+  GIT_IDENTITY,
 } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'T',
-  GIT_AUTHOR_EMAIL: 't@example.com',
-  GIT_COMMITTER_NAME: 'T',
-  GIT_COMMITTER_EMAIL: 't@example.com',
-}
 
 let app: ElectronApplication
 let page: Page
@@ -28,7 +22,7 @@ function makeRepo(): string {
   const root = join(makeTempDir(), 'app')
   mkdirSync(root)
   const git = (...args: string[]) =>
-    execFileSync('git', args, { cwd: root, env: { ...process.env, ...IDENTITY } })
+    execFileSync('git', args, { cwd: root, env: { ...process.env, ...GIT_IDENTITY } })
   git('init', '-q', '-b', 'main')
   writeFileSync(join(root, 'readme.md'), '# app\n')
   git('add', '.')
@@ -58,7 +52,7 @@ test.beforeEach(async () => {
     },
   ])
   app = await launchApp(makeTempDir(), {
-    ...IDENTITY,
+    ...GIT_IDENTITY,
     DUGOUT_LINEAR_BASE_URL: stub.baseUrl,
     DUGOUT_INSECURE_TOKEN_STORAGE_FOR_TESTS: '1',
     DUGOUT_CLAUDE_COMMAND: makeFakeClaude(),

@@ -9,14 +9,8 @@ import {
   launchApp,
   makeFakeClaude,
   makeTempDir,
+  GIT_IDENTITY,
 } from './helpers'
-
-const IDENTITY = {
-  GIT_AUTHOR_NAME: 'Dugout Test',
-  GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'Dugout Test',
-  GIT_COMMITTER_EMAIL: 'test@example.com',
-}
 
 let app: ElectronApplication
 let page: Page
@@ -27,7 +21,7 @@ function makeRepo(): string {
   const root = join(makeTempDir(), 'app')
   mkdirSync(root)
   const git = (...args: string[]) =>
-    execFileSync('git', args, { cwd: root, env: { ...process.env, ...IDENTITY } })
+    execFileSync('git', args, { cwd: root, env: { ...process.env, ...GIT_IDENTITY } })
   git('init', '-q', '-b', 'main')
   writeFileSync(join(root, 'readme.md'), 'hello\n')
   git('add', '.')
@@ -57,7 +51,7 @@ function openCalls(): string[][] {
 test.beforeEach(async () => {
   openLog = join(makeTempDir('dugout-open-log-'), 'calls.jsonl')
   app = await launchApp(makeTempDir(), {
-    ...IDENTITY,
+    ...GIT_IDENTITY,
     DUGOUT_CLAUDE_COMMAND: makeFakeClaude(),
     DUGOUT_OPEN_COMMAND: makeFakeOpen(openLog),
   })

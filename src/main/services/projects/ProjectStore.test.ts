@@ -163,6 +163,24 @@ describe('ProjectStore', () => {
     expect(await ctx.store.setWorktreeSetup(project.id, null)).toEqual(cleared)
   })
 
+  test('keeps the approved .mcp.json servers across a reload, and forgets them again', async () => {
+    // Arrange
+    const project = await ctx.store.add({ rootPath: REPO })
+    const hash = 'a'.repeat(64)
+
+    // Act
+    const approved = await ctx.store.setApprovedMcpServers(project.id, hash)
+    const reloaded = setup(ctx.dir).store
+    await reloaded.load()
+
+    // Assert
+    expect(approved.approvedMcpServers).toBe(hash)
+    expect(reloaded.list()[0]?.approvedMcpServers).toBe(hash)
+    const revoked = await ctx.store.setApprovedMcpServers(project.id, null)
+    expect(revoked).not.toHaveProperty('approvedMcpServers')
+    await expect(ctx.store.setApprovedMcpServers('nope', hash)).rejects.toThrow('Project not found')
+  })
+
   test('refuses to set up an unknown project', async () => {
     await expect(ctx.store.setWorktreeSetup('nope', null)).rejects.toThrow('Project not found.')
   })

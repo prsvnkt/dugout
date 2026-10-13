@@ -130,3 +130,11 @@
   padding: var(--space-4);
   color: var(--text-secondary);
 }
+
+/* The active tab's content: banners, then the editor or view, filling the rest. */
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}

@@ -12,7 +12,7 @@ import type { ProjectStore } from '../services/projects/ProjectStore'
 import type { TaskService } from '../services/tasks/TaskService'
 import { taskBranchName, taskPrompt } from '../services/tasks/taskSession'
 import type { WorktreeManager } from '../services/worktrees/WorktreeManager'
-import { handleRequest } from './handle'
+import { handleRequest, type IpcMainLike } from './handle'
 import { findProject } from './registerGitIpc'
 
 export interface TaskIpcDeps {
@@ -22,29 +22,50 @@ export interface TaskIpcDeps {
   readonly openExternal: (url: string) => Promise<void>
 }
 
-export function registerTaskIpc({ tasks, projects, worktrees, openExternal }: TaskIpcDeps): void {
-  handleRequest(IpcChannel.tasksList, taskListRequestSchema, ({ projectId }) =>
-    tasks.list(projectId),
+export function registerTaskIpc(
+  { tasks, projects, worktrees, openExternal }: TaskIpcDeps,
+  ipc?: IpcMainLike,
+): void {
+  handleRequest(
+    IpcChannel.tasksList,
+    taskListRequestSchema,
+    ({ projectId }) => tasks.list(projectId),
+    ipc,
   )
-  handleRequest(IpcChannel.tasksGet, taskNumberRequestSchema, ({ projectId, number }) =>
-    tasks.get(projectId, number),
+  handleRequest(
+    IpcChannel.tasksGet,
+    taskNumberRequestSchema,
+    ({ projectId, number }) => tasks.get(projectId, number),
+    ipc,
   )
-  handleRequest(IpcChannel.tasksCreate, taskCreateRequestSchema, ({ projectId, ...input }) =>
-    tasks.create(projectId, input),
+  handleRequest(
+    IpcChannel.tasksCreate,
+    taskCreateRequestSchema,
+    ({ projectId, ...input }) => tasks.create(projectId, input),
+    ipc,
   )
   handleRequest(
     IpcChannel.tasksUpdate,
     taskUpdateRequestSchema,
     ({ projectId, number, ...patch }) => tasks.update(projectId, number, patch),
+    ipc,
   )
-  handleRequest(IpcChannel.tasksComment, taskCommentRequestSchema, ({ projectId, number, body }) =>
-    tasks.comment(projectId, number, body),
+  handleRequest(
+    IpcChannel.tasksComment,
+    taskCommentRequestSchema,
+    ({ projectId, number, body }) => tasks.comment(projectId, number, body),
+    ipc,
   )
 
   // Opens the task's own page, and only on its source's host (GitHub or Linear).
-  handleRequest(IpcChannel.tasksOpen, taskNumberRequestSchema, async ({ projectId, number }) => {
-    await openExternal(await tasks.webUrl(projectId, number))
-  })
+  handleRequest(
+    IpcChannel.tasksOpen,
+    taskNumberRequestSchema,
+    async ({ projectId, number }) => {
+      await openExternal(await tasks.webUrl(projectId, number))
+    },
+    ipc,
+  )
 
   /** Start agent: a worktree named after the task, marked in progress, with its first prompt. */
   handleRequest(
@@ -69,5 +90,6 @@ export function registerTaskIpc({ tasks, projects, worktrees, openExternal }: Ta
         task: { number: task.number, key: task.key, title: task.title },
       }
     },
+    ipc,
   )
 }
