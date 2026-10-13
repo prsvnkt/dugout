@@ -49,6 +49,7 @@ export function codexConfigOverrides(mcp: McpServerEntry): string[] {
     }
     return [`hooks.${event}=${tomlInline([group])}`]
   })
-  const server = { command: mcp.command, args: mcp.args, env: mcp.env }
+  // Codex gives stdio servers only a few default variables; the rest are forwarded by name.
+  const server = { command: mcp.command, args: mcp.args, env: mcp.env, env_vars: mcp.inheritedEnv }
   return [...hookOverrides, `mcp_servers.dugout=${tomlInline(server)}`]
 }

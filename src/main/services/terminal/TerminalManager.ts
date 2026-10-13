@@ -16,7 +16,7 @@ import type { AgentHooksConfig } from '../agentHooks/setupAgentHooks'
 import type { AgentStatusChange } from '../notifications/AgentNotifier'
 import type { TerminalBackend, TerminalProcess } from './TerminalBackend'
 import type { AgentAdapter, AgentLaunch } from '../agents/AgentAdapter'
-import { dugoutMcpServer } from '../agents/dugoutMcp'
+import { dugoutMcpServer, HOOK_TOKEN_VARIABLE } from '../agents/dugoutMcp'
 import { agentAdapter } from '../agents/registry'
 import { buildLaunchSpec, buildTerminalEnv, resolveShell, type Env } from './launchSpec'
 
@@ -234,7 +234,10 @@ export class TerminalManager {
     return process
   }
 
-  /** The adapter's launch plus the variables every agent gets: hooks, resume id, first prompt. */
+  /**
+   * The adapter's launch plus the variables every agent gets: hooks (with this terminal's own
+   * token, forgotten when it exits: decision 059), resume id, first prompt.
+   */
   private launchAgent(
     id: TerminalId,
     adapter: AgentAdapter,
@@ -246,6 +249,7 @@ export class TerminalManager {
       : undefined
     const initialPrompt = resumeSessionId === undefined ? request.initialPrompt : undefined
     const mcp = adapter.info.capabilities.hasMcp ? hooks.mcp : undefined
+    const token = hooks.tokens.issue(id)
     const launch = adapter.launch({
       terminalId: id,
       cwd: request.cwd,
@@ -256,7 +260,7 @@ export class TerminalManager {
       approvedProjectServers: this.deps.approvedProjectServers?.(request.projectId),
       ...(mcp && {
         mcp: {
-          server: dugoutMcpServer(mcp.server, hooks.socketPath, hooks.token, id),
+          server: dugoutMcpServer(mcp.server, hooks.socketPath, id),
           files: mcp.files,
         },
       }),
@@ -266,10 +270,14 @@ export class TerminalManager {
       env: {
         DUGOUT_TERMINAL_ID: id,
         DUGOUT_HOOK_SOCKET: hooks.socketPath,
-        DUGOUT_HOOK_TOKEN: hooks.token,
+        [HOOK_TOKEN_VARIABLE]: token,
         ...launch.env,
         ...(resumeSessionId && { DUGOUT_RESUME_SESSION: resumeSessionId }),
         ...(initialPrompt && { DUGOUT_INITIAL_PROMPT: initialPrompt }),
+      },
+      dispose: () => {
+        launch.dispose?.()
+        hooks.tokens.revoke(id)
       },
     }
   }

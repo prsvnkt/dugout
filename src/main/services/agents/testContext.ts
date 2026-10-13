@@ -19,6 +19,7 @@ export const MCP_ENTRY = {
   command: '/Apps/Dugout',
   args: ['/out/main/mcp.js'],
   env: { ELECTRON_RUN_AS_NODE: '1', DUGOUT_TERMINAL_ID: 't-1' },
+  inheritedEnv: ['DUGOUT_HOOK_TOKEN'],
 }
 
 /** A launch for terminal `t-1` in `/repo`, without the task server unless asked. */
