@@ -18,6 +18,22 @@ token, so Dugout's task tools fail to start there (closed, not open).
 **Likely fix:** pass the token to the MCP server over an inherited file descriptor or a one-time
 handshake instead of an env var, if the agent CLIs ever support it.
 
+## Packaged app: DUGOUT_E2E is a gate, not a boundary
+
+- **Area:** `src/main/devOverrides.ts`, `tests/e2e/helpers.ts`
+- **Found:** 2026-10-09, fixing #61 (decision 060)
+
+**What happens:** The packaged app ignores every test override unless `DUGOUT_E2E=1` is set, but
+that flag is an environment variable too: something running as the user can `launchctl setenv`
+it alongside other overrides. Base URLs are loopback only when packaged, so the remaining
+exposure is a listener on 127.0.0.1 receiving the token, which is already the user's own
+process space; it can also switch on plaintext token storage, fake agent commands or another
+data folder. The startup `console.warn` line names all of them (and says "PLAINTEXT TOKEN
+STORAGE"), but it is only visible in Console.app or a terminal.
+
+**Likely fix:** build the packaged e2e app with a build-time flag (or Electron fuse) so release
+builds contain no override code, and test that build.
+
 ## Windowed lists need one fixed row height; other long lists are not windowed
 
 - **Area:** `src/renderer/src/lib/useVirtualRows.ts`, `features/explorer/FileTree.tsx`
