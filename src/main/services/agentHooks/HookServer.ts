@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto'
 import { chmod, rm } from 'node:fs/promises'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import {
@@ -10,6 +9,7 @@ import {
 } from '@shared/agentStatus'
 import { sessionIdSchema } from '@shared/ipc/contract'
 import type { ToolCallPreview } from '@shared/toolCall'
+import type { HookAuthorizer } from './hookTokens'
 import { toolCallPreview, toolCallRef, type ToolCallRef, type ToolPayload } from './toolCall'
 
 /** Details a hook payload may carry along with its signal. */
@@ -86,7 +86,8 @@ function detailOf(payload: HookPayload): string | undefined {
 
 export interface HookServerDeps {
   readonly socketPath: string
-  readonly token: string
+  /** Checks a request's bearer token against the terminal id in its path (decision 059). */
+  readonly tokens: HookAuthorizer
   readonly onSignal: (terminalId: string, signal: HookSignal, details: HookDetails) => void
   /** Task tool calls from the terminal's MCP server; resolves to the JSON result. */
   readonly onRpc: (terminalId: string, method: string, params: unknown) => Promise<unknown>
@@ -103,6 +104,8 @@ export interface HookServerDeps {
 
 const ROUTE = /^\/hooks\/([\w-]{1,64})\/([a-z-]{1,32})$/
 const RPC_ROUTE = /^\/rpc\/([\w-]{1,64})$/
+/** The terminal a request is for, the first thing checked: its token must be this terminal's. */
+const TERMINAL_IN_PATH = /^\/(?:hooks|rpc)\/([\w-]{1,64})(?:\/|$)/
 const SOCKET_MODE = 0o600
 /** Task calls and subagent payloads are small JSON objects; anything bigger is not ours. */
 const MAX_BODY_BYTES = 64 * 1024
@@ -118,15 +121,14 @@ function isSubagentSignal(value: string): value is SubagentSignal {
 }
 
 /**
- * Receives status signals from Claude Code hooks over a Unix socket that only the current
- * user can open. Requests also carry a per-launch bearer token.
+ * Receives status signals from agent hooks, and task calls from the MCP server, over a Unix socket
+ * that only the current user can open. Each request carries the bearer token of the terminal named
+ * in its path, so one terminal's agent cannot act for another (decision 059).
  */
 export class HookServer {
   private readonly server: Server
-  private readonly expectedAuth: Buffer
 
   constructor(private readonly deps: HookServerDeps) {
-    this.expectedAuth = Buffer.from(`Bearer ${deps.token}`)
     this.server = createServer((req, res) => this.handle(req, res))
   }
 
@@ -145,7 +147,8 @@ export class HookServer {
   }
 
   private handle(req: IncomingMessage, res: ServerResponse): void {
-    if (!this.isAuthorized(req.headers.authorization)) {
+    const pathTerminal = TERMINAL_IN_PATH.exec(req.url ?? '')?.[1]
+    if (!pathTerminal || !this.deps.tokens.isAuthorized(pathTerminal, req.headers.authorization)) {
       req.resume()
       return respond(res, 401)
     }
@@ -190,12 +193,6 @@ export class HookServer {
           respondJson(res, 400, { error: error instanceof Error ? error.message : 'Failed.' }),
         )
     })
-  }
-
-  private isAuthorized(header: string | undefined): boolean {
-    if (!header) return false
-    const actual = Buffer.from(header)
-    return actual.length === this.expectedAuth.length && timingSafeEqual(actual, this.expectedAuth)
   }
 }
 
