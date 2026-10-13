@@ -1289,6 +1289,30 @@ popover closes with focus inside. The close-project confirmation is a native mod
 for a non-text mark that always sits beside words), and so does xterm's ANSI `brightWhite`, which
 `minimumContrastRatio` already raises (decision 033).
 
+## 062 — The explorer renders a window of rows, not the whole tree (2026-10-09)
+
+**Context.** The explorer rendered every entry of every open folder as nested lists (#82).
+Ignored folders are shown (dimmed), so opening a `node_modules` of 5,000 entries put 5,004 row
+buttons in the DOM and took about 370 ms from click to paint (e2e measurement, 5 runs).
+
+**Decision.** Render only the rows on screen. The tree's keyboard model (decision 058) already
+flattens the open folders into `visibleRows`; each `TreeRow` now also carries its entry, depth
+and place among its siblings, and the same list drives rendering, so there is one row model.
+A small hand-rolled `useVirtualRows(containerRef, rowHeight, count)` (`lib/useVirtualRows.ts`,
+pure math in `lib/virtualRows.ts`, unit-tested) gives the window plus 8 rows of overscan, the
+list's total height, and `scrollToIndex`. Rows are absolutely positioned with
+`transform: translateY(index × 24px)` inside a sizer as tall as the list; the hook re-renders
+only when the window moves by a row or the container resizes. No new dependency:
+`@tanstack/react-virtual` would add variable heights and measuring, which the tree does not need.
+
+Accessibility holds: the window is flat `treeitem`s under the `tree` (no nested `group`s), so
+each row states `aria-level`, `aria-posinset` and `aria-setsize`, which tell screen readers the
+real position although most rows are not in the DOM. The Tab row (roving tabindex) is always
+rendered, even when scrolled away, so focus and Tab survive scrolling; arrow keys, Home and End
+scroll their target into view, render it and focus it. With the same 5,000-entry folder the DOM
+holds 26 rows and the expand takes about 35 ms; `tests/e2e/explorerLargeFolder.spec.ts` asserts
+fewer than 200 rows.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1336,4 +1360,5 @@ for a non-text mark that always sits beside words), and so does xterm's ANSI `br
 28. **Done since:** Codex gets a project's `.mcp.json` servers only once they are approved ✅.
 29. **Done since:** keyboard navigation for editor tabs, the file tree and menus, and muted text
     at WCAG AA contrast ✅.
-30. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+30. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
+31. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
