@@ -6,7 +6,7 @@ import { buildTerminalEnv, resolveShell, type Env } from '../terminal/launchSpec
 /** Shell profiles can be slow (nvm, conda); past this the answer is "could not check". */
 const CHECK_TIMEOUT_MS = 10_000
 /** Plain "$VAR" only (decision 013), so it works in zsh, bash and fish. */
-const LOOKUP_COMMAND = 'command -v "$DUGOUT_CHECK_COMMAND"'
+export const LOOKUP_COMMAND = 'command -v "$DUGOUT_CHECK_COMMAND"'
 
 export type ShellRunResult =
   | { readonly kind: 'exited'; readonly exitCode: number; readonly stdout: string }

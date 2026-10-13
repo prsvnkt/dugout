@@ -17,6 +17,19 @@ progress for its up to 10 minutes, and an interactive shell banner would end up 
 once their stdout is checked to be the answer alone; refresh the tab with the existing change
 polling; stream the build's output into the tab.
 
+## Pinned folders: files past the first 2,000 are invisible to "Changed since pinned"
+
+- **Area:** `src/main/services/files/hashTree.ts`
+- **Found:** 2026-10-09, while unit-testing `hashTree` (issue #76)
+
+**What happens:** a pinned folder is hashed from at most `MAX_HASHED_FILES` (2,000) files, in
+sorted path order, skipping `.git` and `node_modules`. Changing, adding or deleting a file past
+that point leaves the hash unchanged, so the pin is not flagged. Files over 5 MB are hashed by
+size and modification time, so an edit that keeps both is missed too.
+
+**Likely fix:** fall back to a cheaper signal past the cap (every file's size and mtime, or
+`git ls-files -s` blob ids for tracked files), or tell the user the pin is too large to track.
+
 ## Task descriptions reach agents; only task writes are gated
 
 - **Area:** `src/main/mcp/toolAccess.ts`, `src/main/services/tasks/taskSession.ts`, agent adapters
