@@ -336,18 +336,6 @@ visible cards; follow moved issues by their UUID.
 **Likely fix:** drop the `dompurify` override once monaco depends on a version past 3.4.15; check
 `npm ls dompurify` on every monaco upgrade, and the same for `global-agent` once #33 lands.
 
-## README demo GIF is 9.7 MB
-
-- **Area:** `docs/media/demo.gif`
-- **Found:** 2026-10-09, in the repo audit (#85)
-
-**What happens:** the edited README demo is 9,727,926 bytes, against the ~2 MB that
-`scripts/demo/makeGif.sh` expects. Every clone downloads it, and each new cut adds another copy
-to the history.
-
-**Likely fix:** re-encode the existing file in place with gifsicle (`-O3 --lossy=80 --colors 128`)
-or an ffmpeg palette pass at the same size and frame rate, or host it as a release asset.
-
 ## Git panel push skips pre-push hooks; repo http settings and filters still apply
 
 - **Area:** `src/main/services/git/` (decision 054)
