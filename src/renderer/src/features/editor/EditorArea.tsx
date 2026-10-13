@@ -101,7 +101,9 @@ function ClosePrompt({ projectId, path }: { projectId: ProjectId; path: string }
 /** Tabs of opened files and diffs, shown above the terminals (VS Code-style). */
 export function EditorArea({ projectId }: { projectId: ProjectId }) {
   const { tabs, activeTabId } = useProjectTabs(projectId)
-  const { activate, pin, requestClose } = useEditorStore()
+  const activate = useEditorStore((state) => state.activate)
+  const pin = useEditorStore((state) => state.pin)
+  const requestClose = useEditorStore((state) => state.requestClose)
   const buffers = useEditorStore((state) => state.buffers)
   const diffs = useEditorStore((state) => state.diffs)
   const pendingClose = useEditorStore((state) => state.pendingClose[projectId] ?? null)

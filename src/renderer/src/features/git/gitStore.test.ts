@@ -2,7 +2,8 @@ import { setFakeDugout } from '@renderer/lib/fakeDugout.testSupport'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { GitStatus } from '@shared/git'
 import { fail, ok } from '@shared/result'
-import { checkoutKey, useGitStore } from './gitStore'
+import { shallow } from 'zustand/shallow'
+import { checkoutKey, selectCheckoutActions, useGitStore } from './gitStore'
 
 const CHECKOUT = { projectId: 'project-1' }
 const KEY = checkoutKey(CHECKOUT)
@@ -113,5 +114,24 @@ describe('panel', () => {
 
     // Assert
     expect(store()).toBe(before)
+  })
+})
+
+describe('selectCheckoutActions', () => {
+  test('selects the same action references, so the Git panel ignores status changes', async () => {
+    // Arrange
+    const before = selectCheckoutActions(store())
+    setFakeDugout({ git: { status: async () => ok(status(1)) } })
+
+    // Act: a status refresh and a panel toggle, neither of which changes an action
+    await store().refresh(CHECKOUT)
+    store().togglePanel()
+    const after = selectCheckoutActions(store())
+
+    // Assert
+    expect(store().byCheckout[KEY]?.status?.ahead).toBe(1)
+    expect(shallow(before, after)).toBe(true)
+    expect(after.push).toBe(before.push)
+    expect(after.commit).toBe(before.commit)
   })
 })

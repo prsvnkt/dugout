@@ -60,6 +60,18 @@ interface GitState {
   openPullRequest(checkout: GitCheckout): Promise<void>
 }
 
+/** The per-checkout actions the Git panel calls; use with `useShallow` (actions never change). */
+export function selectCheckoutActions(state: GitState) {
+  return {
+    stage: state.stage,
+    unstage: state.unstage,
+    discard: state.discard,
+    commit: state.commit,
+    push: state.push,
+    openPullRequest: state.openPullRequest,
+  }
+}
+
 const refreshesInFlight = new Set<string>()
 
 export const useGitStore = create<GitState>()((set, get) => {

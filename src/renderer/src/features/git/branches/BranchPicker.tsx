@@ -45,7 +45,8 @@ export function BranchPicker({ checkout, currentBranch, children }: BranchPicker
   const wrapRef = useRef<HTMLDivElement>(null)
   const list = useBranches(checkout, isOpen)
   const busyAgents = useBusyAgents(checkout)
-  const { switchBranch, createBranch } = useGitStore()
+  const switchBranch = useGitStore((state) => state.switchBranch)
+  const createBranch = useGitStore((state) => state.createBranch)
   const startWorktreeSession = useWorktreeStore((state) => state.startSession)
   const refreshExplorer = useExplorerStore((state) => state.refresh)
 

@@ -1,7 +1,7 @@
 import type { Project, ProjectId } from '@shared/project'
 import { displayTaskKey } from '@shared/tasks'
 import { AGENT_LABEL, isAgentKind } from '@shared/terminal'
-import type { ToolCallPreview } from '@shared/toolCall'
+import type { PendingToolCall } from '@shared/toolCall'
 import type { PaneActivity } from '@renderer/features/workspace/paneActivity'
 import type { PaneId, ProjectLayout } from '@renderer/features/workspace/layout'
 import type { PaneDetail } from '@renderer/features/workspace/workspaceStore'
@@ -16,11 +16,11 @@ export interface InboxEntry {
   readonly taskKey: string | null
   readonly detail: string | null
   /** The tool calls waiting for approval, in full, oldest first. */
-  readonly approvals: readonly ToolCallPreview[]
+  readonly approvals: readonly PendingToolCall[]
   readonly since: number
 }
 
-const NO_APPROVALS: readonly ToolCallPreview[] = []
+const NO_APPROVALS: readonly PendingToolCall[] = []
 
 export interface InboxSource {
   readonly projects: readonly Project[]

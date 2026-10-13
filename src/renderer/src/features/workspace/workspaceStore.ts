@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ProjectId } from '@shared/project'
 import type { TerminalId, TerminalKind } from '@shared/terminal'
-import type { ToolCallPreview } from '@shared/toolCall'
+import type { PendingToolCall } from '@shared/toolCall'
 import type { GitCheckout, Worktree } from '@shared/worktree'
 import { useMemo } from 'react'
 import type { WorkspaceSnapshot } from '@shared/ipc/contract'
@@ -68,7 +68,7 @@ interface WorkspaceState {
     paneId: PaneId,
     activity: PaneActivity,
     detail?: string | null,
-    approvals?: readonly ToolCallPreview[],
+    approvals?: readonly PendingToolCall[],
   ): void
   /** Each agent pane's subagents, for the Agents list. */
   readonly subagents: Readonly<Record<PaneId, readonly Subagent[]>>
@@ -84,14 +84,14 @@ export type FocusArea = 'editor' | 'terminal'
 export interface PaneDetail {
   readonly detail: string | null
   /** The tool calls waiting for approval, in full, oldest first. */
-  readonly approvals: readonly ToolCallPreview[]
+  readonly approvals: readonly PendingToolCall[]
   /** Epoch ms when the pane entered its current activity. */
   readonly since: number
 }
 
 const createPaneId = () => crypto.randomUUID()
 const NO_RECENT: readonly RecentSession[] = []
-const NO_APPROVALS: readonly ToolCallPreview[] = []
+const NO_APPROVALS: readonly PendingToolCall[] = []
 
 function withoutKeys<V>(record: Readonly<Record<string, V>>, keys: readonly string[]) {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !keys.includes(key)))

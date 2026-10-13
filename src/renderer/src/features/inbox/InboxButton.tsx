@@ -41,7 +41,7 @@ function EntryRow({ entry, onOpen }: { entry: InboxEntry; onOpen(): void }) {
           <span className={styles.time}>{timeAgo(entry.since)}</span>
         </span>
         {hasApprovals
-          ? entry.approvals.map((call, index) => <ToolCallView key={index} call={call} />)
+          ? entry.approvals.map((call) => <ToolCallView key={call.id} call={call} />)
           : entry.detail && <span className={styles.detail}>{entry.detail}</span>}
       </button>
     </li>
@@ -65,7 +65,9 @@ export function InboxButton() {
   const layouts = useWorkspaceStore((state) => state.layouts)
   const activities = useWorkspaceStore((state) => state.activities)
   const details = useWorkspaceStore((state) => state.details)
-  const { isOpen, toggle, close } = useInboxStore()
+  const isOpen = useInboxStore((state) => state.isOpen)
+  const toggle = useInboxStore((state) => state.toggle)
+  const close = useInboxStore((state) => state.close)
   const wrapRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const entries = useMemo(

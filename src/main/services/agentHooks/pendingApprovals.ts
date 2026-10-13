@@ -5,6 +5,8 @@ import type { ToolCallRef } from './toolCall'
 
 /** A tool call the agent asked the user to approve and that has not finished yet. */
 export interface PendingApproval {
+  /** Unique among the pending calls and kept while this one waits (the inbox's React key). */
+  readonly id: string
   readonly toolCall: ToolCallRef
   readonly preview: ToolCallPreview
   /** The short line for the inbox and notifications, e.g. "Bash: npm install". */
@@ -35,6 +37,15 @@ function withoutFinished(
   return index === -1 ? pending : pending.filter((_, i) => i !== index)
 }
 
+/** The tool id when the request had one, else its key; suffixed while an identical call waits. */
+function newId(pending: readonly PendingApproval[], toolCall: ToolCallRef): string {
+  const base = toolCall.toolUseId ?? toolCall.key
+  const taken = new Set(pending.map((approval) => approval.id))
+  let id = base
+  for (let n = 2; taken.has(id); n++) id = `${base}#${n}`
+  return id
+}
+
 /**
  * Tracks which tool calls of one terminal still wait for approval, so a parallel tool finishing
  * does not hide "Needs you" (decision 036). Returns the same list when nothing changes.
@@ -47,7 +58,10 @@ export function trackApprovals(
   if (CLEARS_ALL.has(signal)) return pending.length === 0 ? pending : NO_APPROVALS
   const { toolCall, preview } = details
   if (signal === 'needs-input' && toolCall && preview)
-    return [...pending, { toolCall, preview, detail: details.detail ?? null }]
+    return [
+      ...pending,
+      { id: newId(pending, toolCall), toolCall, preview, detail: details.detail ?? null },
+    ]
   if (signal === 'tool-done' && toolCall) return withoutFinished(pending, toolCall)
   return pending
 }
