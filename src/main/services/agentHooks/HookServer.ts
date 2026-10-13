@@ -118,8 +118,8 @@ function isSubagentSignal(value: string): value is SubagentSignal {
 }
 
 /**
- * Receives status signals from Claude Code hooks over a Unix socket that only the current
- * user can open. Requests also carry a per-launch bearer token.
+ * Receives status signals from agent hooks and plugins (Claude-shaped payloads) over a Unix
+ * socket that only the current user can open. Requests also carry a per-launch bearer token.
  */
 export class HookServer {
   private readonly server: Server

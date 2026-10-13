@@ -1,9 +1,7 @@
-import type { AgentKind } from './terminal'
+import type { AgentKind } from './agents'
 
 /** App preferences the renderer reads and changes. */
 export interface AppSettings {
   /** The agent the start screen's prompt box sends work to. */
   readonly defaultAgent: AgentKind
 }
-
-export const DEFAULT_AGENT: AgentKind = 'claude'

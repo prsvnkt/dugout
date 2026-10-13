@@ -45,9 +45,9 @@ interface TerminalPaneProps {
   readonly isFocused: boolean
   /** Changes each time something asks to put the keyboard in this terminal (e.g. the inbox). */
   readonly focusRequest: number
-  /** Resume this Claude conversation when the pane starts. */
+  /** Resume this agent conversation when the pane starts. */
   readonly resumeSessionId?: string | undefined
-  /** First message for a new Claude session (e.g. the task it was started for). */
+  /** First message for a new agent session (e.g. the task it was started for). */
   readonly initialPrompt?: string | undefined
   /** Shown in the header for agents started on a task. */
   readonly task?: PaneTask | undefined
@@ -65,7 +65,7 @@ interface TerminalPaneProps {
   onSubagents(subagents: readonly Subagent[]): void
   onTerminalId(terminalId: string | null): void
   onSessionId(sessionId: string): void
-  /** `isFresh` when resuming failed (Claude exited before it was ready). */
+  /** `isFresh` when resuming failed (the agent exited before it was ready). */
   onRestart(options: { isFresh: boolean }): void
 }
 

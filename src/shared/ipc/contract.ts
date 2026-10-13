@@ -55,15 +55,15 @@ const absolutePath = z
   .refine((path) => path.startsWith('/'), 'Path must be absolute')
 
 const projectIdField = z.string().min(1).max(64)
-/** Claude session ids are UUIDs; this also rules out anything that could look like a flag. */
+/** Agent session ids (e.g. UUIDs); this also rules out anything that could look like a flag. */
 const sessionId = z.string().regex(/^[A-Za-z0-9][\w-]{0,127}$/)
 
 export const terminalCreateRequestSchema = z.object({
   kind: z.enum(TERMINAL_KINDS),
   projectId: projectIdField,
-  /** Continue this Claude conversation (`claude --resume`) instead of starting a new one. */
+  /** Continue this agent conversation (agents that canResume) instead of starting a new one. */
   resumeSessionId: sessionId.optional(),
-  /** First message for a new Claude session (e.g. the task it was started for). */
+  /** First message for a new agent session (e.g. the task it was started for). */
   initialPrompt: z.string().min(1).max(MAX_INITIAL_PROMPT_LENGTH).optional(),
   /** The task an agent was started for; its token usage counts towards the task. */
   taskNumber: z.number().int().positive().optional(),

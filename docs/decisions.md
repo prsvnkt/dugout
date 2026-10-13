@@ -1289,6 +1289,35 @@ popover closes with focus inside. The close-project confirmation is a native mod
 for a non-text mark that always sits beside words), and so does xterm's ANSI `brightWhite`, which
 `minimumContrastRatio` already raises (decision 033).
 
+## 061 — Agent settings and notifications read agents from their adapters (2026-10-13)
+
+**Context.** Decision 037 put every agent behind an adapter, but an audit (#67, #68) found the
+rule bypassed: `AgentConfigService` imported the Codex module to judge `.mcp.json` servers,
+`shared/agentConfig.ts` had a Codex-only `CodexSharing` type, the instructions linker hard-coded
+`CLAUDE.md`, `AGENTS.md` and a "Claude-only notes" heading, and notifications said "Claude needs
+your input." for every agent. The welcome screen and Agent settings named each agent in prose.
+A fourth agent would have needed edits in all of them.
+
+**Decision.**
+
+- `AgentInfo` (`shared/agents.ts`) declares `instructionsFiles` (the project files it reads,
+  preferred first) and the capability `projectMcp`: `native` (its CLI loads `.mcp.json` itself),
+  `via-dugout` (Dugout passes it the servers it can express) or `none`.
+  `SHARED_INSTRUCTIONS_FILE` (`AGENTS.md`) and `DEFAULT_AGENT` live there too.
+- `AgentAdapter` gains `projectMcpSharing(server)` (present exactly when `projectMcp` is
+  `via-dugout`) and `instructionsImport(path)` (present exactly when the agent does not read
+  `AGENTS.md` itself: the line its own file uses to import it). `adapters.contract.test.ts`
+  checks both.
+- `AgentConfigService` iterates the adapter registry: sharing is a per-agent record
+  (`AgentSharing`, keyed by kind) for each server and preset, and linking writes each importing
+  agent's own file with its own import line and a "`<label>`-only notes" heading.
+- Agent-settings text (`sharingText`, `projectMcpText`, `instructionsText`), the welcome tagline
+  and notification fallbacks are built from labels and capabilities. `AgentStatusChange` carries
+  the agent's kind. A unit test (`renderer/src/agentNames.test.ts`) fails if renderer code, with
+  comments removed, contains an agent's label, product or CLI name, or an agent-only instructions
+  file.
+- The approval flow of decision 057 is unchanged: it still keys on `needsMcpApproval`.
+
 ## 062 — The explorer renders a window of rows, not the whole tree (2026-10-09)
 
 **Context.** The explorer rendered every entry of every open folder as nested lists (#82).
@@ -1361,4 +1390,6 @@ fewer than 200 rows.
 29. **Done since:** keyboard navigation for editor tabs, the file tree and menus, and muted text
     at WCAG AA contrast ✅.
 30. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
-31. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+31. **Done since:** notifications, Agent settings and the welcome screen name agents from the
+    registry; agent config goes through the adapters ✅.
+32. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

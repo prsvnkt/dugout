@@ -67,7 +67,7 @@ export interface DugoutApi {
         approvals: readonly ToolCallPreview[],
       ) => void,
     ): Unsubscribe
-    /** Claude session ids, used to resume conversations after a restart. */
+    /** Agent session ids, from hooks or a plugin, used to resume conversations after a restart. */
     onAgentSession(listener: (id: TerminalId, sessionId: string) => void): Unsubscribe
     /** Subagents an agent starts and finishes, from its hooks. */
     onAgentSubagent(listener: (id: TerminalId, update: SubagentUpdate) => void): Unsubscribe
@@ -237,7 +237,7 @@ export interface DugoutApi {
       worktreePaths: readonly string[],
     ): Promise<Result<readonly WorktreeChanges[]>>
   }
-  /** A project's MCP servers (`.mcp.json`) and agent instructions (AGENTS.md / CLAUDE.md). */
+  /** A project's MCP servers (`.mcp.json`) and instructions (AGENTS.md, agents' own files). */
   readonly agentConfig: {
     read(projectId: ProjectId): Promise<Result<AgentConfig>>
     saveMcp(

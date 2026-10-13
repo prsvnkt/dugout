@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { create } from 'zustand'
-import { DEFAULT_AGENT } from '@shared/settings'
+import { DEFAULT_AGENT } from '@shared/agents'
 import type { AgentKind } from '@shared/terminal'
 import { dugout } from '@renderer/lib/dugout'
 

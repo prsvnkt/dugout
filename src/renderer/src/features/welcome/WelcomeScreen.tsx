@@ -1,14 +1,19 @@
+import { AGENT_LIST } from '@shared/agents'
 import { Logo } from '@renderer/lib/Logo'
+import { listText } from '@renderer/lib/listText'
 import { AgentCheckList } from './AgentCheckList'
 import { GitHubSection } from './GitHubSection'
 import { LocalRepoList } from './LocalRepoList'
 import styles from './Welcome.module.css'
 
+/** Every agent's own name, from the registry: "Claude Code, Codex and OpenCode". */
+const AGENT_NAMES = listText(AGENT_LIST.map((agent) => agent.productName))
+
 const STEPS = [
   { title: 'Add a project', text: 'Any git repository, on this Mac or on GitHub.' },
   {
     title: 'Run agents side by side',
-    text: 'Claude Code and Codex in real terminals, each in its own worktree if you like.',
+    text: `${AGENT_NAMES} as agents in real terminals, each in its own worktree if you like.`,
   },
   { title: 'Review what changed', text: 'Diffs, commits and pull requests in the Git panel.' },
 ]

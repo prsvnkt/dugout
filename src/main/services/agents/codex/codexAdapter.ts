@@ -6,6 +6,7 @@ import { readCodexTranscript } from '../../transcripts/codexTranscript'
 import { findCodexTranscript } from '../../transcripts/transcriptFiles'
 import type { AgentAdapter, AgentLaunchContext } from '../AgentAdapter'
 import { codexConfigOverrides } from './codexConfig'
+import { codexSharing } from './codexMcp'
 import { codexProjectServers } from './projectServers'
 
 /**
@@ -63,4 +64,7 @@ export const codexAdapter: AgentAdapter = {
   },
 
   timeline: { find: findCodexTranscript, read: readCodexTimeline },
+
+  // Codex has no .mcp.json of its own: Dugout passes the servers it can express (decision 057).
+  projectMcpSharing: codexSharing,
 }

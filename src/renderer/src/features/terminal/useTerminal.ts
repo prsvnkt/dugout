@@ -42,7 +42,7 @@ export type TerminalStatus =
 
 export interface TerminalHandle {
   readonly status: TerminalStatus
-  /** Claude terminals only; null for shells or before the first hook fires. */
+  /** Agents with hasStatus only; null for shells or before the first hook fires. */
   readonly agentStatus: AgentStatus | null
   /** Why the agent is waiting or what it finished (from its hooks), if known. */
   readonly agentDetail: string | null
@@ -50,7 +50,7 @@ export interface TerminalHandle {
   readonly agentApprovals: readonly ToolCallPreview[]
   /** The main-process terminal id, once the PTY has started. */
   readonly terminalId: string | null
-  /** The Claude session id reported by hooks (Claude terminals only). */
+  /** The session id the agent reported (agents that canResume only). */
   readonly sessionId: string | null
   /** Subagents the agent started this turn (finished ones clear on its next turn). */
   readonly subagents: readonly Subagent[]
@@ -94,7 +94,7 @@ export interface TerminalOptions {
   readonly kind: TerminalKind
   readonly projectId: string
   readonly cwd: string
-  /** Claude session to resume. Read once at start; later changes do not restart the PTY. */
+  /** Agent session to resume. Read once at start; later changes do not restart the PTY. */
   readonly resumeSessionId?: string | undefined
   /** First message for a new session. Read once at start. */
   readonly initialPrompt?: string | undefined
