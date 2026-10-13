@@ -23,5 +23,7 @@ paths:
   pattern: implement it or drop the role (decision 058). Use `useArrowNavigation` / `useMenuKeys`
   from `@renderer/lib/useArrowNavigation` (roving focus, Arrow keys, Home/End), pass the trigger
   to `useDismiss` so focus returns to it, and use a native `<dialog>` with `showModal()` for modals.
+- Lists that can grow to thousands of rows are windowed with `useVirtualRows` from
+  `@renderer/lib/useVirtualRows` (fixed row height, `translateY` positioning; decision 062).
 - Text uses `--text-primary`, `--text-secondary` or `--text-muted` (all at least 4.5:1);
   `--text-faint` is for decorative glyphs only. Animations need a `prefers-reduced-motion` rule.

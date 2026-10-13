@@ -1,13 +1,21 @@
 import type { DirEntry } from '@shared/files'
 import { arrowTarget } from '@renderer/lib/arrowNavigation'
 
-/** A row the tree shows right now, in screen order. */
+/** A row the tree shows right now, in screen order. The one flat list both the keys and the
+ * windowed rendering use (decision 062). */
 export interface TreeRow {
   readonly path: string
+  readonly entry: DirEntry
   readonly isDir: boolean
   readonly isExpanded: boolean
   /** The folder it sits in; '' for the root. */
   readonly parent: string
+  /** 0 for the root's entries (`aria-level` is depth + 1). */
+  readonly depth: number
+  /** 1-based place among its folder's entries, and how many there are: with only a window of
+   * rows in the DOM, `aria-posinset` / `aria-setsize` tell screen readers the real numbers. */
+  readonly posInSet: number
+  readonly setSize: number
 }
 
 /** What a key does in the tree: move focus to a row, or open/close a folder. */
@@ -19,14 +27,29 @@ export type TreeMove =
 export function visibleRows(
   entries: Readonly<Record<string, readonly DirEntry[]>>,
   expanded: readonly string[],
-  dir = '',
 ): readonly TreeRow[] {
-  return (entries[dir] ?? []).flatMap((entry) => {
-    const isDir = entry.kind === 'dir'
-    const isExpanded = isDir && expanded.includes(entry.path)
-    const row: TreeRow = { path: entry.path, isDir, isExpanded, parent: dir }
-    return isExpanded ? [row, ...visibleRows(entries, expanded, entry.path)] : [row]
-  })
+  const open = new Set(expanded)
+  const rows: TreeRow[] = []
+  const walk = (dir: string, depth: number): void => {
+    const level = entries[dir] ?? []
+    level.forEach((entry, index) => {
+      const isDir = entry.kind === 'dir'
+      const isExpanded = isDir && open.has(entry.path)
+      rows.push({
+        path: entry.path,
+        entry,
+        isDir,
+        isExpanded,
+        parent: dir,
+        depth,
+        posInSet: index + 1,
+        setSize: level.length,
+      })
+      if (isExpanded) walk(entry.path, depth + 1)
+    })
+  }
+  walk('', 0)
+  return rows
 }
 
 /**
