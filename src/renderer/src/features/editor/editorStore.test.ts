@@ -79,7 +79,7 @@ describe('opening a file', () => {
       revision: 1,
       isDirty: false,
       diskState: 'in-sync',
-      error: null,
+      content: { kind: 'text' },
     })
     expect(tabs()).toEqual([expect.objectContaining({ kind: 'file', path: PATH })])
   })
@@ -93,7 +93,10 @@ describe('opening a file', () => {
     await openFile()
 
     // Assert
-    expect(buffer()).toMatchObject({ error: 'Permission denied', diskContent: '' })
+    expect(buffer()).toMatchObject({
+      content: { kind: 'error', message: 'Permission denied' },
+      diskContent: '',
+    })
   })
 })
 
