@@ -221,7 +221,7 @@ trial merge (`git merge-tree`), and say "conflicts" only when the changes really
 
 ## Codex asks to trust Dugout's hooks once
 
-- **Area:** `src/main/services/agentHooks/codexConfig.ts`
+- **Area:** `src/main/services/agents/codex/codexConfig.ts`
 - **Found:** 2026-10-06, verified with codex-cli 0.155
 
 **What happens:** the first Codex pane shows "Hooks need review". Until you choose _Trust all and
@@ -351,13 +351,13 @@ providers' `details_url` if a common format turns up.
 
 **What happens:** each agent's check starts as soon as it finishes, so several agents stopping
 together run several heavy checks in parallel. A result lives only as long as the agent's
-terminal (gone after a relaunch). A check in a new worktree fails when it needs untracked setup
-such as `node_modules/` (see "Worktrees start without untracked setup files"). An agent whose
-"Done" was already seen does not come back to the inbox when its check fails later; its header
-still shows it.
+terminal (gone after a relaunch). A check in a new worktree fails when it needs untracked files
+such as `node_modules/` that the project's worktree setup (decision 038) does not provide. An
+agent whose "Done" was already seen does not come back to the inbox when its check fails later;
+its header still shows it.
 
-**Likely fix:** a small concurrency limit with a "Queued" state; run the worktree setup command
-before the first check; keep a failed check in the inbox until it is opened.
+**Likely fix:** a small concurrency limit with a "Queued" state; keep a failed check in the inbox
+until it is opened.
 
 ## Terminals: WebGL cap within one project, flow control counts characters
 

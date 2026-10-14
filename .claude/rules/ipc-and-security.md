@@ -18,7 +18,8 @@ paths:
 - Resources created for a renderer (terminals, watchers) are released when that renderer
   reloads or is destroyed. No orphaned processes.
 - Navigation and `window.open` are blocked; external `https://` links go to the system browser.
-- Never log secrets or terminal input. Tokens, when added, go through Electron `safeStorage`.
+- Never log secrets or terminal input. Stored secrets (the GitHub token, the Linear API key) are
+  encrypted with Electron `safeStorage` and never leave main (decisions 015, 051).
 - The hook socket accepts a request only with the token of the terminal named in its path
   (`agentHooks/hookTokens.ts`, decision 059). The socket, per-terminal MCP configs and hook
   header files live in owner-only (0700) folders; files there are 0600. Hook commands read the

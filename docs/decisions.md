@@ -35,6 +35,8 @@ Playwright for Electron E2E, ESLint flat config + Prettier. SQLite, Monaco and f
 deferred until a feature needs them: start with JSON for metadata, git status driven by hook
 events for change detection, and a lightweight diff viewer.
 
+_Superseded in part by 014: Monaco is now the editor and the diff view (loaded lazily)._
+
 ## 006 — Shortcuts live in the native menu (2026-10-05)
 
 All keyboard shortcuts are menu accelerators that send an `AppCommand` to the renderer. They work
@@ -67,6 +69,9 @@ renderer addresses repositories by project id only; main resolves the path. Stat
 show, every 3s while visible, on window focus and whenever an agent in the project changes
 status. Diffs use a small custom unified-diff view instead of Monaco. Discard needs two clicks.
 
+_Superseded in part by 014 (diffs open in Monaco) and extended by 054 (Dugout-run git also
+ignores the repo's hooks, fsmonitor and other commands its config names)._
+
 ## 010 — Notifications only while Dugout is in the background (2026-10-05)
 
 `AgentNotifier` shows a native notification for `needs-input` and `done` only when no Dugout
@@ -95,6 +100,9 @@ id; it is reported only once the session has had a prompt, because Claude cannot
 session. Restored panes run `claude --resume <id>`. Launch lines use only plain `"$VAR"`
 expansions, since conditional forms behave differently in bash, zsh and fish. A pane that exits
 before Claude was ready (failed resume) offers "Start new session" instead of resuming again.
+
+_Superseded in part by 037: every agent with `canResume` resumes (Claude, Codex, OpenCode), each
+through its adapter's launch line._
 
 ## 014 — Explorer and Monaco editor in the center (2026-10-05)
 
@@ -170,6 +178,9 @@ are behind `TaskService`, so Jira or local storage can be added later.
 _Superseded in part by 053: the hook settings no longer pre-approve the whole `mcp__dugout`
 server, only its read and propose tools; task writes ask first._
 
+_Superseded in part by 051: a project's tasks come from GitHub Issues or Linear, and every agent
+with `hasMcp` gets the server (037). The tools are listed in [mcp-tools.md](mcp-tools.md)._
+
 ## 019 — "Needs you" inbox across projects (2026-10-06)
 
 Hooks for ready, needs-input and done forward their payload, and the hook server extracts a
@@ -217,13 +228,13 @@ each server are kept, writes are atomic, and a save is refused if the file chang
 read. Values that look like secrets written out in full get a warning (the file is usually
 committed; use `${VAR}`). Claude Code keeps loading `.mcp.json` itself. Codex panes get the same
 servers as `-c mcp_servers.<name>=…`, read from the pane's checkout when it starts (superseded by
-052: only once the user approved the project's servers). Codex does not
+057: only once the user approved the project's servers). Codex does not
 expand `${VAR}`, so a `${KEY}` env entry becomes `env_vars`, `Authorization: Bearer ${VAR}` becomes
 `bearer_token_env_var`, and a whole-value `${VAR}` header becomes `env_http_headers`; servers that
 need anything else (SSE, `${VAR}` inside a command, URL or longer value) stay Claude-only, and the
 tab says why. Values are never expanded into Codex's arguments, so no secret reaches a process
 list. There is no per-project "share with Codex" switch; sharing what Codex can run is the point
-(add one if a project needs it). Superseded by 052: sharing now waits for a per-project approval.
+(add one if a project needs it). Superseded by 057: sharing now waits for a per-project approval.
 
 "Make AGENTS.md the source" moves CLAUDE.md into a new AGENTS.md (or keeps an existing one) and
 leaves CLAUDE.md as an `@AGENTS.md` import (`@../AGENTS.md` from `.claude/CLAUDE.md`) plus a
@@ -558,6 +569,12 @@ screen) and ⌥⌘T starts it in a new worktree; every agent is in File → New 
 Per-agent shortcuts would run out of keys, so Codex's ⌥⇧⌘T is gone. The "+" menu lists every
 registered agent rather than only installed ones; the welcome check says which are missing. No
 per-project restriction of which agents are offered; add one if a project needs it.
+
+_Superseded in part: `hasUsage` is in use since 046 (Claude, Codex), and later decisions added the
+capabilities `canRunHeadless` (050), `hasTimeline` (048), `needsMcpApproval` (057) and
+`projectMcp` (061), plus `instructionsFiles` (061); `shared/agents.ts` is the current list._
+
+See also: [adding-an-agent.md](adding-an-agent.md), the checklist for a new adapter.
 
 ## 038 — Worktree setup: copy local files, run a setup command (2026-10-09)
 
@@ -1133,6 +1150,8 @@ agent read a secret and post it as a comment, with nobody asked.
   instructions. A closing tag inside the description is defused so it cannot end the block early.
   This lowers the odds an agent follows planted text; the permission prompt is what enforces it.
 
+See also: [mcp-tools.md](mcp-tools.md), every "dugout" tool with its inputs and access class.
+
 ## 054 — Dugout-run git ignores repo hooks and fsmonitor (2026-10-09)
 
 **Context.** Git runs commands that the repository itself names: hooks (`.git/hooks/*`, or
@@ -1509,4 +1528,5 @@ frame-ancestors 'none'`.
 33. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
 34. **Done since:** defence in depth: no `.git` access, agent-config files path-checked, safe
     first prompts, hook token off `ps`, stricter window and CSP, preview host shown ✅.
-35. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+35. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38), following
+    [adding-an-agent.md](adding-an-agent.md).
