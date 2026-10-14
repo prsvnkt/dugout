@@ -159,7 +159,11 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
 - **Monaco loads lazily** (`features/editor/monaco/`). The eager editor store talks to it only
   through `editorBridge`; never import `monaco-editor` outside that folder.
 - **All file access goes through `FileService`**, which realpaths every path and refuses
-  anything outside the checkout (symlinks included).
+  anything outside the checkout (symlinks included) or inside `.git` (decision 063). That
+  includes agent-config files (`.mcp.json`, `AGENTS.md`, `CLAUDE.md`): `AgentConfigService` takes
+  it injected, and sync callers use `readTextInsideSync`.
+- **A first prompt goes last, after `--`** (`--prompt="$VAR"` for OpenCode), so one starting
+  with `-` is never read as an option (decision 063).
 - **The GitHub token and the Linear API key never leave main** (decisions 015, 051).
   Renderer-facing types must not carry them; e2e tests assert this. Network git commands go
   through `GitService.runNetwork`.

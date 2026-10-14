@@ -6,7 +6,7 @@
  * and on-disk file formats live in `shared/persistence/`.
  */
 
-export { repoRelativePath, sessionId as sessionIdSchema } from './fields'
+export { isInGitDir, repoRelativePath, sessionId as sessionIdSchema } from './fields'
 export * from './agentConfigContract'
 export * from './cloneContract'
 export * from './filesContract'

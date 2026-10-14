@@ -19,11 +19,13 @@ function checkoutWithDocsServer(): string {
 }
 
 describe('codexAdapter', () => {
-  test('starts Codex with its config overrides and first prompt', () => {
+  test('starts Codex with its config overrides, then the first prompt after --', () => {
     const launch = codexAdapter.launch(launchContext({ hasInitialPrompt: true, ...withMcp() }))
     const count = codexConfigOverrides(MCP_ENTRY).length
     const overrides = Array.from({ length: count }, (_, i) => ` -c "$DUGOUT_CODEX_C${i}"`).join('')
-    expect(launch.commandLine).toBe(`"$DUGOUT_CODEX_COMMAND" "$DUGOUT_INITIAL_PROMPT"${overrides}`)
+    expect(launch.commandLine).toBe(
+      `"$DUGOUT_CODEX_COMMAND"${overrides} -- "$DUGOUT_INITIAL_PROMPT"`,
+    )
   })
 
   test('resumes Codex with its resume subcommand', () => {

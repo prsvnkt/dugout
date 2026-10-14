@@ -15,8 +15,24 @@ through Dugout's own tools and sibling config files. The agent's own permission 
 the boundary for shell access. Codex versions without the `env_vars` MCP key cannot forward the
 token, so Dugout's task tools fail to start there (closed, not open).
 
+Hook commands no longer put the token on curl's command line (they read the header from an
+owner-only file, decision 063), but the token is still in the agent's env for the MCP server.
+
 **Likely fix:** pass the token to the MCP server over an inherited file descriptor or a one-time
 handshake instead of an env var, if the agent CLIs ever support it.
+
+## Agent settings refuse a CLAUDE.md or AGENTS.md linked out of the checkout
+
+- **Area:** `src/main/services/agentConfig/AgentConfigService.ts`, `files/FileService.ts`
+- **Found:** 2026-10-14, while routing agent-config files through `FileService` (decision 063)
+
+**What happens:** a project whose `CLAUDE.md`, `AGENTS.md` or `.mcp.json` is a symlink to a file
+outside the repo (e.g. shared instructions in a dotfiles folder) gets an "outside the project"
+error in Agent settings instead of its status, and Codex starts without that `.mcp.json`'s
+servers. Links to files inside the repo work as before.
+
+**Possible improvement:** show such a file as "linked outside the project, not managed here"
+and keep the rest of the view working.
 
 ## Packaged app: DUGOUT_E2E is a gate, not a boundary
 
@@ -212,7 +228,7 @@ trial merge (`git merge-tree`), and say "conflicts" only when the changes really
 continue_ (or review them with `/hooks`), Codex runs without them and the pane never leaves
 "Starting". Codex stores the trust in `~/.codex/config.toml` (`[hooks.state]`), so later panes
 start straight away. If a Dugout update changes or adds hook commands (as the subagent hooks of
-decision 032 did), Codex asks again.
+decision 032 and the header file of decision 063 did), Codex asks again.
 
 **Possible improvement:** detect a Codex pane stuck in "Starting" and show a hint about the
 review prompt.

@@ -36,11 +36,19 @@ describe('buildHookSettings', () => {
     }
   })
 
-  test('hook commands read the socket, token and terminal id from the environment', () => {
+  test('hook commands read the socket, header file and terminal id from the environment', () => {
     const command = settings.hooks.Stop?.[0]?.hooks[0]?.command ?? ''
     expect(command).toContain('--unix-socket "$DUGOUT_HOOK_SOCKET"')
-    expect(command).toContain('Authorization: Bearer $DUGOUT_HOOK_TOKEN')
+    expect(command).toContain('-H "@$DUGOUT_HOOK_HEADER"')
     expect(command).toContain('/hooks/$DUGOUT_TERMINAL_ID/done')
+  })
+
+  test('the hook token never appears on the curl command line (visible in ps)', () => {
+    for (const groups of Object.values(settings.hooks)) {
+      const command = groups[0]?.hooks[0]?.command ?? ''
+      expect(command).not.toContain('DUGOUT_HOOK_TOKEN')
+      expect(command).not.toContain('Bearer')
+    }
   })
 
   test('hook commands never fail or block Claude', () => {

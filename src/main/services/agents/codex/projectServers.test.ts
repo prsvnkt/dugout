@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
@@ -60,5 +60,21 @@ describe('codexProjectServers', () => {
     expect(codexProjectServers(root, undefined)).toEqual({ overrides: [], withheld: null })
     write('.mcp.json', 'nope')
     expect(codexProjectServers(root, undefined)).toEqual({ overrides: [], withheld: null })
+  })
+
+  test('ignores a .mcp.json that links out of the checkout', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'dugout-outside-'))
+    writeFileSync(join(outside, 'servers.json'), JSON.stringify({ mcpServers: { docs: DOCS } }))
+    symlinkSync(join(outside, 'servers.json'), join(root, '.mcp.json'))
+
+    expect(readProjectServers(root)).toBeNull()
+    expect(codexProjectServers(root, undefined)).toEqual({ overrides: [], withheld: null })
+  })
+
+  test('reads a .mcp.json linked to another file in the checkout', () => {
+    write('servers.json', JSON.stringify({ mcpServers: { docs: DOCS } }))
+    symlinkSync(join(root, 'servers.json'), join(root, '.mcp.json'))
+
+    expect(readProjectServers(root)?.servers.map((server) => server.name)).toEqual(['docs'])
   })
 })

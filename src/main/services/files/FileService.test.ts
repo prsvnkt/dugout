@@ -79,6 +79,55 @@ describe('FileService path safety', () => {
   test('refuses paths that climb out of the checkout', async () => {
     await expect(files.readFile(makeRepo(), '../etc/passwd')).rejects.toThrow('outside the project')
   })
+
+  test('refuses to read or write inside .git (config, hooks)', async () => {
+    const root = makeRepo()
+
+    await expect(files.readFile(root, '.git/config')).rejects.toThrow('.git')
+    await expect(files.readDir(root, '.git')).rejects.toThrow('.git')
+    await expect(files.writeText(root, '.git/hooks/pre-commit', 'evil')).rejects.toThrow('.git')
+    await expect(files.readText(root, '.GIT/config')).rejects.toThrow('.git')
+    expect(statSync(join(root, '.git', 'hooks', 'pre-commit'), { throwIfNoEntry: false })).toBe(
+      undefined,
+    )
+  })
+
+  test('refuses a symlink inside the checkout that leads into .git', async () => {
+    const root = makeRepo()
+    symlinkSync(join(root, '.git', 'config'), join(root, 'config-link'))
+    symlinkSync(join(root, '.git'), join(root, 'git-link'))
+
+    await expect(files.readFile(root, 'config-link')).rejects.toThrow('.git')
+    await expect(files.writeText(root, 'git-link/hooks/post-checkout', 'evil')).rejects.toThrow(
+      '.git',
+    )
+  })
+
+  test('still reads files that only start with .git', async () => {
+    const root = makeRepo()
+    writeFileSync(join(root, '.gitignore'), 'out/\n')
+
+    expect((await files.readFile(root, '.gitignore')).content).toBe('out/\n')
+  })
+})
+
+describe('FileService.readText', () => {
+  test('reads a text file, or null when it does not exist', async () => {
+    const root = makeRepo()
+    writeFileSync(join(root, 'AGENTS.md'), '# Shared\n')
+
+    expect(await files.readText(root, 'AGENTS.md')).toBe('# Shared\n')
+    expect(await files.readText(root, 'missing.md')).toBeNull()
+  })
+
+  test('refuses a symlink out of the checkout', async () => {
+    const root = makeRepo()
+    const outside = realpathSync(mkdtempSync(join(tmpdir(), 'dugout-outside-')))
+    writeFileSync(join(outside, 'notes.md'), 'private')
+    symlinkSync(join(outside, 'notes.md'), join(root, 'CLAUDE.md'))
+
+    await expect(files.readText(root, 'CLAUDE.md')).rejects.toThrow('outside the project')
+  })
 })
 
 describe('FileService.readFile', () => {

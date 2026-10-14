@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { devServerUrl, isOneLineCommand, toWebUrl } from './preview'
+import { devServerUrl, isOneLineCommand, toWebUrl, urlHost } from './preview'
 
 describe('toWebUrl', () => {
   test.each([
@@ -36,4 +36,16 @@ describe('isOneLineCommand', () => {
 
 test('devServerUrl points at localhost on the port', () => {
   expect(devServerUrl(4100)).toBe('http://localhost:4100')
+})
+
+describe('urlHost', () => {
+  test('is the host (with any port) a link opens, so it can be shown before opening', () => {
+    expect(urlHost('https://app-git-login.vercel.app/path?q=1')).toBe('app-git-login.vercel.app')
+    expect(urlHost('http://127.0.0.1:4000/x')).toBe('127.0.0.1:4000')
+  })
+
+  test('is null for something that is not a web URL', () => {
+    expect(urlHost('not a url')).toBeNull()
+    expect(urlHost('file:///etc/passwd')).toBeNull()
+  })
 })

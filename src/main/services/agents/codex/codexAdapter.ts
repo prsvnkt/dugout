@@ -31,12 +31,11 @@ function commandLine(context: AgentLaunchContext, overrideCount: number): string
     { length: overrideCount },
     (_, index) => `-c "$DUGOUT_CODEX_C${index}"`,
   )
-  const start = context.isResuming
-    ? ['resume "$DUGOUT_RESUME_SESSION"']
-    : context.hasInitialPrompt
-      ? ['"$DUGOUT_INITIAL_PROMPT"']
-      : []
-  return ['"$DUGOUT_CODEX_COMMAND"', ...start, ...overrides].join(' ')
+  const resume = context.isResuming ? ['resume "$DUGOUT_RESUME_SESSION"'] : []
+  // Last, after `--`: a prompt starting with `-` (or naming a subcommand) stays the prompt.
+  const prompt =
+    !context.isResuming && context.hasInitialPrompt ? ['-- "$DUGOUT_INITIAL_PROMPT"'] : []
+  return ['"$DUGOUT_CODEX_COMMAND"', ...resume, ...overrides, ...prompt].join(' ')
 }
 
 /** Codex CLI: the same hooks and the dugout server as `-c key=value` config overrides. */
