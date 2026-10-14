@@ -13,6 +13,8 @@ export const XTERM_OPTIONS: ITerminalOptions = {
   scrollback: 10_000,
   allowProposedApi: true,
   macOptionIsMeta: true,
+  // Option+drag makes a normal selection (copy with Cmd+C) even while an agent tracks the mouse.
+  macOptionClickForcesSelection: true,
   // "Day game" light theme; matches --bg-canvas. Claude Code itself should use a light /theme.
   theme: {
     background: '#fbfbfc',
