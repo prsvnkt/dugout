@@ -1,7 +1,8 @@
 import { useShallow } from 'zustand/react/shallow'
 import { ChevronsRight, Minus, Plus } from 'lucide-react'
 import type { GitFileChange, GitStatus } from '@shared/git'
-import type { Project } from '@shared/project'
+import type { Project, ProjectId } from '@shared/project'
+import type { GitCheckout } from '@shared/worktree'
 import { useEditorStore, useProjectTabs } from '@renderer/features/editor/editorStore'
 import { useSelectedCheckout } from '@renderer/features/workspace/workspaceStore'
 import { CheckoutPicker } from '@renderer/features/worktrees/CheckoutPicker'
@@ -22,6 +23,8 @@ import styles from './GitPanel.module.css'
 interface GitPanelProps {
   readonly project: Project
 }
+
+type PullRequestStatus = ReturnType<typeof usePullRequestStatus>
 
 function entries(files: readonly GitFileChange[], side: 'staged' | 'unstaged'): ChangeEntry[] {
   return files.flatMap((file) => {
@@ -54,24 +57,9 @@ function pushLabel(status: GitStatus): string | null {
   return status.ahead > 0 ? `Push ${status.ahead}` : null
 }
 
-export function GitPanel({ project }: GitPanelProps) {
-  const checkout = useSelectedCheckout(project.id)
-  const git = useCheckoutGit(checkout)
-  const pullRequest = usePullRequestStatus(checkout, git.status)
-  const actions = useGitStore(useShallow(selectCheckoutActions))
-  const id = checkout
-  const openDiff = useEditorStore((state) => state.openDiff)
-  const signIn = useAuthStore((state) => state.signIn)
+function HideButton() {
   const setPanelOpen = useGitStore((state) => state.setPanelOpen)
-  const hasWorktrees = useProjectWorktrees(project.id).length > 0
-  const { tabs, activeTabId } = useProjectTabs(project.id)
-  const activeTab = tabs.find((tab) => tab.id === activeTabId)
-  const selection: GitSelection | null =
-    activeTab?.kind === 'diff' && activeTab.worktreePath === (checkout.worktreePath ?? null)
-      ? { path: activeTab.path, staged: activeTab.staged }
-      : null
-
-  const hideButton = (
+  return (
     <button
       className={styles.hide}
       onClick={() => setPanelOpen(false)}
@@ -81,13 +69,141 @@ export function GitPanel({ project }: GitPanelProps) {
       <Icon icon={ChevronsRight} />
     </button>
   )
+}
+
+interface HeaderActionsProps {
+  readonly checkout: GitCheckout
+  readonly status: GitStatus
+  readonly isBusy: boolean
+  readonly pullRequest: PullRequestStatus
+}
+
+/** Push / Publish, and Open PR or Create PR. */
+function HeaderActions({ checkout, status, isBusy, pullRequest }: HeaderActionsProps) {
+  const actions = useGitStore(useShallow(selectCheckoutActions))
+  const push = pushLabel(status)
+  const isPullRequestOpen =
+    pullRequest && (pullRequest.state === 'open' || pullRequest.state === 'draft')
+  return (
+    <>
+      {push && (
+        <button
+          className={styles.pushButton}
+          onClick={() => void actions.push(checkout)}
+          disabled={isBusy}
+        >
+          {push}
+        </button>
+      )}
+      {isPullRequestOpen ? (
+        <button
+          className={styles.pushButton}
+          onClick={() => void dugout.git.openUrl(pullRequest.url)}
+          title="Open the pull request on GitHub"
+        >
+          Open PR
+        </button>
+      ) : (
+        canOpenPullRequest(status) && (
+          <button
+            className={styles.pushButton}
+            onClick={() => void actions.openPullRequest(checkout)}
+            disabled={isBusy}
+            title="Push if needed, then open a new pull request in your browser"
+          >
+            Create PR
+          </button>
+        )
+      )}
+    </>
+  )
+}
+
+function ActionError({ message }: { message: string }) {
+  const signIn = useAuthStore((state) => state.signIn)
+  return (
+    <div className={styles.error} role="alert">
+      {message}
+      {isAuthError(message) && (
+        <button className={styles.signIn} onClick={() => void signIn()}>
+          Sign in to GitHub
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** The diff tab open for this checkout, highlighted in the change lists. */
+function useDiffSelection(projectId: ProjectId, checkout: GitCheckout): GitSelection | null {
+  const { tabs, activeTabId } = useProjectTabs(projectId)
+  const activeTab = tabs.find((tab) => tab.id === activeTabId)
+  return activeTab?.kind === 'diff' && activeTab.worktreePath === (checkout.worktreePath ?? null)
+    ? { path: activeTab.path, staged: activeTab.staged }
+    : null
+}
+
+interface ChangeListsProps {
+  readonly projectId: ProjectId
+  readonly checkout: GitCheckout
+  readonly staged: readonly ChangeEntry[]
+  readonly unstaged: readonly ChangeEntry[]
+  readonly isBusy: boolean
+}
+
+function ChangeLists({ projectId, checkout, staged, unstaged, isBusy }: ChangeListsProps) {
+  const actions = useGitStore(useShallow(selectCheckoutActions))
+  const openDiff = useEditorStore((state) => state.openDiff)
+  const selection = useDiffSelection(projectId, checkout)
+  const select = (isStaged: boolean) => (path: string) =>
+    openDiff(projectId, checkout.worktreePath ?? null, path, isStaged)
+  const pathsOf = (list: readonly ChangeEntry[]) => list.map((entry) => entry.path)
+  return (
+    <div className={styles.changes}>
+      {staged.length + unstaged.length === 0 && (
+        <p className={styles.notice}>No changes. Working tree clean.</p>
+      )}
+      <ChangeSection
+        title="Staged Changes"
+        entries={staged}
+        isStaged
+        selection={selection}
+        isBusy={isBusy}
+        bulkLabel="Unstage all"
+        bulkIcon={Minus}
+        onBulk={() => void actions.unstage(checkout, pathsOf(staged))}
+        onSelect={select(true)}
+        onUnstage={(path) => void actions.unstage(checkout, [path])}
+      />
+      <ChangeSection
+        title="Changes"
+        entries={unstaged}
+        isStaged={false}
+        selection={selection}
+        isBusy={isBusy}
+        bulkLabel="Stage all"
+        bulkIcon={Plus}
+        onBulk={() => void actions.stage(checkout, pathsOf(unstaged))}
+        onSelect={select(false)}
+        onStage={(path) => void actions.stage(checkout, [path])}
+        onDiscard={(path) => void actions.discard(checkout, [path])}
+      />
+    </div>
+  )
+}
+
+export function GitPanel({ project }: GitPanelProps) {
+  const checkout = useSelectedCheckout(project.id)
+  const git = useCheckoutGit(checkout)
+  const pullRequest = usePullRequestStatus(checkout, git.status)
+  const commit = useGitStore((state) => state.commit)
+  const hasWorktrees = useProjectWorktrees(project.id).length > 0
 
   if (!git.status) {
     return (
       <aside className={styles.panel} aria-label="Source control">
         <header className={styles.header}>
           <span className={styles.heading}>Source Control</span>
-          {hideButton}
+          <HideButton />
         </header>
         <CheckoutPicker project={project} />
         <p className={styles.notice}>{git.statusError ?? 'Loading git status…'}</p>
@@ -95,115 +211,45 @@ export function GitPanel({ project }: GitPanelProps) {
     )
   }
 
-  const staged = entries(git.status.files, 'staged')
-  const unstaged = entries(git.status.files, 'unstaged')
-  const push = pushLabel(git.status)
-  const select = (staged: boolean) => (path: string) =>
-    openDiff(project.id, checkout.worktreePath ?? null, path, staged)
-
+  const { status, isBusy } = git
+  const staged = entries(status.files, 'staged')
+  const unstaged = entries(status.files, 'unstaged')
   return (
     <aside className={styles.panel} aria-label="Source control">
       <header className={styles.header}>
         <span className={styles.heading}>Source Control</span>
-        {push && (
-          <button
-            className={styles.pushButton}
-            onClick={() => void actions.push(id)}
-            disabled={git.isBusy}
-          >
-            {push}
-          </button>
-        )}
-        {pullRequest && (pullRequest.state === 'open' || pullRequest.state === 'draft') ? (
-          <button
-            className={styles.pushButton}
-            onClick={() => void dugout.git.openUrl(pullRequest.url)}
-            title="Open the pull request on GitHub"
-          >
-            Open PR
-          </button>
-        ) : (
-          canOpenPullRequest(git.status) && (
-            <button
-              className={styles.pushButton}
-              onClick={() => void actions.openPullRequest(id)}
-              disabled={git.isBusy}
-              title="Push if needed, then open a new pull request in your browser"
-            >
-              Create PR
-            </button>
-          )
-        )}
-        {hideButton}
+        <HeaderActions
+          checkout={checkout}
+          status={status}
+          isBusy={isBusy}
+          pullRequest={pullRequest}
+        />
+        <HideButton />
       </header>
       {hasWorktrees && <CheckoutPicker project={project} />}
       <div className={styles.branchRow}>
-        <BranchPicker checkout={checkout} currentBranch={git.status.branch}>
-          <BranchSummary status={git.status} />
+        <BranchPicker checkout={checkout} currentBranch={status.branch}>
+          <BranchSummary status={status} />
         </BranchPicker>
-        <FetchButton checkout={checkout} isBusy={git.isBusy} />
+        <FetchButton checkout={checkout} isBusy={isBusy} />
       </div>
       {pullRequest && <PullRequestBlock checkout={checkout} pullRequest={pullRequest} />}
-      <PreviewBlock project={project} checkout={checkout} status={git.status} />
+      <PreviewBlock project={project} checkout={checkout} status={status} />
       <CommitBox
         stagedCount={staged.length}
         unstagedCount={unstaged.length}
-        branch={git.status.branch}
-        isBusy={git.isBusy}
-        onCommit={(message, options) => actions.commit(id, message, options)}
+        branch={status.branch}
+        isBusy={isBusy}
+        onCommit={(message, options) => commit(checkout, message, options)}
       />
-
-      {git.actionError && (
-        <div className={styles.error} role="alert">
-          {git.actionError}
-          {isAuthError(git.actionError) && (
-            <button className={styles.signIn} onClick={() => void signIn()}>
-              Sign in to GitHub
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className={styles.changes}>
-        {staged.length + unstaged.length === 0 && (
-          <p className={styles.notice}>No changes. Working tree clean.</p>
-        )}
-        <ChangeSection
-          title="Staged Changes"
-          entries={staged}
-          isStaged
-          selection={selection}
-          isBusy={git.isBusy}
-          bulkLabel="Unstage all"
-          bulkIcon={Minus}
-          onBulk={() =>
-            void actions.unstage(
-              id,
-              staged.map((entry) => entry.path),
-            )
-          }
-          onSelect={select(true)}
-          onUnstage={(path) => void actions.unstage(id, [path])}
-        />
-        <ChangeSection
-          title="Changes"
-          entries={unstaged}
-          isStaged={false}
-          selection={selection}
-          isBusy={git.isBusy}
-          bulkLabel="Stage all"
-          bulkIcon={Plus}
-          onBulk={() =>
-            void actions.stage(
-              id,
-              unstaged.map((entry) => entry.path),
-            )
-          }
-          onSelect={select(false)}
-          onStage={(path) => void actions.stage(id, [path])}
-          onDiscard={(path) => void actions.discard(id, [path])}
-        />
-      </div>
+      {git.actionError && <ActionError message={git.actionError} />}
+      <ChangeLists
+        projectId={project.id}
+        checkout={checkout}
+        staged={staged}
+        unstaged={unstaged}
+        isBusy={isBusy}
+      />
     </aside>
   )
 }

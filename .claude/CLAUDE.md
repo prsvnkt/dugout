@@ -46,7 +46,7 @@ src/
     services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
                 git/ (review panel, PR URLs), agents/ (one adapter per agent CLI: launch line,
                 hooks, MCP; registry.ts lists them), agentHooks/ (hook server, per-terminal tokens, status signals,
-                pending approvals, subagents, session ids),
+                pending approvals, subagents, session ids, agentRpc: MCP tool-call routing),
                 worktrees/ (isolated sessions + setup), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API,
                 PRs, PR review threads + failing CI for agents, preview deployments),
@@ -67,6 +67,9 @@ src/
                 proposals, pinned-file hashes, search, headless codemap).
     mcp/        The "dugout" MCP server agents use for tasks and project context (separate build
                 entry: mcp.js).
+    compose/    The composition root, split by domain (decision 065): index.ts `start()` calls
+                compose<Domain>() for GitHub, git, tasks, context, usage and terminals, then
+                registerIpc. Electron wiring only, excluded from coverage; logic belongs in services/.
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
     devOverrides.ts  Every test/dev env override, ignored by a packaged build (decision 060).
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
@@ -100,7 +103,10 @@ src/
               agent header or a task tab (decision 048).
               taskQueue/ starts queued tasks while a project has free agent slots (decision 047).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
-              pure state transitions (e.g. workspace/layout.ts) are unit-tested.
+              big stores are built from slices: workspace/ (workspaceState, paneLayoutSlice,
+              paneRuntimeSlice, workspaceSnapshot) and editor/ (editorState, editorTabsSlice,
+              editorBuffersSlice, editorOps). Pure state transitions (e.g. workspace/layout.ts)
+              are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.
 scripts/demo/ Records raw demo footage (out/demo/demo.gif): sample repos, scripted agents, frames.
               The README GIF (docs/media/demo.gif) is edited from it by hand; never overwrite it.

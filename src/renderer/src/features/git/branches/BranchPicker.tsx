@@ -1,19 +1,10 @@
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { GitCheckout } from '@shared/worktree'
-import { useExplorerStore } from '@renderer/features/explorer/explorerStore'
-import { loadedDefaultAgent } from '@renderer/features/start/defaultAgentStore'
-import { useWorktreeStore } from '@renderer/features/worktrees/worktreeStore'
 import { Icon } from '@renderer/lib/Icon'
-import { useDismiss } from '@renderer/lib/useDismiss'
-import { useGitStore } from '../gitStore'
-import { pickerSections, type PickerItem, type PickerMode } from './pickerSections'
 import { BranchPickerRow } from './BranchPickerRow'
-import { useBranches } from './useBranches'
-import { useBusyAgents } from './useBusyAgents'
+import { useBranchPicker, type BranchPickerState } from './useBranchPicker'
 import styles from './BranchPicker.module.css'
-
-const SWITCH_MODE: PickerMode = { kind: 'switch' }
 
 interface BranchPickerProps {
   readonly checkout: GitCheckout
@@ -22,181 +13,90 @@ interface BranchPickerProps {
   readonly children: ReactNode
 }
 
-function isEnabled(item: PickerItem): boolean {
-  return item.kind !== 'branch' || item.disabledReason === null
+/** The options, grouped into titled sections (actions first). */
+function PickerOptions({ picker }: { picker: BranchPickerState }) {
+  return (
+    <ul className={styles.list} id="branch-options" role="listbox" aria-label="Branches">
+      {picker.sections.map((section, index) => (
+        <li key={section.title ?? `actions-${index}`} role="presentation">
+          {section.title && (
+            <span className={styles.sectionTitle} role="presentation">
+              {section.title}
+            </span>
+          )}
+          <ul role="group" aria-label={section.title ?? 'Actions'} className={styles.group}>
+            {section.items.map((item) => (
+              <BranchPickerRow
+                key={item.id}
+                item={item}
+                isActive={item.id === picker.active?.id}
+                isArmed={item.id === picker.armedId}
+                onActivate={() => picker.activate(item)}
+                onHover={() => picker.hover(item.id)}
+              />
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
-/**
- * Picking a branch replaces the checkout's files (switching, or a new branch from it), so busy
- * agents are at risk. Creating a branch at HEAD changes no files.
- */
-function changesFiles(item: PickerItem): boolean {
-  return item.kind === 'branch'
+function PickerPopover({ picker }: { picker: BranchPickerState }) {
+  const { mode, list, active, busyAgents } = picker
+  const isBase = mode.kind === 'base'
+  return (
+    <div className={styles.popover} role="dialog" aria-label="Switch branch">
+      {mode.kind === 'base' && (
+        <p className={styles.step}>
+          Create “{mode.newName}” from… <kbd>esc</kbd> back
+        </p>
+      )}
+      <input
+        className={styles.search}
+        value={picker.query}
+        onChange={(event) => picker.setQuery(event.target.value)}
+        onKeyDown={picker.onKeyDown}
+        placeholder={isBase ? 'Choose a starting branch' : 'Search or create a new branch'}
+        aria-label={isBase ? 'Starting branch' : 'Branch name'}
+        role="combobox"
+        aria-expanded
+        aria-controls="branch-options"
+        aria-activedescendant={active ? `branch-option-${active.id}` : undefined}
+        autoFocus
+        spellCheck={false}
+      />
+      {busyAgents > 0 && mode.kind === 'switch' && (
+        <p className={styles.warning} role="note">
+          {busyAgents === 1 ? '1 agent is' : `${busyAgents} agents are`} busy in this checkout.
+          Switching changes their files mid-task; a worktree session keeps them safe.
+        </p>
+      )}
+      {list.state === 'loading' && <p className={styles.notice}>Loading branches…</p>}
+      {list.state === 'error' && <p className={styles.error}>{list.message}</p>}
+      <PickerOptions picker={picker} />
+    </div>
+  )
 }
 
 /** Search-as-you-type branch switcher anchored to the branch in the Source Control panel. */
 export function BranchPicker({ checkout, currentBranch, children }: BranchPickerProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [mode, setMode] = useState<PickerMode>(SWITCH_MODE)
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [armedId, setArmedId] = useState<string | null>(null)
-  const [showSessions, setShowSessions] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
-  const list = useBranches(checkout, isOpen)
-  const busyAgents = useBusyAgents(checkout)
-  const switchBranch = useGitStore((state) => state.switchBranch)
-  const createBranch = useGitStore((state) => state.createBranch)
-  const startWorktreeSession = useWorktreeStore((state) => state.startSession)
-  const refreshExplorer = useExplorerStore((state) => state.refresh)
-
-  const close = useCallback(() => {
-    setIsOpen(false)
-    setQuery('')
-    setMode(SWITCH_MODE)
-    setArmedId(null)
-    setShowSessions(false)
-  }, [])
-  useDismiss(wrapRef, isOpen, close)
-
-  const sections = useMemo(
-    () =>
-      list.state === 'loaded' ? pickerSections(list.branches, query, mode, { showSessions }) : [],
-    [list, query, mode, showSessions],
-  )
-  const enabled = sections.flatMap((section) => section.items).filter(isEnabled)
-  // By default Enter picks the best branch match (the most recent other branch when the search
-  // is empty, like `git switch -`), or creates the typed name when no branch matches.
-  const fallback = enabled.find((item) => item.kind === 'branch') ?? enabled[0] ?? null
-  const active = enabled.find((item) => item.id === activeId) ?? fallback
-
-  const finish = async (action: Promise<boolean>) => {
-    close()
-    if (await action) void refreshExplorer(checkout)
-  }
-
-  const activate = (item: PickerItem) => {
-    if (!isEnabled(item)) return
-    if (busyAgents > 0 && changesFiles(item) && armedId !== item.id) {
-      setArmedId(item.id)
-      return
-    }
-    if (item.kind === 'sessions') {
-      setShowSessions(!item.isExpanded)
-      return
-    }
-    if (item.kind === 'createFrom') {
-      setMode({ kind: 'base', newName: item.name })
-      setQuery('')
-      return
-    }
-    if (item.kind === 'worktree') {
-      close()
-      void loadedDefaultAgent().then((agent) => startWorktreeSession(checkout.projectId, agent))
-      return
-    }
-    if (item.kind === 'create') return void finish(createBranch(checkout, item.name))
-    if (mode.kind === 'base')
-      return void finish(createBranch(checkout, mode.newName, item.branch.name))
-    void finish(switchBranch(checkout, { kind: item.branch.kind, name: item.branch.name }))
-  }
-
-  const move = (step: number) => {
-    if (enabled.length === 0) return
-    const index = active ? enabled.indexOf(active) : -1
-    const next = enabled[(index + step + enabled.length) % enabled.length]
-    setActiveId(next?.id ?? null)
-    setArmedId(null)
-  }
-
-  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      move(event.key === 'ArrowDown' ? 1 : -1)
-    } else if (event.key === 'Enter') {
-      event.preventDefault()
-      if (active) activate(active)
-    } else if (event.key === 'Escape') {
-      // Handled here so the window-level dismiss does not also close from the base step.
-      event.stopPropagation()
-      if (mode.kind === 'base') setMode(SWITCH_MODE)
-      else close()
-    }
-  }
-
+  const picker = useBranchPicker(checkout, wrapRef)
   return (
     <div className={styles.wrap} ref={wrapRef}>
       <button
         className={styles.trigger}
-        onClick={() => (isOpen ? close() : setIsOpen(true))}
+        onClick={picker.toggle}
         aria-haspopup="dialog"
-        aria-expanded={isOpen}
+        aria-expanded={picker.isOpen}
         aria-label={`Switch branch (current: ${currentBranch ?? 'detached HEAD'})`}
         title="Switch or create a branch"
       >
         {children}
         <Icon icon={ChevronDown} className={styles.caret} />
       </button>
-      {isOpen && (
-        <div className={styles.popover} role="dialog" aria-label="Switch branch">
-          {mode.kind === 'base' && (
-            <p className={styles.step}>
-              Create “{mode.newName}” from… <kbd>esc</kbd> back
-            </p>
-          )}
-          <input
-            className={styles.search}
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value)
-              setActiveId(null)
-              setArmedId(null)
-            }}
-            onKeyDown={onKeyDown}
-            placeholder={
-              mode.kind === 'base' ? 'Choose a starting branch' : 'Search or create a new branch'
-            }
-            aria-label={mode.kind === 'base' ? 'Starting branch' : 'Branch name'}
-            role="combobox"
-            aria-expanded
-            aria-controls="branch-options"
-            aria-activedescendant={active ? `branch-option-${active.id}` : undefined}
-            autoFocus
-            spellCheck={false}
-          />
-          {busyAgents > 0 && mode.kind === 'switch' && (
-            <p className={styles.warning} role="note">
-              {busyAgents === 1 ? '1 agent is' : `${busyAgents} agents are`} busy in this checkout.
-              Switching changes their files mid-task; a worktree session keeps them safe.
-            </p>
-          )}
-          {list.state === 'loading' && <p className={styles.notice}>Loading branches…</p>}
-          {list.state === 'error' && <p className={styles.error}>{list.message}</p>}
-          <ul className={styles.list} id="branch-options" role="listbox" aria-label="Branches">
-            {sections.map((section, index) => (
-              <li key={section.title ?? `actions-${index}`} role="presentation">
-                {section.title && (
-                  <span className={styles.sectionTitle} role="presentation">
-                    {section.title}
-                  </span>
-                )}
-                <ul role="group" aria-label={section.title ?? 'Actions'} className={styles.group}>
-                  {section.items.map((item) => (
-                    <BranchPickerRow
-                      key={item.id}
-                      item={item}
-                      isActive={item.id === active?.id}
-                      isArmed={item.id === armedId}
-                      onActivate={() => activate(item)}
-                      onHover={() => setActiveId(item.id)}
-                    />
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {picker.isOpen && <PickerPopover picker={picker} />}
     </div>
   )
 }

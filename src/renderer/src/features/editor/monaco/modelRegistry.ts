@@ -37,7 +37,7 @@ export function modelFor(fileKey: string): monaco.editor.ITextModel | undefined 
 }
 
 function syncModel(buffer: FileBuffer): void {
-  if (buffer.isBinary || buffer.isTooLarge || buffer.error) return
+  if (buffer.content.kind !== 'text') return
   const existing = models.get(buffer.fileKey)
   if (!existing) {
     const model = monaco.editor.createModel(buffer.diskContent, undefined, uriFor(buffer))
