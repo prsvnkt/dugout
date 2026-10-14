@@ -1474,6 +1474,28 @@ frame-ancestors 'none'`.
 - **Preview.** The deployment row shows the URL's host next to "Open preview", since the link
   comes from a GitHub deployment status that anyone with deploy access can set.
 
+## 065 — Composition root split into compose/ modules; stores as slices (2026-10-14)
+
+**Context.** A few closures had grown far past the 50-line rule (#70): `start()` in
+`main/index.ts` built every service, wired every IPC domain and held module-level `let`
+singletons; `editorStore` and `workspaceStore` were single `create()` calls of several hundred
+lines; `EditorArea`, `BranchPicker` and `GitPanel` rendered everything in one component.
+
+**Decision.** `main/index.ts` keeps only app lifecycle; `start()` calls `composeServices()`,
+which builds the services leaf first through `main/compose/` (`composeGithub`, `composeGit`,
+`composeTasks`, `composeContext`, `composeUsage`, `composeTerminal`), then `registerAllIpc`.
+Services are passed as values, so there are no module-level singletons, and the hook server
+starts after GitHub, git, tasks and context exist. `compose/` is Electron wiring like
+`index.ts` and is excluded from coverage; anything with logic moves into `services/` with a
+test (the MCP tool-call routing became `services/agentHooks/agentRpc.ts`, with `broadcast`
+injected). The two big stores are composed from slices with shared state types:
+`editorState` / `editorTabsSlice` / `editorBuffersSlice` / `editorOps` (buffers are a
+`BufferContent` union: text, binary, too-large, error) and `workspaceState` /
+`paneLayoutSlice` / `paneRuntimeSlice` / `workspaceSnapshot`. `EditorArea`, `BranchPicker`
+(with `useBranchPicker`) and `GitPanel` are split into sub-components. Behaviour is unchanged.
+`CloneDialog`, `TaskDetailView`, `TerminalPane`, `TasksPanel` and `CompareView` are left for a
+follow-up.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1528,5 +1550,6 @@ frame-ancestors 'none'`.
 33. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
 34. **Done since:** defence in depth: no `.git` access, agent-config files path-checked, safe
     first prompts, hook token off `ps`, stricter window and CSP, preview host shown ✅.
-35. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38), following
+35. **Done since:** the composition root and the big stores split into focused modules ✅.
+36. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38), following
     [adding-an-agent.md](adding-an-agent.md).

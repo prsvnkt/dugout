@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { Settings, SettingsStore } from '../services/settings/SettingsStore'
-import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerSettingsIpc } from './registerSettingsIpc'
 
 function setup(saved: Partial<Settings>) {

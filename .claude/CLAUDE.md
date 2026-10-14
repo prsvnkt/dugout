@@ -52,7 +52,7 @@ src/
     services/   Domain logic, framework-light and unit-tested: terminal/, projects/,
                 git/ (review panel, PR URLs), agents/ (one adapter per agent CLI: launch line,
                 hooks, MCP; registry.ts lists them), agentHooks/ (hook server, per-terminal tokens, status signals,
-                pending approvals, subagents, session ids),
+                pending approvals, subagents, session ids, agentRpc: MCP tool-call routing),
                 worktrees/ (isolated sessions + setup), workspace/ (saved layouts), notifications/,
                 files/ (explorer + editor file access, path-safe), github/ (sign-in, API,
                 PRs, PR review threads + failing CI for agents, preview deployments),
@@ -73,6 +73,9 @@ src/
                 proposals, pinned-file hashes, search, headless codemap).
     mcp/        The "dugout" MCP server agents use for tasks and project context (separate build
                 entry: mcp.js); its tools are listed in docs/mcp-tools.md.
+    compose/    The composition root, split by domain (decision 065): index.ts `start()` calls
+                compose<Domain>() for GitHub, git, tasks, context, usage and terminals, then
+                registerIpc. Electron wiring only, excluded from coverage; logic belongs in services/.
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
     window.ts   The main BrowserWindow (secure webPreferences, traffic lights); appIcon.ts sets
                 the Dock icon for unpackaged runs.
@@ -81,6 +84,8 @@ src/
               api.ts builds it from an injected ipcRenderer (unit-tested); index.ts exposes it.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
               `agents.ts` is the agent registry the UI reads (labels, capabilities).
+              ipc/ holds one `<domain>Contract.ts` per IPC domain behind the `contract.ts` barrel;
+              persistence/ holds the on-disk formats (projects.json, workspace.json).
   renderer/   React UI. Organised by feature: src/renderer/src/features/<feature>/, shared bits
               in src/renderer/src/lib/, the root component in app/, design tokens in styles/.
               Layout: project tabs (title bar) / Explorer over Agents | editor over terminals |
@@ -114,7 +119,10 @@ src/
               projects/ (project tabs, colours), explorer/ (file tree), git/ (Git panel,
               branches, pull request block), editor/ (Monaco tabs), terminal/ (xterm panes).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
-              pure state transitions (e.g. workspace/layout.ts) are unit-tested.
+              big stores are built from slices: workspace/ (workspaceState, paneLayoutSlice,
+              paneRuntimeSlice, workspaceSnapshot) and editor/ (editorState, editorTabsSlice,
+              editorBuffersSlice, editorOps). Pure state transitions (e.g. workspace/layout.ts)
+              are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.
 scripts/      postinstall helpers (fix-node-pty-permissions.mjs, brand-dev-electron.mjs) and
               generate-icons.mjs (`npm run icons`).

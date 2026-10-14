@@ -90,4 +90,5 @@ proposals stay in Dugout's app data (decision 050).
 
 Declare it in `toolAccess.ts` first (a `write` is never pre-approved), register it in
 `taskTools.ts` or `contextTools.ts` with its annotations, validate it in main with a schema in
-`shared/ipc/`, scope it to the caller's project, and add it to this page.
+`shared/ipc/taskContract.ts` (`taskRpcSchemas`) or `shared/ipc/contextContract.ts`
+(`contextRpcSchemas`), scope it to the caller's project, and add it to this page.

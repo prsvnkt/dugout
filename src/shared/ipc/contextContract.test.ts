@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { MAX_CONTEXT_URL_LENGTH } from '../context'
 import { contextEntryInputSchema, contextUrl } from './contextContract'
-import { repoRelativePath } from './contract'
+import { repoRelativePath } from './fields'
 
 describe('contextUrl', () => {
   test.each(['https://example.com/docs', 'http://localhost:3000/a?b=c#d', 'HTTPS://EXAMPLE.COM'])(

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test, vi, type Mock } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { GitService } from '../services/git/GitService'
 import type { Settings, SettingsStore } from '../services/settings/SettingsStore'
-import { FakeIpcMain, fakeSender, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, fakeSender, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerCloneIpc } from './registerCloneIpc'
 
 const REPO_URL = 'https://github.com/acme/demo.git'

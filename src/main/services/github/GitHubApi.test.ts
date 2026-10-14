@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { fakeFetch } from './fakeFetch'
+import { fakeFetch } from './fakeFetch.testSupport'
 import { GitHubApi, GitHubUnauthorizedError, GitHubUnavailableError } from './GitHubApi'
 
 const api = (routes: Parameters<typeof fakeFetch>[0]) => {

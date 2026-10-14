@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { ProjectStore } from '../services/projects/ProjectStore'
-import { FakeIpcMain, PROJECT_ID, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, PROJECT_ID, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerProjectIpc } from './registerProjectIpc'
 
 const STORE_METHODS = [

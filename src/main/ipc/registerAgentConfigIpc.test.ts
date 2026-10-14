@@ -2,7 +2,13 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { AgentConfigService } from '../services/agentConfig/AgentConfigService'
 import type { ProjectStore } from '../services/projects/ProjectStore'
-import { FakeIpcMain, PROJECT_ID, PROJECT_ROOT, fakeProjects, silenceIpcLogs } from './fakeIpcMain'
+import {
+  FakeIpcMain,
+  PROJECT_ID,
+  PROJECT_ROOT,
+  fakeProjects,
+  silenceIpcLogs,
+} from './fakeIpcMain.testSupport'
 import { registerAgentConfigIpc } from './registerAgentConfigIpc'
 
 const SERVER = { name: 'docs', type: 'http', url: 'https://mcp.example/docs', headers: {} }

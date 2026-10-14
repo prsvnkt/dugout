@@ -1,4 +1,4 @@
-import { MAX_RECENT_SESSIONS, type SavedRecentSession } from '@shared/ipc/contract'
+import { MAX_RECENT_SESSIONS, type SavedRecentSession } from '@shared/persistence'
 import { isAgentKind } from '@shared/terminal'
 import type { Pane } from './layout'
 

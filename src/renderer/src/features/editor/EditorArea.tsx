@@ -48,6 +48,28 @@ function tabLabel(tab: EditorTab): string {
   return `${name} (${tab.staged ? 'staged' : 'changes'})`
 }
 
+function fileKeyOfTab(projectId: ProjectId, tab: EditorTab): string {
+  return fileKeyOf(checkoutOf(projectId, tab.worktreePath), tab.path)
+}
+
+/** Whether the tab shows a view (with what that view needs) rather than the editor. */
+function hasView(tab: EditorTab): boolean {
+  switch (tab.kind) {
+    case 'agent-settings':
+    case 'usage':
+    case 'context':
+      return true
+    case 'timeline':
+      return tab.timeline !== undefined
+    case 'task':
+      return tab.taskNumber !== undefined
+    case 'compare':
+      return tab.compare !== undefined
+    default:
+      return false
+  }
+}
+
 function DiskBanner({ buffer }: { buffer: FileBuffer }) {
   const reload = useEditorStore((state) => state.reload)
   const keepMine = useEditorStore((state) => state.keepMine)
@@ -79,11 +101,16 @@ function DiskBanner({ buffer }: { buffer: FileBuffer }) {
 
 function Notice({ buffer }: { buffer: FileBuffer | undefined }) {
   if (!buffer) return <p className={styles.notice}>Loading…</p>
-  if (buffer.error) return <p className={styles.notice}>{buffer.error}</p>
-  if (buffer.isBinary) return <p className={styles.notice}>Binary file — not shown.</p>
-  if (buffer.isTooLarge)
-    return <p className={styles.notice}>File is too large to open (over 5 MB).</p>
-  return null
+  switch (buffer.content.kind) {
+    case 'error':
+      return <p className={styles.notice}>{buffer.content.message}</p>
+    case 'binary':
+      return <p className={styles.notice}>Binary file — not shown.</p>
+    case 'too-large':
+      return <p className={styles.notice}>File is too large to open (over 5 MB).</p>
+    case 'text':
+      return null
+  }
 }
 
 function ClosePrompt({ projectId, path }: { projectId: ProjectId; path: string }) {
@@ -98,20 +125,85 @@ function ClosePrompt({ projectId, path }: { projectId: ProjectId; path: string }
   )
 }
 
-/** Tabs of opened files and diffs, shown above the terminals (VS Code-style). */
-export function EditorArea({ projectId }: { projectId: ProjectId }) {
-  const { tabs, activeTabId } = useProjectTabs(projectId)
+function TabIcon({ tab }: { tab: EditorTab }) {
+  if (tab.kind === 'task') return <Icon icon={CircleDot} />
+  if (tab.kind === 'context') return <Icon icon={BookOpen} />
+  if (tab.kind === 'timeline') return <Icon icon={ListTree} />
+  if (tab.kind !== 'file' && tab.kind !== 'diff') return null
+  return (
+    <>
+      <FileTypeIcon name={splitPath(tab.path).name} />
+      {tab.kind === 'diff' && (
+        <span className={styles.diffMark} aria-hidden>
+          Δ
+        </span>
+      )}
+    </>
+  )
+}
+
+interface TabProps {
+  readonly projectId: ProjectId
+  readonly tab: EditorTab
+  readonly id: string
+  readonly isActive: boolean
+  readonly panelId: string
+}
+
+function Tab({ projectId, tab, id, isActive, panelId }: TabProps) {
   const activate = useEditorStore((state) => state.activate)
   const pin = useEditorStore((state) => state.pin)
   const requestClose = useEditorStore((state) => state.requestClose)
-  const buffers = useEditorStore((state) => state.buffers)
-  const diffs = useEditorStore((state) => state.diffs)
-  const pendingClose = useEditorStore((state) => state.pendingClose[projectId] ?? null)
-  const setFocusedArea = useWorkspaceStore((state) => state.setFocusedArea)
-  const idBase = useId()
-  const tabId = (index: number) => `${idBase}-tab-${index}`
-  const panelId = `${idBase}-panel`
-  // APG tabs with automatic activation: arrows focus a tab and show it.
+  const isBufferDirty = useEditorStore(
+    (state) => state.buffers[fileKeyOfTab(projectId, tab)]?.isDirty ?? false,
+  )
+  const isDirty = isBufferDirty && !(tab.kind === 'diff' && tab.staged)
+  const label = tabLabel(tab)
+  return (
+    <div className={styles.tab} data-active={isActive} data-preview={tab.isPreview}>
+      <button
+        role="tab"
+        id={id}
+        data-tab-id={tab.id}
+        aria-selected={isActive}
+        aria-controls={isActive ? panelId : undefined}
+        tabIndex={isActive ? 0 : -1}
+        className={styles.tabButton}
+        onClick={() => activate(projectId, tab.id)}
+        onDoubleClick={() => pin(projectId, tab.id)}
+        title={tab.path}
+      >
+        <TabIcon tab={tab} />
+        {label}
+      </button>
+      <button
+        className={styles.tabClose}
+        data-dirty={isDirty}
+        onClick={() => requestClose(projectId, tab.id)}
+        aria-label={`Close ${label}${isDirty ? ' (unsaved)' : ''}`}
+      >
+        <span className={styles.dirtyDot} aria-hidden>
+          ●
+        </span>
+        <span className={styles.closeGlyph}>
+          <Icon icon={X} />
+        </span>
+      </button>
+    </div>
+  )
+}
+
+interface TabStripProps {
+  readonly projectId: ProjectId
+  readonly tabs: readonly EditorTab[]
+  readonly activeTabId: string | null
+  readonly tabId: (index: number) => string
+  readonly panelId: string
+}
+
+/** APG tabs with automatic activation: arrows focus a tab and show it. */
+function TabStrip({ projectId, tabs, activeTabId, tabId, panelId }: TabStripProps) {
+  const activate = useEditorStore((state) => state.activate)
   const onTabKeyDown = useArrowNavigation({
     itemSelector: '[role="tab"]',
     orientation: 'horizontal',
@@ -123,19 +215,101 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
       [activate, projectId],
     ),
   })
+  return (
+    <div
+      className={styles.tabStrip}
+      role="tablist"
+      aria-label="Open files"
+      onKeyDown={onTabKeyDown}
+    >
+      {tabs.map((tab, index) => (
+        <Tab
+          key={tab.id}
+          projectId={projectId}
+          tab={tab}
+          id={tabId(index)}
+          isActive={tab.id === activeTabId}
+          panelId={panelId}
+        />
+      ))}
+    </div>
+  )
+}
+
+/** The view a tab shows when `hasView(tab)`. */
+function TabView({ projectId, tab }: { projectId: ProjectId; tab: EditorTab }) {
+  if (tab.kind === 'agent-settings') return <AgentSettingsView projectId={projectId} />
+  if (tab.kind === 'usage') return <UsageView projectId={projectId} />
+  if (tab.kind === 'context') return <ContextView projectId={projectId} />
+  if (tab.kind === 'timeline' && tab.timeline)
+    return <TimelineView key={tab.id} projectId={projectId} target={tab.timeline} />
+  if (tab.kind === 'task' && tab.taskNumber !== undefined)
+    return (
+      <TaskDetailView
+        key={tab.id}
+        projectId={projectId}
+        number={tab.taskNumber}
+        taskKey={displayTaskKey({ number: tab.taskNumber, key: tab.taskKey })}
+      />
+    )
+  if (tab.kind === 'compare' && tab.compare)
+    return <CompareView projectId={projectId} tabId={tab.id} target={tab.compare} />
+  return null
+}
+
+interface ActiveTabPanelProps {
+  readonly projectId: ProjectId
+  readonly active: EditorTab
+  readonly panelId: string
+  readonly labelledBy: string
+}
+
+function ActiveTabPanel({ projectId, active, panelId, labelledBy }: ActiveTabPanelProps) {
+  const fileKey = fileKeyOfTab(projectId, active)
+  const buffer = useEditorStore((state) => state.buffers[fileKey])
+  const diff = useEditorStore((state) => state.diffs[active.id])
+  const needsBuffer = !VIEW_TABS.has(active.kind) && (active.kind === 'file' || !active.staged)
+  const isEditable = buffer?.content.kind === 'text'
+  return (
+    <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={labelledBy}>
+      {buffer && needsBuffer && <DiskBanner buffer={buffer} />}
+      {hasView(active) ? (
+        <TabView projectId={projectId} tab={active} />
+      ) : needsBuffer && !isEditable ? (
+        <Notice buffer={buffer} />
+      ) : (
+        <Suspense fallback={<p className={styles.notice}>Loading editor…</p>}>
+          <EditorSurface
+            projectId={projectId}
+            tab={active}
+            fileKey={fileKey}
+            modelRevision={buffer?.revision ?? 0}
+            diff={diff}
+          />
+        </Suspense>
+      )}
+      {active.kind === 'diff' && (
+        <ReviewComments
+          targets={[{ checkout: { projectId, worktreePath: active.worktreePath }, label: null }]}
+          hint={DIFF_COMMENT_HINT}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Tabs of opened files and diffs, shown above the terminals (VS Code-style). */
+export function EditorArea({ projectId }: { projectId: ProjectId }) {
+  const { tabs, activeTabId } = useProjectTabs(projectId)
+  const pendingClose = useEditorStore((state) => state.pendingClose[projectId] ?? null)
+  const setFocusedArea = useWorkspaceStore((state) => state.setFocusedArea)
+  const idBase = useId()
+  const tabId = (index: number) => `${idBase}-tab-${index}`
+  const panelId = `${idBase}-panel`
 
   const active = tabs.find((tab) => tab.id === activeTabId)
   if (!active) return null
-  const isCompare = active.kind === 'compare'
-  const isAgentSettings = active.kind === 'agent-settings'
-  const isTask = active.kind === 'task'
-  const isUsage = active.kind === 'usage'
-  const isContext = active.kind === 'context'
-  const fileKey = fileKeyOf(checkoutOf(projectId, active.worktreePath), active.path)
-  const buffer = buffers[fileKey]
   const pendingTab = tabs.find((tab) => tab.id === pendingClose)
-  const needsBuffer = !VIEW_TABS.has(active.kind) && (active.kind === 'file' || !active.staged)
-  const isEditable = buffer && !buffer.error && !buffer.isBinary && !buffer.isTooLarge
 
   return (
     <section
@@ -144,109 +318,20 @@ export function EditorArea({ projectId }: { projectId: ProjectId }) {
       onFocusCapture={() => setFocusedArea(projectId, 'editor')}
       onMouseDownCapture={() => setFocusedArea(projectId, 'editor')}
     >
-      <div
-        className={styles.tabStrip}
-        role="tablist"
-        aria-label="Open files"
-        onKeyDown={onTabKeyDown}
-      >
-        {tabs.map((tab, index) => {
-          const tabBuffer = buffers[fileKeyOf(checkoutOf(projectId, tab.worktreePath), tab.path)]
-          const isDirty = tabBuffer?.isDirty && !(tab.kind === 'diff' && tab.staged)
-          return (
-            <div
-              key={tab.id}
-              className={styles.tab}
-              data-active={tab.id === activeTabId}
-              data-preview={tab.isPreview}
-            >
-              <button
-                role="tab"
-                id={tabId(index)}
-                data-tab-id={tab.id}
-                aria-selected={tab.id === activeTabId}
-                aria-controls={tab.id === activeTabId ? panelId : undefined}
-                tabIndex={tab.id === activeTabId ? 0 : -1}
-                className={styles.tabButton}
-                onClick={() => activate(projectId, tab.id)}
-                onDoubleClick={() => pin(projectId, tab.id)}
-                title={tab.path}
-              >
-                {(tab.kind === 'file' || tab.kind === 'diff') && (
-                  <FileTypeIcon name={splitPath(tab.path).name} />
-                )}
-                {tab.kind === 'task' && <Icon icon={CircleDot} />}
-                {tab.kind === 'context' && <Icon icon={BookOpen} />}
-                {tab.kind === 'timeline' && <Icon icon={ListTree} />}
-                {tab.kind === 'diff' && (
-                  <span className={styles.diffMark} aria-hidden>
-                    Δ
-                  </span>
-                )}
-                {tabLabel(tab)}
-              </button>
-              <button
-                className={styles.tabClose}
-                data-dirty={isDirty}
-                onClick={() => requestClose(projectId, tab.id)}
-                aria-label={`Close ${tabLabel(tab)}${isDirty ? ' (unsaved)' : ''}`}
-              >
-                <span className={styles.dirtyDot} aria-hidden>
-                  ●
-                </span>
-                <span className={styles.closeGlyph}>
-                  <Icon icon={X} />
-                </span>
-              </button>
-            </div>
-          )
-        })}
-      </div>
+      <TabStrip
+        projectId={projectId}
+        tabs={tabs}
+        activeTabId={activeTabId}
+        tabId={tabId}
+        panelId={panelId}
+      />
       {pendingTab && <ClosePrompt projectId={projectId} path={pendingTab.path} />}
-      <div
-        className={styles.panel}
-        role="tabpanel"
-        id={panelId}
-        aria-labelledby={tabId(tabs.indexOf(active))}
-      >
-        {buffer && needsBuffer && <DiskBanner buffer={buffer} />}
-        {isAgentSettings ? (
-          <AgentSettingsView projectId={projectId} />
-        ) : isUsage ? (
-          <UsageView projectId={projectId} />
-        ) : isContext ? (
-          <ContextView projectId={projectId} />
-        ) : active.kind === 'timeline' && active.timeline ? (
-          <TimelineView key={active.id} projectId={projectId} target={active.timeline} />
-        ) : isTask && active.taskNumber !== undefined ? (
-          <TaskDetailView
-            key={active.id}
-            projectId={projectId}
-            number={active.taskNumber}
-            taskKey={displayTaskKey({ number: active.taskNumber, key: active.taskKey })}
-          />
-        ) : isCompare && active.compare ? (
-          <CompareView projectId={projectId} tabId={active.id} target={active.compare} />
-        ) : needsBuffer && !isEditable ? (
-          <Notice buffer={buffer} />
-        ) : (
-          <Suspense fallback={<p className={styles.notice}>Loading editor…</p>}>
-            <EditorSurface
-              projectId={projectId}
-              tab={active}
-              fileKey={fileKey}
-              modelRevision={buffer?.revision ?? 0}
-              diff={diffs[active.id]}
-            />
-          </Suspense>
-        )}
-        {active.kind === 'diff' && (
-          <ReviewComments
-            targets={[{ checkout: { projectId, worktreePath: active.worktreePath }, label: null }]}
-            hint={DIFF_COMMENT_HINT}
-          />
-        )}
-      </div>
+      <ActiveTabPanel
+        projectId={projectId}
+        active={active}
+        panelId={panelId}
+        labelledBy={tabId(tabs.indexOf(active))}
+      />
     </section>
   )
 }

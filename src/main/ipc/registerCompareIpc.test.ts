@@ -10,7 +10,7 @@ import {
   fakeProjects,
   fakeWorktrees,
   silenceIpcLogs,
-} from './fakeIpcMain'
+} from './fakeIpcMain.testSupport'
 import { registerCompareIpc } from './registerCompareIpc'
 
 const OTHER_WORKTREE = '/worktrees/p1/other'

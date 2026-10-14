@@ -1,5 +1,6 @@
 import { readFile, rename } from 'node:fs/promises'
-import { projectsFileSchema, type ProjectAddRequest } from '@shared/ipc/contract'
+import type { ProjectAddRequest } from '@shared/ipc/contract'
+import { projectsFileSchema } from '@shared/persistence'
 import { pickProjectColor, suggestProjectName, type Project, type ProjectId } from '@shared/project'
 import { applyQueueChange, type TaskQueueChange } from '@shared/taskQueue'
 import type { TaskSource } from '@shared/tasks'

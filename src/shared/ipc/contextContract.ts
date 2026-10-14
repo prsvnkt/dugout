@@ -9,11 +9,10 @@ import {
   MAX_CONTEXT_URL_LENGTH,
   MAX_PROPOSED_NOTE_LENGTH,
 } from '../context'
-import { repoRelativePath } from './contract'
+import { projectId, repoRelativePath } from './fields'
 
 /** Schemas for project context: the Context tab's IPC and the agents' context tools. */
 
-const projectId = z.string().min(1).max(64)
 export const contextId = z.string().regex(CONTEXT_ID_PATTERN, 'Not a context entry id')
 const title = z.string().trim().min(1).max(MAX_CONTEXT_TITLE_LENGTH)
 const body = z.string().max(MAX_CONTEXT_BODY_LENGTH)

@@ -10,7 +10,7 @@ import {
   fakeProjects,
   fakeWorktrees,
   silenceIpcLogs,
-} from './fakeIpcMain'
+} from './fakeIpcMain.testSupport'
 import { registerGitIpc, type GitIpcDeps } from './registerGitIpc'
 
 const GITHUB_PR_URL = 'https://github.com/acme/demo/pull/new/feature'

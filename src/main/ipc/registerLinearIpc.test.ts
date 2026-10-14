@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { LinearAuth } from '../services/linear/LinearAuth'
 import type { LinearIssues } from '../services/linear/LinearIssues'
-import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerLinearIpc } from './registerLinearIpc'
 
 const API_KEY = 'lin_api_test'

@@ -7,7 +7,7 @@ import type { TerminalExit } from '@shared/terminal'
 import type { CheckRunner } from '../services/checks/CheckRunner'
 import type { SpawnOptions, TerminalProcess } from '../services/terminal/TerminalBackend'
 import { TerminalManager, type TerminalSetup } from '../services/terminal/TerminalManager'
-import { FakeIpcMain, type FakeSender, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, type FakeSender, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerTerminalIpc } from './registerTerminalIpc'
 
 const CWD = mkdtempSync(join(tmpdir(), 'dugout-terminal-ipc-'))
