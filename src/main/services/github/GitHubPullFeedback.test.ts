@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { GitHubUnauthorizedError } from './GitHubApi'
 import { GitHubPullFeedback, MAX_DETAILED_CHECKS } from './GitHubPullFeedback'
-import { fakeFetch } from './fakeFetch'
+import { fakeFetch } from './fakeFetch.testSupport'
 
 const REPO = { owner: 'octo', name: 'app' }
 const BASE = '/repos/octo/app'

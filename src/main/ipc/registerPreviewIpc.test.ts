@@ -12,7 +12,7 @@ import {
   fakeProjects,
   fakeWorktrees,
   silenceIpcLogs,
-} from './fakeIpcMain'
+} from './fakeIpcMain.testSupport'
 import { registerPreviewIpc } from './registerPreviewIpc'
 
 const WEB_BASE_URL = 'https://github.com'

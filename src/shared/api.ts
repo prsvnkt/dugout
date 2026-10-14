@@ -26,8 +26,8 @@ import type {
   TaskCreateRequest,
   TaskUpdateRequest,
   TerminalCreateRequest,
-  WorkspaceSnapshot,
 } from './ipc/contract'
+import type { WorkspaceSnapshot } from './persistence'
 import type { ExternalAppId, OpenInApps } from './openIn'
 import type { Project, ProjectId } from './project'
 import type { Result } from './result'

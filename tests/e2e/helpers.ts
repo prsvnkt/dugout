@@ -10,7 +10,7 @@ import {
   type Page,
 } from '@playwright/test'
 import type { DugoutApi } from '../../src/shared/api'
-import type { WorkspaceSnapshot } from '../../src/shared/ipc/contract'
+import type { WorkspaceSnapshot } from '../../src/shared/persistence'
 
 interface TestWindow {
   readonly dugout: DugoutApi

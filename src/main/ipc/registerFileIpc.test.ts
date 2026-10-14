@@ -10,7 +10,7 @@ import {
   fakeProjects,
   fakeWorktrees,
   silenceIpcLogs,
-} from './fakeIpcMain'
+} from './fakeIpcMain.testSupport'
 import { registerFileIpc } from './registerFileIpc'
 
 const FILE_METHODS = ['readDir', 'readFile', 'stat', 'writeFile'] as const

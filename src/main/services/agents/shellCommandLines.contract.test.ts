@@ -4,7 +4,7 @@ import { buildHookSettings, signalCommand } from '../agentHooks/hookSettings'
 import { SETUP_COMMAND_LINE } from '../terminal/TerminalManager'
 import { LOOKUP_COMMAND } from '../welcome/checkAgentClis'
 import { AGENT_ADAPTERS } from './registry'
-import { launchContext, MCP_ENTRY, memoryFiles } from './testContext'
+import { launchContext, MCP_ENTRY, memoryFiles } from './testContext.testSupport'
 
 /*
  * Decision 013: every shell command line Dugout writes expands variables only as plain "$VAR",

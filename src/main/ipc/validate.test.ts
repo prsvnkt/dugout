@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
-import { silenceIpcLogs } from './fakeIpcMain'
+import { silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { parsePayload } from './validate'
 
 const schema = z.object({ id: z.string().min(1), count: z.number().int().default(1) })

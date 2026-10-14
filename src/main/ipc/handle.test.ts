@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
-import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { handleRequest } from './handle'
 
 const CHANNEL = 'test:echo'

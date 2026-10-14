@@ -73,6 +73,8 @@ src/
               api.ts builds it from an injected ipcRenderer (unit-tested); index.ts exposes it.
   shared/     Runtime-agnostic types, IPC channel names and schemas. No Node/Electron/DOM imports.
               `agents.ts` is the agent registry the UI reads (labels, capabilities).
+              ipc/ holds one `<domain>Contract.ts` per IPC domain behind the `contract.ts` barrel;
+              persistence/ holds the on-disk formats (projects.json, workspace.json).
   renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.
               Layout: project tabs (title bar) / Explorer over Agents | editor over terminals |
               Git panel; side panels collapse via workspace/SidePanel.tsx, and the Agents list

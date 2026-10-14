@@ -11,11 +11,9 @@ import {
   openInRequestSchema,
   projectAddRequestSchema,
   projectSetCheckCommandRequestSchema,
-  projectsFileSchema,
   terminalCreateRequestSchema,
   terminalResizeRequestSchema,
   terminalWriteRequestSchema,
-  workspaceSnapshotSchema,
 } from './contract'
 
 describe('terminalCreateRequestSchema', () => {
@@ -66,12 +64,6 @@ describe('project schemas', () => {
   test('a new project needs only an absolute folder', () => {
     expect(projectAddRequestSchema.safeParse({ rootPath: '/Users/me/bene' }).success).toBe(true)
     expect(projectAddRequestSchema.safeParse({ rootPath: 'bene' }).success).toBe(false)
-  })
-
-  test('the projects file schema rejects malformed entries', () => {
-    expect(projectsFileSchema.safeParse({ version: 1, projects: [{ id: 'p1' }] }).success).toBe(
-      false,
-    )
   })
 
   test('a check command is one line of bounded length, or null to turn it off', () => {
@@ -174,23 +166,6 @@ describe('session persistence schemas', () => {
       terminalCreateRequestSchema.safeParse({ ...base, resumeSessionId }).success
     expect(parse('a1-b2')).toBe(true)
     expect(parse('--dangerous')).toBe(false)
-  })
-
-  test('the workspace snapshot keeps kinds, worktrees and session ids', () => {
-    const snapshot = {
-      version: 1,
-      projects: {
-        p1: {
-          panes: [
-            { kind: 'claude', sessionId: 's1' },
-            { kind: 'shell', worktree: { path: '/wt/a', branch: 'dugout/a', name: 'a' } },
-          ],
-        },
-      },
-    }
-    expect(workspaceSnapshotSchema.parse(snapshot)).toEqual(snapshot)
-    const bad = { version: 1, projects: { p1: { panes: [{}] } } }
-    expect(workspaceSnapshotSchema.safeParse(bad).success).toBe(false)
   })
 })
 

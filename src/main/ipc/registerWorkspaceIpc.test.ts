@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { LayoutStore } from '../services/workspace/LayoutStore'
-import { FakeIpcMain, PROJECT_ID, fakeProjects, silenceIpcLogs, testProject } from './fakeIpcMain'
+import {
+  FakeIpcMain,
+  PROJECT_ID,
+  fakeProjects,
+  silenceIpcLogs,
+  testProject,
+} from './fakeIpcMain.testSupport'
 import { registerWorkspaceIpc } from './registerWorkspaceIpc'
 
 const SNAPSHOT = { version: 1, projects: { [PROJECT_ID]: { panes: [{ kind: 'shell' }] } } }

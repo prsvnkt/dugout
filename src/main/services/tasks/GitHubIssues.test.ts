@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { fakeFetch } from '../github/fakeFetch'
+import { fakeFetch } from '../github/fakeFetch.testSupport'
 import { GitHubIssues } from './GitHubIssues'
 
 const REPO = { owner: 'octo', name: 'app' }

@@ -4,7 +4,13 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { ContextStore } from '../services/context/ContextStore'
-import { FakeIpcMain, PROJECT_ID, fakeProjects, silenceIpcLogs, testProject } from './fakeIpcMain'
+import {
+  FakeIpcMain,
+  PROJECT_ID,
+  fakeProjects,
+  silenceIpcLogs,
+  testProject,
+} from './fakeIpcMain.testSupport'
 import { registerContextIpc } from './registerContextIpc'
 
 const STORE_METHODS = [

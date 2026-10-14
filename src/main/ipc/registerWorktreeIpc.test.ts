@@ -8,7 +8,7 @@ import {
   fakeProjects,
   silenceIpcLogs,
   testProject,
-} from './fakeIpcMain'
+} from './fakeIpcMain.testSupport'
 import { registerWorktreeIpc } from './registerWorktreeIpc'
 
 function setup() {

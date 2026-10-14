@@ -4,7 +4,7 @@ import type { TerminalId, TerminalKind } from '@shared/terminal'
 import type { PendingToolCall } from '@shared/toolCall'
 import type { GitCheckout, Worktree } from '@shared/worktree'
 import { useMemo } from 'react'
-import type { WorkspaceSnapshot } from '@shared/ipc/contract'
+import type { WorkspaceSnapshot } from '@shared/persistence'
 import {
   addPane,
   closePane,

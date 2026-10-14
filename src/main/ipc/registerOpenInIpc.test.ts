@@ -10,7 +10,7 @@ import {
   fakeProjects,
   fakeWorktrees,
   silenceIpcLogs,
-} from './fakeIpcMain'
+} from './fakeIpcMain.testSupport'
 import { registerOpenInIpc } from './registerOpenInIpc'
 
 function setup() {

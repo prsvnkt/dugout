@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { GitHubApi } from '../services/github/GitHubApi'
 import type { GitHubAuth } from '../services/github/GitHubAuth'
-import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerGitHubIpc } from './registerGitHubIpc'
 
 const WEB_BASE_URL = 'https://github.com'

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { IpcChannel } from '@shared/ipc/channels'
-import { workspaceSnapshotSchema } from '@shared/ipc/contract'
+import { workspaceSnapshotSchema } from '@shared/persistence'
 import type { ProjectStore } from '../services/projects/ProjectStore'
 import type { LayoutStore } from '../services/workspace/LayoutStore'
 import { handleRequest, type IpcMainLike } from './handle'

@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
-import { FakeIpcMain, fakeSender } from './fakeIpcMain'
+import { FakeIpcMain, fakeSender } from './fakeIpcMain.testSupport'
 import { registerDialogIpc } from './registerDialogIpc'
 
 describe('registerDialogIpc', () => {
