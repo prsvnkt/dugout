@@ -20,6 +20,9 @@ paths:
 - Navigation and `window.open` are blocked; external `https://` links go to the system browser.
 - Never log secrets or terminal input. Tokens, when added, go through Electron `safeStorage`.
 - The hook socket accepts a request only with the token of the terminal named in its path
-  (`agentHooks/hookTokens.ts`, decision 059). The socket and per-terminal MCP configs live in
-  owner-only (0700) folders; files there are 0600.
-- The renderer CSP in `src/renderer/index.html` stays strict (`script-src 'self'`).
+  (`agentHooks/hookTokens.ts`, decision 059). The socket, per-terminal MCP configs and hook
+  header files live in owner-only (0700) folders; files there are 0600. Hook commands read the
+  header from its file (`-H "@$DUGOUT_HOOK_HEADER"`), never the token on curl's argv (decision 063).
+- The renderer CSP in `src/renderer/index.html` stays strict (`script-src 'self'`, `base-uri`,
+  `form-action` and `frame-ancestors` all `'none'`). Permission requests are denied except
+  `clipboard-sanitized-write`; `handleRequest` answers only the main frame.

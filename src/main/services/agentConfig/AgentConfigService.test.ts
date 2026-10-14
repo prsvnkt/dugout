@@ -1,13 +1,23 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
 import { AGENTS, type AgentInfo } from '@shared/agents'
 import type { AgentAdapter } from '../agents/AgentAdapter'
+import { FileService } from '../files/FileService'
+import { GitService } from '../git/GitService'
 import { AgentConfigService } from './AgentConfigService'
 
 let root: string
-const service = new AgentConfigService()
+const files = new FileService({ git: new GitService({ env: {} }) })
+const service = new AgentConfigService(files)
 const write = (path: string, text: string) => {
   mkdirSync(join(root, path, '..'), { recursive: true })
   writeFileSync(join(root, path), text)
@@ -93,6 +103,25 @@ describe('AgentConfigService', () => {
     expect(read('CLAUDE.md')).toBe('@AGENTS.md\n\n## Claude-only notes\n')
   })
 
+  test('never copies a CLAUDE.md that links out of the checkout', async () => {
+    const outside = mkdtempSync(join(tmpdir(), 'dugout-outside-'))
+    writeFileSync(join(outside, 'private.md'), 'secret notes\n')
+    symlinkSync(join(outside, 'private.md'), join(root, 'CLAUDE.md'))
+
+    await expect(service.linkInstructions(root)).rejects.toThrow('outside the project')
+    expect(existsSync(join(root, 'AGENTS.md'))).toBe(false)
+    expect(readFileSync(join(outside, 'private.md'), 'utf8')).toBe('secret notes\n')
+  })
+
+  test('refuses a .mcp.json that links out of the checkout', async () => {
+    const outside = mkdtempSync(join(tmpdir(), 'dugout-outside-'))
+    writeFileSync(join(outside, 'servers.json'), '{"mcpServers": {}}')
+    symlinkSync(join(outside, 'servers.json'), join(root, '.mcp.json'))
+
+    await expect(service.checkApproval(root, 'hash')).rejects.toThrow('outside the project')
+    await expect(service.saveMcp(root, [], 'version')).rejects.toThrow('outside the project')
+  })
+
   test('leaves CLAUDE.md alone when .claude/CLAUDE.md already imports AGENTS.md', async () => {
     write('.claude/CLAUDE.md', '@../AGENTS.md\n')
     write('AGENTS.md', '# Shared\n')
@@ -131,7 +160,7 @@ describe('AgentConfigService with other adapters', () => {
       capabilities: { ...AGENTS.opencode.capabilities, projectMcp: 'none' },
     }),
   ]
-  const custom = new AgentConfigService(adapters)
+  const custom = new AgentConfigService(files, adapters)
 
   test('judges servers and presets with each adapter, leaving out agents that take none', async () => {
     write('.mcp.json', JSON.stringify({ mcpServers: { web: { type: 'http', url: 'https://x' } } }))

@@ -2,9 +2,18 @@ import { randomBytes, timingSafeEqual } from 'node:crypto'
 
 const TOKEN_BYTES = 32
 
-/** What `TerminalManager` needs: a token for each agent terminal it starts, dropped on exit. */
+/** A terminal's token, and the file holding its `Authorization` header for hook commands. */
+export interface IssuedHookToken {
+  readonly token: string
+  readonly headerFile: string
+}
+
+/**
+ * What `TerminalManager` needs: a token for each agent terminal it starts, dropped on exit.
+ * `hookHeaderIssuer` builds it from `HookTokens`.
+ */
 export interface HookTokenIssuer {
-  issue(terminalId: string): string
+  issue(terminalId: string): IssuedHookToken
   revoke(terminalId: string): void
 }
 
@@ -18,7 +27,7 @@ export interface HookAuthorizer {
  * for its own terminal id, so one terminal's agent cannot act on another terminal's project or
  * spoof its status. Tokens live only in main's memory and are forgotten when the terminal exits.
  */
-export class HookTokens implements HookTokenIssuer, HookAuthorizer {
+export class HookTokens implements HookAuthorizer {
   /** The expected `Authorization` header per terminal. */
   private readonly expected = new Map<string, Buffer>()
 

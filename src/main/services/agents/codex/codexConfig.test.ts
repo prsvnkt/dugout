@@ -78,7 +78,7 @@ test('hook overrides stay byte-for-byte the same, or Codex asks every user to tr
   const hook = (event: string, signal: string, forwardsPayload = true) =>
     `hooks.${event}=[{ matcher = "", hooks = [{ type = "command", command = "[ -n \\"$DUGOUT_TERMINAL_ID\\" ] && ` +
     `curl -s -X POST --max-time 2 ${forwardsPayload ? '--data-binary @- ' : ''}--unix-socket \\"$DUGOUT_HOOK_SOCKET\\" ` +
-    `-H \\"Authorization: Bearer $DUGOUT_HOOK_TOKEN\\" \\"http://dugout/hooks/$DUGOUT_TERMINAL_ID/${signal}\\" ` +
+    `-H \\"@$DUGOUT_HOOK_HEADER\\" \\"http://dugout/hooks/$DUGOUT_TERMINAL_ID/${signal}\\" ` +
     `>/dev/null 2>&1 || true", async = true }] }]`
   expect(codexConfigOverrides(MCP).filter((o) => o.startsWith('hooks.'))).toEqual([
     hook('SessionStart', 'ready'),

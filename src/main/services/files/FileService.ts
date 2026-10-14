@@ -1,4 +1,4 @@
-import { constants } from 'node:fs'
+import { constants, readFileSync, realpathSync } from 'node:fs'
 import {
   copyFile,
   glob,
@@ -18,6 +18,7 @@ import {
   type FileContent,
   type FileStat,
 } from '@shared/files'
+import { isInGitDir } from '@shared/ipc/contract'
 import { MAX_COPIED_FILES } from '@shared/worktreeSetup'
 import type { GitService } from '../git/GitService'
 import { writeFileAtomic } from '../projects/atomicWrite'
@@ -41,7 +42,12 @@ function isInside(root: string, path: string): boolean {
 
 /** True for `.git` itself and anything in it. */
 function isGitDir(path: string): boolean {
-  return path.split(sep).includes('.git')
+  return isInGitDir(path, sep)
+}
+
+/** `.git` holds the repo's config and hooks, which run commands: never read or written here. */
+function assertNotGit(relativePath: string, shown: string): void {
+  if (isGitDir(relativePath)) throw new Error(`${shown} is in .git, which Dugout does not open.`)
 }
 
 /** `path` itself, or its closest ancestor that exists. */
@@ -67,6 +73,18 @@ async function realpathOfNearest(path: string): Promise<string> {
   const parent = dirname(path)
   if (parent === path) return path
   return join(await realpathOfNearest(parent), basename(path))
+}
+
+/**
+ * `FileService.readText` for callers that must stay synchronous (an adapter's launch line):
+ * an existing file's text, refused when it resolves outside `root` or into `.git`.
+ */
+export function readTextInsideSync(root: string, path: string): string {
+  const realRoot = realpathSync(root)
+  const resolved = realpathSync(resolve(realRoot, path))
+  if (!isInside(realRoot, resolved)) throw new Error(`${path} is outside the project.`)
+  assertNotGit(relative(realRoot, resolved), path)
+  return readFileSync(resolved, 'utf8')
 }
 
 function byKindThenName(a: DirEntry, b: DirEntry): number {
@@ -228,6 +246,17 @@ export class FileService {
     return candidate
   }
 
+  /** A text file's content, or null when it does not exist (e.g. CLAUDE.md, .mcp.json). */
+  async readText(root: string, path: string): Promise<string | null> {
+    const absolute = await this.resolveInside(root, path)
+    try {
+      return await readFile(absolute, 'utf8')
+    } catch (error) {
+      if (isMissing(error)) return null
+      throw error
+    }
+  }
+
   /** Creates or replaces a text file, creating its folders. */
   async writeText(root: string, path: string, content: string): Promise<void> {
     await writeFileAtomic(await this.resolveInside(root, path), content)
@@ -269,9 +298,11 @@ export class FileService {
     const realRoot = await realpath(root)
     const candidate = resolve(realRoot, path)
     if (!isInside(realRoot, candidate)) throw new Error(`${path} is outside the project.`)
+    assertNotGit(relative(realRoot, candidate), path)
 
     const resolved = await realpathOfNearest(candidate)
     if (!isInside(realRoot, resolved)) throw new Error(`${path} is outside the project.`)
+    assertNotGit(relative(realRoot, resolved), path)
     return resolved
   }
 }

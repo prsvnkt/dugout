@@ -414,7 +414,7 @@ async function start(): Promise<void> {
   })
   registerWorktreeIpc(projectStore, worktrees)
   registerCompareIpc(projectStore, worktrees, git)
-  registerAgentConfigIpc(projectStore, new AgentConfigService())
+  registerAgentConfigIpc(projectStore, new AgentConfigService(files))
   registerGitHubIpc({
     auth: githubAuth,
     api: githubApi,

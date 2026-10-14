@@ -13,7 +13,10 @@ function fakeTokens() {
   const revoked: string[] = []
   return {
     revoked,
-    issue: (terminalId: string) => `tok-${terminalId}`,
+    issue: (terminalId: string) => ({
+      token: `tok-${terminalId}`,
+      headerFile: `/data/hook-headers/${terminalId}`,
+    }),
     revoke: (terminalId: string) => void revoked.push(terminalId),
   }
 }
@@ -227,6 +230,7 @@ describe('TerminalManager agent status', () => {
       DUGOUT_TERMINAL_ID: 'agent-1',
       DUGOUT_HOOK_SOCKET: '/data/hooks.sock',
       DUGOUT_HOOK_TOKEN: 'tok-agent-1',
+      DUGOUT_HOOK_HEADER: '/data/hook-headers/agent-1',
       DUGOUT_CLAUDE_SETTINGS: '/data/claude-hooks.json',
       DUGOUT_CLAUDE_COMMAND: '/opt/fake/claude',
     })
@@ -916,5 +920,6 @@ describe('TerminalManager hook tokens (decision 059)', () => {
     const { manager, spawned, events } = setupAgents()
     manager.create({ ...request, kind: 'shell' }, events)
     expect(spawned[0]?.options.env).not.toHaveProperty('DUGOUT_HOOK_TOKEN')
+    expect(spawned[0]?.options.env).not.toHaveProperty('DUGOUT_HOOK_HEADER')
   })
 })

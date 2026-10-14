@@ -7,6 +7,8 @@ import { agentConfigSaveMcpRequestSchema } from '@shared/ipc/contract'
 import { MCP_PRESETS } from '@shared/mcpPresets'
 import { AgentConfigService } from './AgentConfigService'
 import { codexSharing } from '../agents/codex/codexMcp'
+import { FileService } from '../files/FileService'
+import { GitService } from '../git/GitService'
 import { parseMcpJson, serializeMcpJson } from './mcpJson'
 
 const VARIABLE = /\$\{([^}]*)\}/g
@@ -60,7 +62,9 @@ describe('MCP_PRESETS', () => {
   test('come with whether Codex agents can use each one, by the .mcp.json translation rules', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dugout-mcp-presets-'))
 
-    const { presetSharing } = await new AgentConfigService().read(root)
+    const { presetSharing } = await new AgentConfigService(
+      new FileService({ git: new GitService({ env: {} }) }),
+    ).read(root)
 
     for (const preset of MCP_PRESETS) {
       expect(presetSharing[preset.server.name]?.codex).toEqual(codexSharing(preset.server))

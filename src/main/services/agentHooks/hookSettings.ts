@@ -69,7 +69,9 @@ const FORWARDS_PAYLOAD: ReadonlySet<AnySignal> = new Set([
 
 /**
  * A shell command that tells the app about `signal`. It is a no-op outside Dugout terminals,
- * runs async, times out quickly and always succeeds, so it can never disturb Claude.
+ * runs async, times out quickly and always succeeds, so it can never disturb Claude. curl reads
+ * the Authorization header from the terminal's owner-only header file (`hookHeaderFiles.ts`),
+ * so the token never sits on its command line, where `ps` shows it; stdin carries the payload.
  */
 export function signalCommand(signal: AnySignal): string {
   return [
@@ -77,7 +79,7 @@ export function signalCommand(signal: AnySignal): string {
     `curl -s -X POST --max-time ${CURL_TIMEOUT_SECONDS}`,
     ...(FORWARDS_PAYLOAD.has(signal) ? ['--data-binary @-'] : []),
     '--unix-socket "$DUGOUT_HOOK_SOCKET"',
-    '-H "Authorization: Bearer $DUGOUT_HOOK_TOKEN"',
+    '-H "@$DUGOUT_HOOK_HEADER"',
     `"http://dugout/hooks/$DUGOUT_TERMINAL_ID/${signal}"`,
     '>/dev/null 2>&1 || true',
   ].join(' ')
