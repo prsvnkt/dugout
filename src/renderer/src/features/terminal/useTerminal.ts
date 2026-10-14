@@ -6,7 +6,7 @@ import type { WithheldServers } from '@shared/agentConfig'
 import { AGENTS } from '@shared/agents'
 import type { AgentStatus } from '@shared/agentStatus'
 import type { DevServer } from '@shared/preview'
-import type { ToolCallPreview } from '@shared/toolCall'
+import type { PendingToolCall } from '@shared/toolCall'
 import type { AgentUsage } from '@shared/usage'
 import type { TerminalCreateRequest } from '@shared/ipc/contract'
 import { dugout } from '@renderer/lib/dugout'
@@ -32,7 +32,7 @@ import {
 } from '@renderer/features/agents/subagents'
 
 const NO_SUBAGENTS: readonly Subagent[] = []
-const NO_APPROVALS: readonly ToolCallPreview[] = []
+const NO_APPROVALS: readonly PendingToolCall[] = []
 
 export type TerminalStatus =
   | { readonly state: 'starting' }
@@ -47,7 +47,7 @@ export interface TerminalHandle {
   /** Why the agent is waiting or what it finished (from its hooks), if known. */
   readonly agentDetail: string | null
   /** Tool calls the agent waits to have approved, oldest first. */
-  readonly agentApprovals: readonly ToolCallPreview[]
+  readonly agentApprovals: readonly PendingToolCall[]
   /** The main-process terminal id, once the PTY has started. */
   readonly terminalId: string | null
   /** The session id the agent reported (agents that canResume only). */
@@ -110,7 +110,7 @@ interface TerminalEventSetters {
   setStatus(status: TerminalStatus): void
   setAgentStatus(status: AgentStatus): void
   setAgentDetail(detail: string | null): void
-  setAgentApprovals(approvals: readonly ToolCallPreview[]): void
+  setAgentApprovals(approvals: readonly PendingToolCall[]): void
   setSessionId(sessionId: string): void
   setSubagents(update: (list: readonly Subagent[]) => readonly Subagent[]): void
   setUsage(usage: AgentUsage): void
@@ -274,7 +274,7 @@ export function useTerminal(
   const [status, setStatus] = useState<TerminalStatus>({ state: 'starting' })
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
   const [agentDetail, setAgentDetail] = useState<string | null>(null)
-  const [agentApprovals, setAgentApprovals] = useState<readonly ToolCallPreview[]>(NO_APPROVALS)
+  const [agentApprovals, setAgentApprovals] = useState<readonly PendingToolCall[]>(NO_APPROVALS)
   const [connectedId, setConnectedId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [subagents, setSubagents] = useState<readonly Subagent[]>(NO_SUBAGENTS)

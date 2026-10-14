@@ -8,6 +8,16 @@ import { EMPTY_TOTALS } from '@shared/usage'
 import type { SpawnOptions, TerminalBackend, TerminalProcess } from './TerminalBackend'
 import { TerminalManager } from './TerminalManager'
 
+/** Hook tokens that are predictable per terminal (`tok-<id>`), recording revocations. */
+function fakeTokens() {
+  const revoked: string[] = []
+  return {
+    revoked,
+    issue: (terminalId: string) => `tok-${terminalId}`,
+    revoke: (terminalId: string) => void revoked.push(terminalId),
+  }
+}
+
 class FakeProcess implements TerminalProcess {
   readonly pid = 4242
   readonly written: string[] = []
@@ -95,7 +105,7 @@ function setupWithHooks() {
     agentHooks: {
       dataDir: '/data',
       socketPath: '/data/hooks.sock',
-      token: 'tok',
+      tokens: fakeTokens(),
       commands: { claude: '/opt/fake/claude' },
     },
     onAgentStatusChange,
@@ -216,7 +226,7 @@ describe('TerminalManager agent status', () => {
     expect(options?.env).toMatchObject({
       DUGOUT_TERMINAL_ID: 'agent-1',
       DUGOUT_HOOK_SOCKET: '/data/hooks.sock',
-      DUGOUT_HOOK_TOKEN: 'tok',
+      DUGOUT_HOOK_TOKEN: 'tok-agent-1',
       DUGOUT_CLAUDE_SETTINGS: '/data/claude-hooks.json',
       DUGOUT_CLAUDE_COMMAND: '/opt/fake/claude',
     })
@@ -369,7 +379,7 @@ describe('TerminalManager sessions', () => {
       },
       createId: () => 't',
       env: {},
-      agentHooks: { dataDir: '/data', socketPath: '/h.sock', token: 'x' },
+      agentHooks: { dataDir: '/data', socketPath: '/h.sock', tokens: fakeTokens() },
     })
     manager.create(request, { onData: vi.fn(), onExit: vi.fn() })
     expect(spawned[0]?.options.env.DUGOUT_CLAUDE_COMMAND).toBe('claude')
@@ -428,7 +438,7 @@ describe('TerminalManager task sessions', () => {
       agentHooks: {
         dataDir: '/data',
         socketPath: '/h.sock',
-        token: 'tok',
+        tokens: fakeTokens(),
         mcp: {
           server: MCP_SERVER,
           files: {
@@ -502,6 +512,8 @@ describe('TerminalManager status details', () => {
 describe('TerminalManager pending approvals', () => {
   const preview = (command: string) =>
     ({ kind: 'command', tool: 'Bash', command, description: null }) as const
+  /** What the renderer gets: the preview plus its id (the tool key, as requests carry no id). */
+  const sent = (command: string) => ({ ...preview(command), id: `Bash\u0000${command}` })
   const ask = (command: string) => ({
     detail: `Bash: ${command}`,
     toolCall: { toolUseId: null, key: `Bash\u0000${command}` },
@@ -529,7 +541,7 @@ describe('TerminalManager pending approvals', () => {
     // Assert
     expect(manager.agentStatus(id)).toBe('needs-input')
     expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm install', [
-      preview('npm install'),
+      sent('npm install'),
     ])
   })
 
@@ -545,8 +557,8 @@ describe('TerminalManager pending approvals', () => {
   test('with two approvals pending, shows the one still waiting after the other finishes', () => {
     const { manager, events, onAgentStatusChange, id } = asking('npm install', 'npm test')
     expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm install', [
-      preview('npm install'),
-      preview('npm test'),
+      sent('npm install'),
+      sent('npm test'),
     ])
     const notified = onAgentStatusChange.mock.calls.length
 
@@ -554,7 +566,7 @@ describe('TerminalManager pending approvals', () => {
 
     expect(manager.agentStatus(id)).toBe('needs-input')
     expect(events.onAgentStatus).toHaveBeenLastCalledWith(id, 'needs-input', 'Bash: npm test', [
-      preview('npm test'),
+      sent('npm test'),
     ])
     expect(onAgentStatusChange).toHaveBeenCalledTimes(notified + 1)
 
@@ -610,7 +622,7 @@ describe('TerminalManager codex terminals', () => {
       agentHooks: {
         dataDir: '/data',
         socketPath: '/h.sock',
-        token: 'tok',
+        tokens: fakeTokens(),
         mcp: {
           server: MCP_SERVER,
           files: {
@@ -689,7 +701,7 @@ describe('TerminalManager OpenCode terminals', () => {
     expect(spawned[0]?.options.args.at(-1)).toBe('"$DUGOUT_OPENCODE_COMMAND"')
     expect(env).toMatchObject({
       DUGOUT_TERMINAL_ID: 'agent-1',
-      DUGOUT_HOOK_TOKEN: 'tok',
+      DUGOUT_HOOK_TOKEN: 'tok-agent-1',
       DUGOUT_OPENCODE_COMMAND: 'opencode',
     })
     expect(JSON.parse(env?.OPENCODE_CONFIG_CONTENT ?? '{}').plugin).toHaveLength(1)
@@ -800,5 +812,109 @@ describe('TerminalManager worktree setup', () => {
     // Assert
     expect(spawned).toHaveLength(1)
     expect(setup.finish).toHaveBeenCalledWith(false)
+  })
+})
+
+describe('TerminalManager hook tokens (decision 059)', () => {
+  function setupAgents() {
+    const spawned: FakeProcess[] = []
+    const files = new Map<string, string>()
+    const tokens = fakeTokens()
+    let nextId = 0
+    const manager = new TerminalManager({
+      backend: {
+        spawn: (options) => {
+          const process = new FakeProcess(options)
+          spawned.push(process)
+          return process
+        },
+      },
+      createId: () => `a${++nextId}`,
+      env: { DUGOUT_HOOK_TOKEN: 'inherited-from-the-app' },
+      agentHooks: {
+        dataDir: '/data',
+        socketPath: '/h.sock',
+        tokens,
+        mcp: {
+          server: MCP_SERVER,
+          files: {
+            write: (id, content) => {
+              files.set(id, content)
+              return `/mcp/${id}.json`
+            },
+            remove: (id) => files.delete(id),
+          },
+        },
+      },
+    })
+    const events = { onData: vi.fn(), onExit: vi.fn() }
+    return { manager, spawned, files, tokens, events }
+  }
+
+  test.each(['claude', 'codex', 'opencode'] as const)(
+    'each %s terminal gets only its own token, and only in DUGOUT_HOOK_TOKEN',
+    (kind) => {
+      // Arrange
+      const { manager, spawned, files, events } = setupAgents()
+
+      // Act
+      const first = manager.create({ ...request, kind }, events)
+      const second = manager.create({ ...request, kind }, events)
+
+      // Assert
+      const [envA, envB] = [spawned[0]?.options.env ?? {}, spawned[1]?.options.env ?? {}]
+      expect(envA.DUGOUT_HOOK_TOKEN).toBe(`tok-${first}`)
+      expect(envB.DUGOUT_HOOK_TOKEN).toBe(`tok-${second}`)
+      for (const [env, own, other] of [
+        [envA, first, second],
+        [envB, second, first],
+      ] as const) {
+        const { DUGOUT_HOOK_TOKEN: _own, ...rest } = env
+        const everythingElse = [...Object.values(rest), files.get(own) ?? ''].join('\n')
+        expect(everythingElse).not.toContain(`tok-${own}`)
+        expect(everythingElse).not.toContain(`tok-${other}`)
+        expect(everythingElse).not.toContain('inherited-from-the-app')
+      }
+    },
+  )
+
+  test("the dugout MCP server reads the token from the agent's env, never from its config", () => {
+    const { manager, spawned, files, events } = setupAgents()
+    const claude = manager.create(request, events)
+    manager.create({ ...request, kind: 'codex' }, events)
+
+    const claudeServer = JSON.parse(files.get(claude) ?? '{}').mcpServers.dugout
+    expect(claudeServer.env).toMatchObject({ DUGOUT_TERMINAL_ID: claude })
+    expect(claudeServer.env).not.toHaveProperty('DUGOUT_HOOK_TOKEN')
+    const codexEnv = spawned[1]?.options.env ?? {}
+    const dugoutOverride = Object.values(codexEnv).find((value) =>
+      value.startsWith('mcp_servers.dugout='),
+    )
+    expect(dugoutOverride).toContain('env_vars = ["DUGOUT_HOOK_TOKEN"]')
+  })
+
+  test("forgets a terminal's token when it exits", () => {
+    const { manager, spawned, tokens, events } = setupAgents()
+    const id = manager.create(request, events)
+    expect(tokens.revoked).toEqual([])
+
+    spawned[0]?.emitExit({ exitCode: 0 })
+
+    expect(tokens.revoked).toEqual([id])
+  })
+
+  test('forgets the token when a worktree setup fails, so the agent never starts', () => {
+    const { manager, spawned, tokens, events } = setupAgents()
+    const id = manager.create(request, events, { command: 'false', finish: vi.fn() })
+
+    spawned[0]?.emitExit({ exitCode: 1 })
+
+    expect(tokens.revoked).toEqual([id])
+  })
+
+  test('shells get no token', () => {
+    const { manager, spawned, events } = setupAgents()
+    manager.create({ ...request, kind: 'shell' }, events)
+    expect(spawned[0]?.options.env).not.toHaveProperty('DUGOUT_HOOK_TOKEN')
   })
 })

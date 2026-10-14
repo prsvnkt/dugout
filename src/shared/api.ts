@@ -15,7 +15,7 @@ import type { DirEntry, FileContent, FileStat, GitRevision, RevisionContent } fr
 import type { GitBranch, GitStatus } from './git'
 import type { PreviewDeployment } from './preview'
 import type { FailingCheck, PullRequestStatus, PullReviewThread } from './pullRequest'
-import type { ToolCallPreview } from './toolCall'
+import type { PendingToolCall } from './toolCall'
 import type { SessionTimeline } from './timeline'
 import type { AgentUsage, ProjectUsage } from './usage'
 import type { DeviceCodePrompt, GitHubAuthState, GitHubRepo } from './github'
@@ -64,7 +64,7 @@ export interface DugoutApi {
         id: TerminalId,
         status: AgentStatus,
         detail: string | undefined,
-        approvals: readonly ToolCallPreview[],
+        approvals: readonly PendingToolCall[],
       ) => void,
     ): Unsubscribe
     /** Agent session ids, from hooks or a plugin, used to resume conversations after a restart. */

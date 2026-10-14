@@ -10,7 +10,10 @@ import { OPENCODE_STATUS_PLUGIN } from './statusPlugin'
 /** The status plugin, shared by every OpenCode terminal (`.mjs`: always an ES module). */
 export const OPENCODE_PLUGIN_FILE = 'opencode-status.mjs'
 
-/** OpenCode's local MCP server config: the command as one array, env as `environment`. */
+/**
+ * OpenCode's local MCP server config: the command as one array, env as `environment`. OpenCode
+ * passes its own env to local servers too, so `inheritedEnv` needs no entry.
+ */
 function localMcpServer(server: McpServerEntry) {
   return {
     type: 'local',

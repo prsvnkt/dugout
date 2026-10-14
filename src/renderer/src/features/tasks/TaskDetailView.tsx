@@ -65,7 +65,9 @@ function Byline({ task }: { task: TaskDetail }) {
 /** One task, in an editor tab: description, status, comments, and the agents to start on it. */
 export function TaskDetailView({ projectId, number, taskKey }: TaskDetailViewProps) {
   const { task, loadError, isBusy } = useViewedTask(projectId, number)
-  const { update, comment, startAgent } = useTaskStore()
+  const update = useTaskStore((state) => state.update)
+  const comment = useTaskStore((state) => state.comment)
+  const startAgent = useTaskStore((state) => state.startAgent)
   const openCompare = useEditorStore((state) => state.openCompare)
   const pin = useEditorStore((state) => state.pin)
   const agents = useTaskAgents(projectId).get(number)

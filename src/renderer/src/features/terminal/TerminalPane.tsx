@@ -4,7 +4,7 @@ import '@xterm/xterm/css/xterm.css'
 import { AGENTS } from '@shared/agents'
 import type { DevServer } from '@shared/preview'
 import { isAgentKind, type TerminalKind } from '@shared/terminal'
-import type { ToolCallPreview } from '@shared/toolCall'
+import type { PendingToolCall } from '@shared/toolCall'
 import { displayTaskKey } from '@shared/tasks'
 import { paneNumber, type PaneTask } from '@renderer/features/workspace/layout'
 import { Icon } from '@renderer/lib/Icon'
@@ -60,7 +60,7 @@ interface TerminalPaneProps {
   onActivity(
     activity: PaneActivity,
     detail: string | null,
-    approvals: readonly ToolCallPreview[],
+    approvals: readonly PendingToolCall[],
   ): void
   onSubagents(subagents: readonly Subagent[]): void
   onTerminalId(terminalId: string | null): void

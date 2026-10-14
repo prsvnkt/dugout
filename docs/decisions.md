@@ -51,7 +51,7 @@ between launches are deferred.
 Claude terminals start as `claude --settings <userData>/claude-hooks.json`. Its async command
 hooks `curl` a signal (`ready`, `working`, `tool-done`, `needs-input`, `done`; see decision 036
 for how pending approvals keep `needs-input`) to an HTTP server on a Unix
-socket (mode 0600) with a per-launch bearer token; the terminal id, socket, token and settings
+socket (mode 0600) with a bearer token per terminal (decision 059); the terminal id, socket, token and settings
 path reach the shell as `DUGOUT_*` env vars. Hooks are no-ops outside Dugout, time out after 2s
 and always succeed, so they can never disturb Claude. "Done" clears once the user views the pane.
 The dock badge counts panes that need the user. If the hook server fails to start, terminals
@@ -1289,6 +1289,42 @@ popover closes with focus inside. The close-project confirmation is a native mod
 for a non-text mark that always sits beside words), and so does xterm's ANSI `brightWhite`, which
 `minimumContrastRatio` already raises (decision 033).
 
+## 059 — A hook token per terminal; no tokens in MCP configs (2026-10-09)
+
+**Context.** The hook server took a terminal id from the request path (`/hooks/<id>/<signal>`,
+`/rpc/<id>`) and checked only one bearer token, minted once per launch and given to every agent:
+in its env, in the on-disk MCP config `<userData>/mcp/<id>.json`, in `OPENCODE_CONFIG_CONTENT`
+and, for Codex, in a `-c` override that ends up in its command line. Any agent could call
+`/rpc/<another id>` and read or write that terminal's project tasks and context, or spoof its
+status (issue #62; in scope per `SECURITY.md`). The `mcp` folder was created with the default
+mode, and the socket was `chmod`ed only after `listen()`.
+
+**Decision.**
+
+- **A token per terminal.** `agentHooks/hookTokens.ts` (`HookTokens`) mints 32 random bytes for
+  each agent terminal when `TerminalManager` launches it and keeps them only in main's memory.
+  The hook server reads the terminal id from the path first and accepts the request only if its
+  `Authorization` header is that terminal's token (`timingSafeEqual`); anything else is 401,
+  including paths without a terminal id. The token is revoked when the terminal exits, and when a
+  worktree setup fails and the agent never starts. Shells get none.
+- **The token lives only in the agent's env** (`DUGOUT_HOOK_TOKEN`). Hook commands already read it
+  from there. The "dugout" MCP server inherits it from the agent instead of having it written into
+  its config: `McpServerEntry.inheritedEnv` names it, and no adapter puts it in a file, a config
+  string or an argument. Checked per CLI (Oct 2026): Claude Code passes its whole env to stdio
+  servers (probed with 2.1.295), OpenCode spreads `process.env` into local servers (its
+  `mcp/index.ts`), and Codex passes only a few defaults, so its `mcp_servers.dugout` override
+  forwards the token by name with `env_vars`, the key project servers already use (decision 022).
+  The token therefore no longer appears in Codex's command line, where other users could read it.
+- **Owner-only folders.** The socket is created inside `<userData>/hooks/` (0700, tightened if it
+  existed; a symlink there is refused), or a fresh `mkdtemp` folder in the temp dir when that path
+  is too long for a Unix socket, removed on quit. No other user can reach the socket even before
+  its 0600 `chmod`, which stays. `<userData>/mcp/` is 0700 too, with 0600 files that now hold no
+  secret.
+
+The e2e fake Codex now gives the MCP server only `PATH`, `HOME` and its `env_vars`, as Codex does,
+so a missing forward fails the Codex task test. Same-user processes can still read each other's
+environments; see `docs/known-issues.md`.
+
 ## 061 — Agent settings and notifications read agents from their adapters (2026-10-13)
 
 **Context.** Decision 037 put every agent behind an adapter, but an audit (#67, #68) found the
@@ -1389,7 +1425,8 @@ fewer than 200 rows.
 28. **Done since:** Codex gets a project's `.mcp.json` servers only once they are approved ✅.
 29. **Done since:** keyboard navigation for editor tabs, the file tree and menus, and muted text
     at WCAG AA contrast ✅.
-30. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
+30. **Done since:** each agent terminal gets its own hook token, kept out of MCP configs ✅.
 31. **Done since:** notifications, Agent settings and the welcome screen name agents from the
     registry; agent config goes through the adapters ✅.
-32. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+32. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
+33. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

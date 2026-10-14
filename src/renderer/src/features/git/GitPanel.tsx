@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { ChevronsRight, Minus, Plus } from 'lucide-react'
 import type { GitFileChange, GitStatus } from '@shared/git'
 import type { Project } from '@shared/project'
@@ -10,7 +11,7 @@ import { BranchPicker } from './branches/BranchPicker'
 import { FetchButton } from './FetchButton'
 import { CommitBox } from './CommitBox'
 import { isAuthError, useAuthStore } from '@renderer/features/github/authStore'
-import { useCheckoutGit, useGitStore } from './gitStore'
+import { selectCheckoutActions, useCheckoutGit, useGitStore } from './gitStore'
 import { PullRequestBlock } from './PullRequestBlock'
 import { PreviewBlock } from '@renderer/features/preview/PreviewBlock'
 import { usePullRequestStatus } from './usePullRequestStatus'
@@ -57,7 +58,7 @@ export function GitPanel({ project }: GitPanelProps) {
   const checkout = useSelectedCheckout(project.id)
   const git = useCheckoutGit(checkout)
   const pullRequest = usePullRequestStatus(checkout, git.status)
-  const actions = useGitStore()
+  const actions = useGitStore(useShallow(selectCheckoutActions))
   const id = checkout
   const openDiff = useEditorStore((state) => state.openDiff)
   const signIn = useAuthStore((state) => state.signIn)

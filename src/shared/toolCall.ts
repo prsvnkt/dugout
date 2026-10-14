@@ -29,3 +29,6 @@ export type ToolCallPreview =
       readonly changes: readonly TextChange[]
     }
   | { readonly kind: 'other'; readonly tool: string; readonly fields: readonly ToolField[] }
+
+/** A tool call waiting for approval, with an id that stays the same while it waits. */
+export type PendingToolCall = ToolCallPreview & { readonly id: string }

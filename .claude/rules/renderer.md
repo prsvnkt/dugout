@@ -15,6 +15,8 @@ paths:
   named imports from `lucide-react`. Never text glyphs (`+`, `×`, `»`, `⌄`) as button icons.
 - Talk to main only through `dugout` from `@renderer/lib/dugout`. Never use `window.dugout` directly.
 - Components stay presentational where possible; side effects live in `use*` hooks with cleanup.
+- Select slices, never the whole store: `useXStore((state) => state.field)` per field (actions
+  are stable), or `useShallow` for a small pick. `useXStore()` re-renders on every change.
 - Async loads go through `lib/useRequest` (loading / loaded / failed, late results ignored);
   no hand-rolled `isCancelled` + `.then(result => …)` effects.
 - Show user-friendly errors in the UI; log details with `console.warn`/`console.error` only.
