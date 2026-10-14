@@ -30,10 +30,11 @@ paths:
   check, worktree setup) are checked by `agents/shellCommandLines.contract.test.ts` for plain
   `"$VAR"` expansions only (decision 013); add any new one to it.
 - Coverage target is 80% statements and lines, 75% branches and functions. `vitest.config.ts`
-  `coverage.thresholds` enforces it for `src/main` and `src/shared`, and a lower whole-codebase
-  floor (currently 61 / 63 / 55 / 64%) that includes renderer `.ts` logic; React views (`.tsx`)
-  are left to e2e. `npm run check` (and so CI) fails below either. Raise the floor as tests land,
-  never lower it. Unit tests may be `*.test.ts` or `*.test.tsx`.
+  `coverage.thresholds` enforces a floor of measured − 2, rounded down (statements / branches /
+  functions / lines): 90 / 84 / 87 / 92% whole-codebase, 92 / 85 / 92 / 94% for `src/main`,
+  98 / 93 / 98 / 98% for `src/shared` and 84 / 80 / 77 / 87% for renderer `.ts` logic; React
+  views (`.tsx`) are left to e2e. `npm run check` (and so CI) fails below any of them. Raise the
+  floor when coverage rises, never lower it. Unit tests may be `*.test.ts` or `*.test.tsx`.
 - E2E: `launchApp` gives each app temp `CLAUDE_CONFIG_DIR` / `CODEX_HOME` folders. A failing
   test leaves a trace and screenshots in `test-results/`. Wait on state, never on time:
   e.g. `expect.poll(() => savedPanes(userDataDir))` for the debounced layout save. Commits use
