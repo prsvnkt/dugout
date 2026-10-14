@@ -249,7 +249,7 @@ export class TerminalManager {
       : undefined
     const initialPrompt = resumeSessionId === undefined ? request.initialPrompt : undefined
     const mcp = adapter.info.capabilities.hasMcp ? hooks.mcp : undefined
-    const token = hooks.tokens.issue(id)
+    const { token, headerFile } = hooks.tokens.issue(id)
     const launch = adapter.launch({
       terminalId: id,
       cwd: request.cwd,
@@ -271,6 +271,8 @@ export class TerminalManager {
         DUGOUT_TERMINAL_ID: id,
         DUGOUT_HOOK_SOCKET: hooks.socketPath,
         [HOOK_TOKEN_VARIABLE]: token,
+        // Hook commands give curl the header from this file, never the token as an argument.
+        DUGOUT_HOOK_HEADER: headerFile,
         ...launch.env,
         ...(resumeSessionId && { DUGOUT_RESUME_SESSION: resumeSessionId }),
         ...(initialPrompt && { DUGOUT_INITIAL_PROMPT: initialPrompt }),

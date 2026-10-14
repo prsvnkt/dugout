@@ -70,6 +70,8 @@ test('shows the branch preview deployment and opens it in the browser', async ()
 
   await expect(block).toContainText('Preview')
   await expect(block).toContainText('Ready')
+  // Where the link goes is shown before it is opened.
+  await expect(block).toContainText('app-git-feat-login.vercel.app')
   await block.getByRole('button', { name: 'Open preview' }).click()
 
   await expect.poll(openedUrls).toEqual([PREVIEW_URL])

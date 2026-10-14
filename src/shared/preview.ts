@@ -47,3 +47,9 @@ export function toWebUrl(raw: string): string | null {
   if (!isWeb || url.username || url.password || !url.hostname) return null
   return url.toString()
 }
+
+/** The host (and port) `raw` opens, shown before opening it; null when it is no web URL. */
+export function urlHost(raw: string): string | null {
+  const url = toWebUrl(raw)
+  return url === null ? null : new URL(url).host
+}

@@ -23,14 +23,14 @@ describe('claudeAdapter', () => {
     )
   })
 
-  test('puts the first prompt before options and the MCP config last', () => {
+  test('puts the first prompt last, after --, so a prompt starting with - is never a flag', () => {
     const files = memoryFiles()
     const launch = claudeAdapter.launch(
       launchContext({ hasInitialPrompt: true, mcp: { server: MCP_ENTRY, files } }),
     )
     expect(launch.commandLine).toBe(
-      '"$DUGOUT_CLAUDE_COMMAND" "$DUGOUT_INITIAL_PROMPT" --settings "$DUGOUT_CLAUDE_SETTINGS"' +
-        ' --mcp-config "$DUGOUT_MCP_CONFIG"',
+      '"$DUGOUT_CLAUDE_COMMAND" --settings "$DUGOUT_CLAUDE_SETTINGS"' +
+        ' --mcp-config "$DUGOUT_MCP_CONFIG" -- "$DUGOUT_INITIAL_PROMPT"',
     )
     expect(launch.env.DUGOUT_MCP_CONFIG).toBe('/data/mcp/t-1.json')
   })

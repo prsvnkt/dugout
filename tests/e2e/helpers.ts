@@ -162,11 +162,9 @@ const argValue = (flag) => {
   const index = process.argv.indexOf(flag)
   return index === -1 ? undefined : process.argv[index + 1]
 }
-// The first prompt is the first argument that is neither an option nor an option's value.
-const VALUE_FLAGS = new Set(['--settings', '--resume', '--mcp-config'])
-const firstPrompt = process.argv
-  .slice(2)
-  .find((arg, i, args) => !arg.startsWith('--') && !VALUE_FLAGS.has(args[i - 1]))
+// The first prompt follows '--', as Dugout passes it (so one starting with - is never a flag).
+const endOfOptions = process.argv.indexOf('--')
+const firstPrompt = endOfOptions === -1 ? undefined : process.argv[endOfOptions + 1]
 const { hooks } = JSON.parse(readFileSync(argValue('--settings'), 'utf8'))
 const resumed = argValue('--resume')
 const dugoutServer = () => JSON.parse(readFileSync(argValue('--mcp-config'), 'utf8')).mcpServers.dugout
@@ -238,7 +236,10 @@ const args = process.argv.slice(2)
 const overrides = {}
 const positional = []
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '-c') {
+  if (args[i] === '--') {
+    positional.push(...args.slice(i + 1))
+    break
+  } else if (args[i] === '-c') {
     const [key, ...rest] = args[++i].split('=')
     overrides[key] = parse('v = ' + rest.join('=')).v
   } else positional.push(args[i])
@@ -313,7 +314,7 @@ const argValue = (flag) => {
   return index === -1 ? undefined : args[index + 1]
 }
 const resumed = argValue('--session')
-const firstPrompt = argValue('--prompt')
+const firstPrompt = args.find((arg) => arg.startsWith('--prompt='))?.slice('--prompt='.length)
 const config = JSON.parse(process.env.OPENCODE_CONFIG_CONTENT ?? '{}')
 const dugoutServer = () => {
   const { command, environment } = config.mcp.dugout

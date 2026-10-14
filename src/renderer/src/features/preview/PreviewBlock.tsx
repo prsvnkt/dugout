@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { ExternalLink, Globe, Pencil, Play, SquareTerminal } from 'lucide-react'
 import type { GitStatus } from '@shared/git'
-import { devServerUrl, type DeploymentState, type PreviewDeployment } from '@shared/preview'
+import {
+  devServerUrl,
+  urlHost,
+  type DeploymentState,
+  type PreviewDeployment,
+} from '@shared/preview'
 import type { Project } from '@shared/project'
 import type { GitCheckout } from '@shared/worktree'
 import { useBranchPoll } from '@renderer/features/git/useBranchPoll'
@@ -53,6 +58,8 @@ interface DeploymentRowProps {
 
 function DeploymentRow({ deployment, onOpen }: DeploymentRowProps) {
   const { url } = deployment
+  // The link comes from a GitHub deployment status: show where it goes before it is opened.
+  const host = url ? urlHost(url) : null
   return (
     <div className={styles.row}>
       <Icon icon={Globe} className={styles.glyph} />
@@ -62,6 +69,11 @@ function DeploymentRow({ deployment, onOpen }: DeploymentRowProps) {
       <span className={styles.state} data-state={deployment.state}>
         {STATE_LABEL[deployment.state]}
       </span>
+      {host && (
+        <span className={styles.host} title={url ?? undefined}>
+          {host}
+        </span>
+      )}
       {url && (
         <button className={styles.button} onClick={() => onOpen(url)} title={url}>
           <Icon icon={ExternalLink} /> Open preview

@@ -11,15 +11,16 @@ import type { AgentAdapter, AgentLaunchContext } from '../AgentAdapter'
 export const CLAUDE_SETTINGS_FILE = 'claude-hooks.json'
 
 /**
- * The prompt comes first: --mcp-config takes a list and would swallow anything after it.
+ * The prompt comes last, after `--`: that ends --mcp-config's list (which would swallow it) and
+ * keeps a prompt starting with `-` from being read as an option.
  */
 function commandLine(context: AgentLaunchContext, hasMcpConfig: boolean): string {
   return [
     '"$DUGOUT_CLAUDE_COMMAND"',
-    ...(context.hasInitialPrompt ? ['"$DUGOUT_INITIAL_PROMPT"'] : []),
     '--settings "$DUGOUT_CLAUDE_SETTINGS"',
     ...(context.isResuming ? ['--resume "$DUGOUT_RESUME_SESSION"'] : []),
     ...(hasMcpConfig ? ['--mcp-config "$DUGOUT_MCP_CONFIG"'] : []),
+    ...(context.hasInitialPrompt ? ['-- "$DUGOUT_INITIAL_PROMPT"'] : []),
   ].join(' ')
 }
 

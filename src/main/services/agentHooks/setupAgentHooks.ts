@@ -5,6 +5,7 @@ import type { AgentKind } from '@shared/agents'
 import type { HookSignal } from '@shared/agentStatus'
 import type { HookDetails, HookServerDeps } from './HookServer'
 import { HookServer } from './HookServer'
+import { hookHeaderIssuer } from './hookHeaderFiles'
 import { HookTokens, type HookTokenIssuer } from './hookTokens'
 import type { TerminalFiles } from '../agents/AgentAdapter'
 import type { McpServerLaunch } from '../agents/dugoutMcp'
@@ -32,6 +33,8 @@ const SOCKET_FILE = 'hooks.sock'
 /** macOS limits Unix socket paths to 104 bytes. */
 const MAX_SOCKET_PATH_LENGTH = 100
 const MCP_DIR = 'mcp'
+/** Each agent terminal's hook `Authorization` header, read by curl (`hookHeaderFiles.ts`). */
+const HEADER_DIR = 'hook-headers'
 const OWNER_ONLY = 0o600
 const OWNER_ONLY_DIR = 0o700
 
@@ -115,7 +118,7 @@ export async function setupAgentHooks(options: {
     config: {
       dataDir: options.dataDir,
       socketPath,
-      tokens,
+      tokens: hookHeaderIssuer(tokens, join(options.dataDir, HEADER_DIR)),
       ...(options.commands && { commands: options.commands }),
       ...(options.mcpServer && {
         mcp: { server: options.mcpServer, files: mcpConfigFiles(options.dataDir) },

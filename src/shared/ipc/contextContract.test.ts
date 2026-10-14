@@ -42,12 +42,19 @@ describe('contextUrl', () => {
 })
 
 describe('repoRelativePath', () => {
-  test.each(['README.md', 'src/a.ts', '.github/workflows/ci.yml', 'a..b/c', '..hidden', 'dir/'])(
-    'accepts the path inside the repository %j',
-    (path) => {
-      expect(repoRelativePath.safeParse(path).success).toBe(true)
-    },
-  )
+  test.each([
+    'README.md',
+    'src/a.ts',
+    '.github/workflows/ci.yml',
+    'a..b/c',
+    '..hidden',
+    'dir/',
+    '.gitignore',
+    'src/.gitkeep',
+    'my.git/a',
+  ])('accepts the path inside the repository %j', (path) => {
+    expect(repoRelativePath.safeParse(path).success).toBe(true)
+  })
 
   test.each([
     ['empty', ''],
@@ -58,6 +65,11 @@ describe('repoRelativePath', () => {
     ['a trailing parent segment', 'src/..'],
     ['a NUL byte', 'src/a.ts\0.png'],
     ['too long', 'a'.repeat(4097)],
+    ['the .git folder', '.git'],
+    ['a file in .git', '.git/config'],
+    ['a hook in .git', '.git/hooks/pre-commit'],
+    ['a nested .git folder', 'vendor/lib/.git/config'],
+    ['.git in another case', '.GIT/config'],
   ])('rejects %s', (_label, path) => {
     expect(repoRelativePath.safeParse(path).success).toBe(false)
   })
