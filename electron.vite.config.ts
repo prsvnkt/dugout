@@ -9,7 +9,7 @@ export default defineConfig({
     resolve: { alias: sharedAlias },
     build: {
       rollupOptions: {
-        // mcp.js: the "dugout" MCP server Claude Code starts for each terminal.
+        // mcp.js: the "dugout" MCP server every agent with hasMcp starts for its terminal.
         input: { index: resolve('src/main/index.ts'), mcp: resolve('src/main/mcp/server.ts') },
       },
     },

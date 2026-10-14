@@ -1,7 +1,7 @@
 export const AGENT_STATUSES = ['starting', 'idle', 'working', 'needs-input', 'done'] as const
 
 /**
- * What a Claude Code session is doing, derived from its hooks.
+ * What an agent session is doing, from its hooks or plugin (decision 008).
  * `idle`: waiting for a prompt. `done`: finished a turn. `needs-input`: blocked on the user.
  */
 export type AgentStatus = (typeof AGENT_STATUSES)[number]

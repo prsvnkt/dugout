@@ -1365,6 +1365,35 @@ next Dock launch would send the token elsewhere or hand a remote page the whole 
 only a gate, since it is an environment variable too; the loopback-only rule is what keeps a
 packaged build from sending a token elsewhere (see `docs/known-issues.md`).
 
+## 061 — Agent settings and notifications read agents from their adapters (2026-10-13)
+
+**Context.** Decision 037 put every agent behind an adapter, but an audit (#67, #68) found the
+rule bypassed: `AgentConfigService` imported the Codex module to judge `.mcp.json` servers,
+`shared/agentConfig.ts` had a Codex-only `CodexSharing` type, the instructions linker hard-coded
+`CLAUDE.md`, `AGENTS.md` and a "Claude-only notes" heading, and notifications said "Claude needs
+your input." for every agent. The welcome screen and Agent settings named each agent in prose.
+A fourth agent would have needed edits in all of them.
+
+**Decision.**
+
+- `AgentInfo` (`shared/agents.ts`) declares `instructionsFiles` (the project files it reads,
+  preferred first) and the capability `projectMcp`: `native` (its CLI loads `.mcp.json` itself),
+  `via-dugout` (Dugout passes it the servers it can express) or `none`.
+  `SHARED_INSTRUCTIONS_FILE` (`AGENTS.md`) and `DEFAULT_AGENT` live there too.
+- `AgentAdapter` gains `projectMcpSharing(server)` (present exactly when `projectMcp` is
+  `via-dugout`) and `instructionsImport(path)` (present exactly when the agent does not read
+  `AGENTS.md` itself: the line its own file uses to import it). `adapters.contract.test.ts`
+  checks both.
+- `AgentConfigService` iterates the adapter registry: sharing is a per-agent record
+  (`AgentSharing`, keyed by kind) for each server and preset, and linking writes each importing
+  agent's own file with its own import line and a "`<label>`-only notes" heading.
+- Agent-settings text (`sharingText`, `projectMcpText`, `instructionsText`), the welcome tagline
+  and notification fallbacks are built from labels and capabilities. `AgentStatusChange` carries
+  the agent's kind. A unit test (`renderer/src/agentNames.test.ts`) fails if renderer code, with
+  comments removed, contains an agent's label, product or CLI name, or an agent-only instructions
+  file.
+- The approval flow of decision 057 is unchanged: it still keys on `needsMcpApproval`.
+
 ## 062 — The explorer renders a window of rows, not the whole tree (2026-10-09)
 
 **Context.** The explorer rendered every entry of every open folder as nested lists (#82).
@@ -1401,7 +1430,8 @@ behind another guard, each a few lines to close.
   editor, pinned context files and git path requests can never read or write `.git/config` or
   `.git/hooks/*`. Copying files into a new worktree already skipped `.git`.
 - **Agent-config files go through `FileService`.** `AgentConfigService` gets it injected and
-  reads and writes `.mcp.json`, `AGENTS.md` and `CLAUDE.md` with `readText` / `writeText`, so a
+  reads and writes `.mcp.json`, `AGENTS.md` and each adapter's instruction files (`CLAUDE.md`, …)
+  with `readText` / `writeText`, so a
   `CLAUDE.md` symlinked out of the checkout is refused (the settings view shows the error)
   instead of being copied into `AGENTS.md`. Codex's launch line is built synchronously, so
   `readProjectServers` uses `readTextInsideSync`, the same check without the async API; a
@@ -1474,7 +1504,9 @@ frame-ancestors 'none'`.
     at WCAG AA contrast ✅.
 30. **Done since:** each agent terminal gets its own hook token, kept out of MCP configs ✅.
 31. **Done since:** test and dev environment overrides are ignored by the packaged app ✅.
-32. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
-33. **Done since:** defence in depth: no `.git` access, agent-config files path-checked, safe
+32. **Done since:** notifications, Agent settings and the welcome screen name agents from the
+    registry; agent config goes through the adapters ✅.
+33. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
+34. **Done since:** defence in depth: no `.git` access, agent-config files path-checked, safe
     first prompts, hook token off `ps`, stricter window and CSP, preview host shown ✅.
-34. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+35. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

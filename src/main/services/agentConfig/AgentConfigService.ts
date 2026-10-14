@@ -1,18 +1,31 @@
 import { createHash } from 'node:crypto'
-import type { AgentConfig, InstructionsStatus, McpServer } from '@shared/agentConfig'
+import type {
+  AgentConfig,
+  AgentSharing,
+  InstructionsStatus,
+  McpServer,
+  McpSharing,
+  OwnInstructions,
+} from '@shared/agentConfig'
+import { SHARED_INSTRUCTIONS_FILE } from '@shared/agents'
 import { MCP_PRESETS } from '@shared/mcpPresets'
-import { codexSharing } from '../agents/codex/codexMcp'
+import type { AgentAdapter } from '../agents/AgentAdapter'
+import { AGENT_ADAPTERS } from '../agents/registry'
 import type { FileService } from '../files/FileService'
-import { AGENTS_MD, CLAUDE_MD_PATHS, importsAgentsMd, linkInstructions } from './instructions'
+import { importsShared, linkInstructions } from './instructions'
 import { MCP_JSON, parseMcpJson, serializeMcpJson } from './mcpJson'
 import { serversHash } from './serverApproval'
 
-const PRESET_CODEX = Object.fromEntries(
-  MCP_PRESETS.map((preset) => [preset.server.name, codexSharing(preset.server)]),
-)
+const SHARED: McpSharing = { isShared: true }
 
 /** What the service needs from `FileService`: path-safe reads and writes inside the checkout. */
 export type AgentConfigFiles = Pick<FileService, 'readText' | 'writeText'>
+
+/** An agent with its own instructions file, and how that file imports AGENTS.md. */
+interface Importer {
+  readonly adapter: AgentAdapter
+  readonly importLine: (path: string) => string
+}
 
 function versionOf(text: string | null): string {
   return createHash('sha256')
@@ -21,11 +34,23 @@ function versionOf(text: string | null): string {
 }
 
 /**
- * A project's agent setup: `.mcp.json` servers and the AGENTS.md / CLAUDE.md instructions. Every
- * file goes through `FileService`, so a symlink out of the checkout (or into `.git`) is refused.
+ * A project's agent setup: `.mcp.json` servers and the shared AGENTS.md instructions, read
+ * through each agent's adapter (decision 061), so no agent is special-cased here. Every file goes
+ * through `FileService`, so a symlink out of the checkout (or into `.git`) is refused (decision 063).
  */
 export class AgentConfigService {
-  constructor(private readonly files: AgentConfigFiles) {}
+  private readonly presetSharing: Readonly<Record<string, AgentSharing>>
+  private readonly importers: readonly Importer[]
+
+  constructor(
+    private readonly files: AgentConfigFiles,
+    private readonly adapters: readonly AgentAdapter[] = Object.values(AGENT_ADAPTERS),
+  ) {
+    this.presetSharing = this.sharingByName(MCP_PRESETS.map((preset) => preset.server))
+    this.importers = adapters.flatMap((adapter) =>
+      adapter.instructionsImport ? [{ adapter, importLine: adapter.instructionsImport }] : [],
+    )
+  }
 
   /** `approvedHash`: the servers the project approved (decision 057), if any. */
   async read(root: string, approvedHash?: string): Promise<AgentConfig> {
@@ -33,22 +58,19 @@ export class AgentConfigService {
       this.files.readText(root, MCP_JSON),
       this.instructions(root),
     ])
+    const presetSharing = this.presetSharing
     try {
       const { servers } = parseMcpJson(text)
-      const codex = Object.fromEntries(servers.map((server) => [server.name, codexSharing(server)]))
       const hash = serversHash(servers)
       const approval = { hash, isApproved: hash === approvedHash }
+      const sharing = this.sharingByName(servers)
       return {
-        mcp: { ok: true, servers, codex, approval, version: versionOf(text) },
+        mcp: { ok: true, servers, sharing, approval, version: versionOf(text) },
         instructions,
-        presetCodex: PRESET_CODEX,
+        presetSharing,
       }
     } catch (error) {
-      return {
-        mcp: { ok: false, error: (error as Error).message },
-        instructions,
-        presetCodex: PRESET_CODEX,
-      }
+      return { mcp: { ok: false, error: (error as Error).message }, instructions, presetSharing }
     }
   }
 
@@ -72,32 +94,64 @@ export class AgentConfigService {
     }
   }
 
-  /** Makes AGENTS.md the shared instructions, with CLAUDE.md importing it. */
+  /** Makes AGENTS.md the shared instructions, with each agent's own file importing it. */
   async linkInstructions(root: string): Promise<void> {
-    const status = await this.instructions(root)
-    const claudePath = status.claudeMdPath ?? CLAUDE_MD_PATHS[0]
-    const [agents, claude] = await Promise.all([
-      this.files.readText(root, AGENTS_MD),
-      this.files.readText(root, claudePath),
-    ])
-    const linked = linkInstructions({ agents, claude, claudePath })
-    if (linked.agents !== agents) await this.files.writeText(root, AGENTS_MD, linked.agents)
-    if (linked.claude !== claude) await this.files.writeText(root, claudePath, linked.claude)
+    const original = await this.files.readText(root, SHARED_INSTRUCTIONS_FILE)
+    let shared = original
+    for (const importer of this.importers) {
+      const { info } = importer.adapter
+      const status = await this.ownInstructions(root, importer)
+      // The contract test guarantees every agent declares at least one file.
+      const path = status.path ?? info.instructionsFiles[0] ?? SHARED_INSTRUCTIONS_FILE
+      const own = await this.files.readText(root, path)
+      const linked = linkInstructions({
+        shared,
+        own,
+        importLine: importer.importLine(path),
+        heading: `## ${info.label}-only notes`,
+      })
+      if (linked.own !== own) await this.files.writeText(root, path, linked.own)
+      shared = linked.shared
+    }
+    if (shared !== null && shared !== original) {
+      await this.files.writeText(root, SHARED_INSTRUCTIONS_FILE, shared)
+    }
+  }
+
+  /** For each server, whether each agent that takes `.mcp.json` servers gets it. */
+  private sharingByName(servers: readonly McpServer[]): Record<string, AgentSharing> {
+    const takers = this.adapters.filter(
+      (adapter) => adapter.info.capabilities.projectMcp !== 'none',
+    )
+    const sharing = (server: McpServer): AgentSharing =>
+      Object.fromEntries(
+        takers.map((adapter) => [adapter.info.kind, adapter.projectMcpSharing?.(server) ?? SHARED]),
+      )
+    return Object.fromEntries(servers.map((server) => [server.name, sharing(server)]))
   }
 
   private async instructions(root: string): Promise<InstructionsStatus> {
-    const [agents, ...claudes] = await Promise.all([
-      this.files.readText(root, AGENTS_MD),
-      ...CLAUDE_MD_PATHS.map((path) => this.files.readText(root, path)),
+    const [shared, ownFiles] = await Promise.all([
+      this.files.readText(root, SHARED_INSTRUCTIONS_FILE),
+      Promise.all(this.importers.map((importer) => this.ownInstructions(root, importer))),
     ])
-    const index = claudes.findIndex((text) => text !== null)
-    const claudeMdPath = index === -1 ? null : (CLAUDE_MD_PATHS[index] ?? null)
-    const claude = claudes[index] ?? null
+    return { hasSharedFile: shared !== null, ownFiles }
+  }
+
+  /** The first of the agent's instruction files that exists, and whether it imports AGENTS.md. */
+  private async ownInstructions(root: string, importer: Importer): Promise<OwnInstructions> {
+    const { kind, instructionsFiles } = importer.adapter.info
+    const texts = await Promise.all(
+      instructionsFiles.map((path) => this.files.readText(root, path)),
+    )
+    const index = texts.findIndex((text) => text !== null)
+    const path = instructionsFiles[index] ?? null
+    const text = texts[index] ?? null
     return {
-      hasAgentsMd: agents !== null,
-      claudeMdPath,
-      importsAgentsMd:
-        claude !== null && claudeMdPath !== null && importsAgentsMd(claude, claudeMdPath),
+      kind,
+      path,
+      importsShared:
+        text !== null && path !== null && importsShared(text, importer.importLine(path)),
     }
   }
 }

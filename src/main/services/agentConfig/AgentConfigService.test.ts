@@ -9,12 +9,15 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
+import { AGENTS, type AgentInfo } from '@shared/agents'
+import type { AgentAdapter } from '../agents/AgentAdapter'
 import { FileService } from '../files/FileService'
 import { GitService } from '../git/GitService'
 import { AgentConfigService } from './AgentConfigService'
 
 let root: string
-const service = new AgentConfigService(new FileService({ git: new GitService({ env: {} }) }))
+const files = new FileService({ git: new GitService({ env: {} }) })
+const service = new AgentConfigService(files)
 const write = (path: string, text: string) => {
   mkdirSync(join(root, path, '..'), { recursive: true })
   writeFileSync(join(root, path), text)
@@ -26,7 +29,7 @@ beforeEach(() => {
 })
 
 describe('AgentConfigService', () => {
-  test('reads servers, Codex sharing and instruction status', async () => {
+  test('reads servers, sharing per agent and instruction status', async () => {
     write(
       '.mcp.json',
       JSON.stringify({ mcpServers: { old: { type: 'sse', url: 'https://x.dev/sse' } } }),
@@ -39,12 +42,13 @@ describe('AgentConfigService', () => {
     expect(config.mcp).toMatchObject({
       ok: true,
       servers: [{ name: 'old', type: 'sse' }],
-      codex: { old: { isShared: false, reason: expect.stringMatching(/SSE/) } },
+      sharing: {
+        old: { claude: { isShared: true }, codex: { isShared: false, reason: expect.any(String) } },
+      },
     })
     expect(config.instructions).toEqual({
-      hasAgentsMd: true,
-      claudeMdPath: '.claude/CLAUDE.md',
-      importsAgentsMd: true,
+      hasSharedFile: true,
+      ownFiles: [{ kind: 'claude', path: '.claude/CLAUDE.md', importsShared: true }],
     })
   })
 
@@ -116,5 +120,75 @@ describe('AgentConfigService', () => {
 
     await expect(service.checkApproval(root, 'hash')).rejects.toThrow('outside the project')
     await expect(service.saveMcp(root, [], 'version')).rejects.toThrow('outside the project')
+  })
+
+  test('leaves CLAUDE.md alone when .claude/CLAUDE.md already imports AGENTS.md', async () => {
+    write('.claude/CLAUDE.md', '@../AGENTS.md\n')
+    write('AGENTS.md', '# Shared\n')
+    await service.linkInstructions(root)
+    expect(read('.claude/CLAUDE.md')).toBe('@../AGENTS.md\n')
+    expect(read('AGENTS.md')).toBe('# Shared\n')
+  })
+})
+
+/** A made-up agent with its own instructions file and servers passed by Dugout. */
+function fakeAdapter(kind: 'claude' | 'codex' | 'opencode', info: Partial<AgentInfo>) {
+  const base = AGENTS[kind]
+  return {
+    info: { ...base, ...info, capabilities: { ...base.capabilities, ...info.capabilities } },
+    defaultCommand: kind,
+    commandVariable: 'DUGOUT_FAKE_COMMAND',
+    launch: () => ({ commandLine: '', env: {} }),
+  } satisfies AgentAdapter
+}
+
+describe('AgentConfigService with other adapters', () => {
+  const adapters: AgentAdapter[] = [
+    {
+      ...fakeAdapter('claude', { label: 'Alpha', instructionsFiles: ['ALPHA.md'] }),
+      instructionsImport: (path) => `include AGENTS.md from ${path}`,
+    },
+    {
+      ...fakeAdapter('codex', {
+        label: 'Beta',
+        capabilities: { ...AGENTS.codex.capabilities, projectMcp: 'via-dugout' },
+      }),
+      projectMcpSharing: (server) =>
+        server.type === 'stdio' ? { isShared: true } : { isShared: false, reason: 'stdio only' },
+    },
+    fakeAdapter('opencode', {
+      capabilities: { ...AGENTS.opencode.capabilities, projectMcp: 'none' },
+    }),
+  ]
+  const custom = new AgentConfigService(files, adapters)
+
+  test('judges servers and presets with each adapter, leaving out agents that take none', async () => {
+    write('.mcp.json', JSON.stringify({ mcpServers: { web: { type: 'http', url: 'https://x' } } }))
+
+    const config = await custom.read(root)
+
+    expect(config.mcp).toMatchObject({
+      sharing: {
+        web: { claude: { isShared: true }, codex: { isShared: false, reason: 'stdio only' } },
+      },
+    })
+    expect(config.presetSharing.github).toEqual({
+      claude: { isShared: true },
+      codex: expect.anything(),
+    })
+    expect(Object.keys(config.presetSharing.github ?? {})).not.toContain('opencode')
+  })
+
+  test("links each agent's own file with its own import line and heading", async () => {
+    write('ALPHA.md', '# Alpha rules\n')
+
+    expect((await custom.read(root)).instructions).toEqual({
+      hasSharedFile: false,
+      ownFiles: [{ kind: 'claude', path: 'ALPHA.md', importsShared: false }],
+    })
+    await custom.linkInstructions(root)
+
+    expect(read('AGENTS.md')).toBe('# Alpha rules\n')
+    expect(read('ALPHA.md')).toBe('include AGENTS.md from ALPHA.md\n\n## Alpha-only notes\n')
   })
 })

@@ -63,6 +63,8 @@ test('says which agent CLIs are installed', async () => {
   })
   page = await app.firstWindow()
 
+  // Every registered agent is named, from the registry (decision 061)
+  await expect(page.getByText('Claude Code, Codex and OpenCode as agents')).toBeVisible()
   const agents = section('Agents')
   await expect(agents.getByRole('listitem').filter({ hasText: 'Claude Code' })).toContainText(
     'Installed',

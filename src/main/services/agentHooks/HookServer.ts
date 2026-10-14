@@ -121,9 +121,10 @@ function isSubagentSignal(value: string): value is SubagentSignal {
 }
 
 /**
- * Receives status signals from agent hooks, and task calls from the MCP server, over a Unix socket
- * that only the current user can open. Each request carries the bearer token of the terminal named
- * in its path, so one terminal's agent cannot act for another (decision 059).
+ * Receives status signals from agent hooks and plugins (Claude-shaped payloads), and task calls
+ * from the MCP server, over a Unix socket that only the current user can open. Each request carries
+ * the bearer token of the terminal named in its path, so one terminal's agent cannot act for
+ * another (decision 059).
  */
 export class HookServer {
   private readonly server: Server
