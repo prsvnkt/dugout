@@ -28,6 +28,7 @@ export default defineConfig({
         '**/*.d.ts',
         // Electron entry points and native wiring, exercised by the e2e suite.
         'src/main/index.ts',
+        'src/main/compose/**',
         'src/main/window.ts',
         'src/main/menu.ts',
         'src/main/appIcon.ts',
