@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { AGENTS } from '@shared/agents'
+import { AGENTS, SHARED_INSTRUCTIONS_FILE } from '@shared/agents'
 import type { AgentAdapter } from './AgentAdapter'
 import { AGENT_ADAPTERS, agentCommands } from './registry'
 import { launchContext, MCP_ENTRY, memoryFiles } from './testContext.testSupport'
@@ -154,5 +154,35 @@ describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter timeline', (_kind, ada
 
   test.runIf(adapter.timeline)('never looks up a session id that is not a plain id', async () => {
     expect(await adapter.timeline?.find('/nonexistent', '../../etc/passwd')).toBeNull()
+  })
+})
+
+const SERVER = { name: 'docs', type: 'stdio', command: 'docs-mcp', args: [], env: {} } as const
+
+describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter project config', (_kind, adapter) => {
+  const { instructionsFiles, capabilities } = adapter.info
+
+  test('declares the instruction files it reads, as relative markdown paths', () => {
+    expect(instructionsFiles.length).toBeGreaterThan(0)
+    for (const path of instructionsFiles) expect(path).toMatch(/^[\w.][\w./-]*\.md$/)
+  })
+
+  test('imports the shared instructions exactly when it does not read them itself', () => {
+    const readsShared = instructionsFiles.includes(SHARED_INSTRUCTIONS_FILE)
+    expect(adapter.instructionsImport === undefined).toBe(readsShared)
+    for (const path of readsShared ? [] : instructionsFiles) {
+      const line = adapter.instructionsImport?.(path) ?? ''
+      expect(line).toContain(SHARED_INSTRUCTIONS_FILE)
+      expect(line).not.toMatch(/\n/)
+    }
+  })
+
+  test('says how it gets .mcp.json servers, and judges them only when Dugout passes them', () => {
+    expect(['native', 'via-dugout', 'none']).toContain(capabilities.projectMcp)
+    const isViaDugout = capabilities.projectMcp === 'via-dugout'
+    expect(adapter.projectMcpSharing !== undefined).toBe(isViaDugout)
+    // Only servers Dugout passes itself can need Dugout's approval (decision 057).
+    if (capabilities.needsMcpApproval) expect(isViaDugout).toBe(true)
+    expect(adapter.projectMcpSharing?.(SERVER) ?? { isShared: true }).toEqual({ isShared: true })
   })
 })

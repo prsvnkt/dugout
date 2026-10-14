@@ -101,7 +101,8 @@ servers in the project's `.mcp.json`, which Claude Code loads itself and Codex g
 A user's own `OPENCODE_CONFIG_CONTENT`, if they set one, is replaced by Dugout's in its terminals.
 
 **Likely fix:** translate `.mcp.json` servers into OpenCode `local` / `remote` entries (`${VAR}`
-becomes `{env:VAR}`), show them in Agent settings per agent, and merge an inherited
+becomes `{env:VAR}`), set its `projectMcp` to `via-dugout` with a `projectMcpSharing` (Agent
+settings then lists it per server, decision 061), and merge an inherited
 `OPENCODE_CONFIG_CONTENT` instead of replacing it.
 
 ## Codex .mcp.json approval: one per project, from the main checkout, at start

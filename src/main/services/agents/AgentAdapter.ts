@@ -1,4 +1,4 @@
-import type { WithheldServers } from '@shared/agentConfig'
+import type { McpServer, McpSharing, WithheldServers } from '@shared/agentConfig'
 import type { AgentInfo } from '@shared/agents'
 import type { TimelineStep } from '../transcripts/timelineSteps'
 import type { TranscriptCarry, TranscriptUsage } from '../transcripts/types'
@@ -93,4 +93,14 @@ export interface AgentAdapter {
   headless?(command: string): AgentLaunch
   /** Present exactly when the agent has `hasTimeline`. */
   readonly timeline?: AgentTimelineReader
+  /**
+   * Present exactly when its `projectMcp` is `via-dugout`: whether Dugout can pass it this
+   * `.mcp.json` server, and if not, why (shown in Agent settings).
+   */
+  projectMcpSharing?(server: McpServer): McpSharing
+  /**
+   * Present exactly when its `instructionsFiles` leave out `SHARED_INSTRUCTIONS_FILE`: the line
+   * that makes its own file at `path` (relative to the checkout) import the shared one.
+   */
+  instructionsImport?(path: string): string
 }

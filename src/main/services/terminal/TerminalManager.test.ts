@@ -268,6 +268,7 @@ describe('TerminalManager agent status', () => {
     expect(onAgentStatusChange).toHaveBeenLastCalledWith({
       terminalId: id,
       projectId: 'proj-1',
+      agentKind: 'claude',
       status: 'needs-input',
     })
   })

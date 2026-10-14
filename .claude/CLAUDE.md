@@ -119,7 +119,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   "Pane" is only a code name (`Pane`, `addPane`); never show it in the UI.
 - **Agents are adapters** (decision 037): add one as `main/services/agents/<kind>/` plus entries in
   `agents/registry.ts` and `shared/agents.ts`. Outside those, never branch on an agent's kind;
-  read its `capabilities` instead.
+  read its `capabilities` instead. Its `instructionsFiles` and `projectMcp`, and the adapter's
+  `instructionsImport` / `projectMcpSharing`, drive Agent settings (decision 061);
+  `renderer/src/agentNames.test.ts` fails on agent names written into renderer code.
 - **Transcripts are read only inside the agent's own folder** (`~/.claude`, `~/.codex`, or
   `CLAUDE_CONFIG_DIR` / `CODEX_HOME`, checked by `transcripts/transcriptFiles.allowedPath`): usage
   reads the ones hooks name, timelines find one by session id. E2E tests point those variables at

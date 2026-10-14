@@ -9,13 +9,13 @@ export interface Pane {
   readonly kind: TerminalKind
   /** Set when the pane runs in an isolated worktree instead of the main checkout. */
   readonly worktree?: Worktree
-  /** Latest Claude session id, used to resume the conversation after a restart. */
+  /** Latest agent session id, used to resume the conversation after a restart. */
   readonly sessionId?: string
   /** Bumped to restart the pane's process (the pane remounts with a new key). */
   readonly generation: number
   /** The task this agent was started for. */
   readonly task?: PaneTask
-  /** First message for a new Claude session; cleared once the session has started. */
+  /** First message for a new agent session; cleared once the session has started. */
   readonly initialPrompt?: string
   /** What the agent was started for, shown when offering to resume it. */
   readonly title?: string

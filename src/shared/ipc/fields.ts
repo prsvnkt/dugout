@@ -9,7 +9,7 @@ export const absolutePath = z
 
 export const projectId = z.string().min(1).max(64)
 
-/** Claude session ids are UUIDs; this also rules out anything that could look like a flag. */
+/** Agent session ids (e.g. UUIDs); this also rules out anything that could look like a flag. */
 export const sessionId = z.string().regex(/^[A-Za-z0-9][\w-]{0,127}$/)
 
 /** A path inside a repository: relative, with no `..` segments, so it cannot escape it. */

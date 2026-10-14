@@ -1,3 +1,4 @@
+import { AGENTS, type AgentKind } from '@shared/agents'
 import type { AgentStatus } from '@shared/agentStatus'
 import type { ProjectId } from '@shared/project'
 import type { TerminalId } from '@shared/terminal'
@@ -5,6 +6,8 @@ import type { TerminalId } from '@shared/terminal'
 export interface AgentStatusChange {
   readonly terminalId: TerminalId
   readonly projectId: ProjectId
+  /** Which agent it is, so the fallback text names it. */
+  readonly agentKind: AgentKind
   /** Null once the terminal has exited. */
   readonly status: AgentStatus | null
   /** Why it is waiting or what it finished, when the hook said. */
@@ -23,9 +26,10 @@ export interface AgentNotifierDeps {
   readonly show: (notification: AgentNotification) => void
 }
 
-const MESSAGES: Partial<Record<AgentStatus, string>> = {
-  'needs-input': 'Claude needs your input.',
-  done: 'Claude finished and is ready for review.',
+/** What the notification says when the hook sent no detail, in the agent's own name. */
+const MESSAGES: Partial<Record<AgentStatus, (label: string) => string>> = {
+  'needs-input': (label) => `${label} needs your input.`,
+  done: (label) => `${label} finished and is ready for review.`,
 }
 
 const FALLBACK_TITLE = 'Dugout'
@@ -35,9 +39,9 @@ export class AgentNotifier {
   constructor(private readonly deps: AgentNotifierDeps) {}
 
   handle(change: AgentStatusChange): void {
-    const fallback = change.status ? MESSAGES[change.status] : undefined
-    if (!fallback || this.deps.isAppFocused()) return
-    const body = change.detail ?? fallback
+    const message = change.status ? MESSAGES[change.status] : undefined
+    if (!message || this.deps.isAppFocused()) return
+    const body = change.detail ?? message(AGENTS[change.agentKind].label)
 
     const title = this.deps.projectName(change.projectId) ?? FALLBACK_TITLE
     try {

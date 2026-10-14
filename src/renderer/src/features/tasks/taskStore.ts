@@ -41,7 +41,7 @@ interface TaskState {
   create(request: TaskCreateRequest): Promise<Task>
   update(request: TaskUpdateRequest): Promise<void>
   comment(projectId: ProjectId, number: number, body: string): Promise<void>
-  /** Worktree + Claude pane for the task, which moves to In progress. */
+  /** A worktree and one agent per kind in agents for the task, which moves to In progress. */
   startAgent(projectId: ProjectId, number: number, agents: readonly AgentKind[]): Promise<void>
 }
 

@@ -60,13 +60,11 @@ describe('MCP_PRESETS', () => {
   test('come with whether Codex agents can use each one, by the .mcp.json translation rules', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dugout-mcp-presets-'))
 
-    const { presetCodex } = await new AgentConfigService().read(root)
+    const { presetSharing } = await new AgentConfigService().read(root)
 
-    expect(presetCodex).toEqual(
-      Object.fromEntries(
-        MCP_PRESETS.map((preset) => [preset.server.name, codexSharing(preset.server)]),
-      ),
-    )
-    expect(presetCodex.github).toEqual({ isShared: true })
+    for (const preset of MCP_PRESETS) {
+      expect(presetSharing[preset.server.name]?.codex).toEqual(codexSharing(preset.server))
+    }
+    expect(presetSharing.github).toEqual({ claude: { isShared: true }, codex: { isShared: true } })
   })
 })

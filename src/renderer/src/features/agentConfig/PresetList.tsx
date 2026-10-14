@@ -1,5 +1,5 @@
 import { Check, Plus } from 'lucide-react'
-import type { CodexSharing, McpServer } from '@shared/agentConfig'
+import type { AgentSharing, McpServer } from '@shared/agentConfig'
 import { MCP_PRESETS, type McpPreset } from '@shared/mcpPresets'
 import { Icon } from '@renderer/lib/Icon'
 import { sharingText } from './sharingText'
@@ -8,14 +8,14 @@ import styles from './AgentSettings.module.css'
 interface PresetListProps {
   /** Names already in .mcp.json; their presets show as added. */
   readonly takenNames: readonly string[]
-  readonly presetCodex: Readonly<Record<string, CodexSharing>>
+  readonly presetSharing: Readonly<Record<string, AgentSharing>>
   readonly isBusy: boolean
   onAdd(server: McpServer): void
 }
 
 function PresetRow(props: {
   preset: McpPreset
-  sharing: CodexSharing | undefined
+  sharing: AgentSharing | undefined
   isAdded: boolean
   isBusy: boolean
   onAdd(): void
@@ -47,7 +47,7 @@ function PresetRow(props: {
 }
 
 /** Common MCP servers added to .mcp.json in one click, secrets as ${VAR} references. */
-export function PresetList({ takenNames, presetCodex, isBusy, onAdd }: PresetListProps) {
+export function PresetList({ takenNames, presetSharing, isBusy, onAdd }: PresetListProps) {
   return (
     <section className={styles.presets} aria-labelledby="agent-settings-presets">
       <h3 id="agent-settings-presets">Presets</h3>
@@ -56,7 +56,7 @@ export function PresetList({ takenNames, presetCodex, isBusy, onAdd }: PresetLis
           <PresetRow
             key={preset.server.name}
             preset={preset}
-            sharing={presetCodex[preset.server.name]}
+            sharing={presetSharing[preset.server.name]}
             isAdded={takenNames.includes(preset.server.name)}
             isBusy={isBusy}
             onAdd={() => onAdd(preset.server)}

@@ -202,10 +202,17 @@ export class TerminalManager {
     events: TerminalEvents,
     exit: TerminalExit,
   ): void {
-    const wasAgent = this.terminals.get(id)?.agentStatus != null
+    const terminal = this.terminals.get(id)
     this.terminals.delete(id)
     events.onExit(id, exit)
-    if (wasAgent) this.deps.onAgentStatusChange?.({ terminalId: id, projectId, status: null })
+    if (terminal?.agentStatus != null && isAgentKind(terminal.kind)) {
+      this.deps.onAgentStatusChange?.({
+        terminalId: id,
+        projectId,
+        agentKind: terminal.kind,
+        status: null,
+      })
+    }
   }
 
   /**
@@ -377,10 +384,11 @@ export class TerminalManager {
       const previews = approvals.map((approval) => ({ ...approval.preview, id: approval.id }))
       terminal.events.onAgentStatus?.(id, status, detail, previews)
     }
-    if (isNewStatus || isNewDetail) {
+    if ((isNewStatus || isNewDetail) && isAgentKind(terminal.kind)) {
       this.deps.onAgentStatusChange?.({
         terminalId: id,
         projectId: terminal.projectId,
+        agentKind: terminal.kind,
         status,
         ...(detail && { detail }),
       })
