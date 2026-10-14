@@ -1,9 +1,6 @@
 import { resolve } from 'node:path'
 import { defineConfig } from 'vitest/config'
 
-/** The project's coverage target (`.claude/rules/testing.md`). */
-const COVERAGE_TARGET = { statements: 80, branches: 75, functions: 75, lines: 80 }
-
 export default defineConfig({
   resolve: {
     alias: {
@@ -34,19 +31,16 @@ export default defineConfig({
         'src/main/appIcon.ts',
         'src/main/mcp/server.ts',
       ],
-      // A floor CI enforces (`npm run check`); raise it as tests land, never lower it.
+      // A floor CI enforces (`npm run check`): floor = measured − 2, rounded down (2026-10-14);
+      // raise it when coverage rises, never lower it.
       thresholds: {
-        // TODO(coverage audit, 2026-10): untested renderer logic (stores, hooks, helpers measured
-        // about 26%) holds the whole-codebase total at 62.8 / 64.8 / 56.9 / 65.0% (statements /
-        // branches / functions / lines). This is measured minus one; raise it toward 80 / 75 / 75 /
-        // 80 as renderer tests land.
-        statements: 61,
-        branches: 63,
-        functions: 55,
-        lines: 64,
-        // Main and shared already meet the target, so hold them to it.
-        'src/main/**': COVERAGE_TARGET,
-        'src/shared/**': COVERAGE_TARGET,
+        statements: 90,
+        branches: 84,
+        functions: 87,
+        lines: 92,
+        'src/main/**': { statements: 92, branches: 85, functions: 92, lines: 94 },
+        'src/shared/**': { statements: 98, branches: 93, functions: 98, lines: 98 },
+        'src/renderer/src/**': { statements: 84, branches: 80, functions: 77, lines: 87 },
       },
     },
   },
