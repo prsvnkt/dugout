@@ -8,7 +8,7 @@ import type { WorktreeManager } from '../services/worktrees/WorktreeManager'
 import type { IpcMainLike } from './handle'
 
 type InvokeListener = (event: IpcMainInvokeEvent, payload: unknown) => unknown
-type EventListener = (event: IpcMainEvent) => void
+type EventListener = (event: IpcMainEvent, payload: unknown) => void
 
 /** The renderer `WebContents` a request came from; records what main sends back to it. */
 export interface FakeSender {
@@ -70,10 +70,11 @@ export class FakeIpcMain implements IpcMainLike {
     return handler({ sender } as unknown as IpcMainInvokeEvent, payload)
   }
 
-  emit(channel: string, sender: FakeSender = fakeSender()): void {
+  /** Sends a fire-and-forget message (`ipcRenderer.send`), with its payload if it has one. */
+  emit(channel: string, sender: FakeSender = fakeSender(), payload?: unknown): void {
     const listener = this.listeners.get(channel)
     if (!listener) throw new Error(`No listener for "${channel}"`)
-    listener({ sender } as unknown as IpcMainEvent)
+    listener({ sender } as unknown as IpcMainEvent, payload)
   }
 }
 

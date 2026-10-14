@@ -1,9 +1,17 @@
-import { existsSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import type { DugoutApi } from '../../src/shared/api'
 import { gitHubTestEnv, startGitHubStub, STUB_TOKEN, STUB_USER_CODE } from './githubStub'
-import { launchApp, makeTempDir } from './helpers'
+import {
+  GIT_IDENTITY,
+  launchApp,
+  makeFakeClaude,
+  makeTempDir,
+  recordTerminalOutput,
+  stubFolderPicker,
+} from './helpers'
 
 let app: ElectronApplication
 let page: Page
@@ -26,6 +34,39 @@ test.afterEach(async () => {
 })
 
 const sidebar = () => page.getByRole('banner')
+
+/** A repo on branch feat/login whose origin is the stub's octocat/app. */
+function makeRepoWithPullRequest(baseUrl: string): string {
+  const root = join(makeTempDir(), 'app')
+  mkdirSync(root)
+  const git = (...args: string[]) =>
+    execFileSync('git', args, { cwd: root, env: { ...process.env, ...GIT_IDENTITY } })
+  git('init', '-q', '-b', 'main')
+  writeFileSync(join(root, 'readme.md'), '# app\n')
+  git('add', '.')
+  git('commit', '-qm', 'init')
+  git('remote', 'add', 'origin', `${baseUrl}/octocat/app.git`)
+  git('checkout', '-q', '-b', 'feat/login')
+  return root
+}
+
+/** Everything the renderer gets back from GitHub calls, as one string to search. */
+function gitHubResponsesInRenderer(): Promise<string> {
+  return page.evaluate(async () => {
+    const { dugout } = globalThis as unknown as { dugout: DugoutApi }
+    const projects = await dugout.projects.list()
+    if (!projects.ok) throw new Error(projects.error)
+    const checkout = { projectId: projects.data[0]?.id ?? '' }
+    const responses = await Promise.all([
+      dugout.github.getState(),
+      dugout.github.listRepos(),
+      dugout.git.pullRequestStatus(checkout),
+      dugout.git.pullRequestReviewThreads(checkout, 7),
+      dugout.git.pullRequestFailingChecks(checkout, 7),
+    ])
+    return JSON.stringify(responses)
+  })
+}
 
 test('signs in with the device flow, remembers the session, and signs out', async () => {
   // Arrange
@@ -128,4 +169,56 @@ test('stays signed in while GitHub is unreachable and recovers when it is back',
     (globalThis as unknown as EventTarget).dispatchEvent(new Event('online')),
   )
   await expect(sidebar().getByRole('button', { name: 'GitHub account octocat' })).toBeVisible()
+})
+
+test('the GitHub token reaches neither the renderer nor the agents', async () => {
+  // Arrange: signed in, with a project whose branch has a pull request, and an agent on it
+  await stub.close()
+  stub = await startGitHubStub([{ name: 'gizmo', cloneUrl: '/tmp/gizmo.git' }], {
+    pullRequest: {
+      branch: 'feat/login',
+      number: 7,
+      title: 'Fix login',
+      checks: [{ name: 'test', conclusion: 'failure', summary: '1 test failed', log: 'boom' }],
+      reviewThreads: [
+        {
+          path: 'readme.md',
+          line: 1,
+          isResolved: false,
+          comments: [{ author: 'ann', body: 'Typo.' }],
+        },
+      ],
+    },
+  })
+  await start({
+    ...GIT_IDENTITY,
+    ...gitHubTestEnv(stub.baseUrl),
+    DUGOUT_CLAUDE_COMMAND: makeFakeClaude(),
+  })
+  await sidebar().getByRole('button', { name: 'Sign in to GitHub' }).click()
+  await expect(sidebar().getByRole('button', { name: 'GitHub account octocat' })).toBeVisible()
+  await stubFolderPicker(app, makeRepoWithPullRequest(stub.baseUrl))
+  await page.getByRole('button', { name: 'Add project…' }).click()
+  await expect(page.getByRole('dialog')).toBeHidden()
+  const output = await recordTerminalOutput(page)
+  await page.getByRole('button', { name: /^New Claude agent/ }).click()
+  await expect.poll(output).toContain('fake-claude ready')
+
+  // Act
+  const responses = await gitHubResponsesInRenderer()
+  await page.locator('[data-active="true"] [data-testid="terminal"]').click()
+  await page.keyboard.type('secret-env\n')
+
+  // Assert: the calls worked, and carried no token
+  expect(responses).toContain('octocat/gizmo')
+  expect(responses).toContain('Fix login')
+  expect(responses).toContain('Typo.')
+  expect(responses).toContain('1 test failed')
+  expect(responses).not.toContain(STUB_TOKEN)
+  // The agent's only credential-like variable is its own hook token (variables the test runner
+  // itself has, other than Dugout's, come from the developer's environment, not from Dugout).
+  await expect.poll(output).toMatch(/secret-env=(\[.*?\])/)
+  const names = JSON.parse(/secret-env=(\[.*?\])/.exec(await output())?.[1] ?? '[]') as string[]
+  const ambient = new Set(Object.keys(process.env).filter((name) => !name.startsWith('DUGOUT_')))
+  expect(names.filter((name) => !ambient.has(name))).toEqual(['DUGOUT_HOOK_TOKEN'])
 })

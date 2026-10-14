@@ -421,6 +421,11 @@ const actions = {
   'stop-later': () =>
     setTimeout(() => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }), 2500),
   exit: () => process.exit(0),
+  // Names (never values) of variables that look like credentials, to prove none reached the agent.
+  'secret-env': () =>
+    process.stdout.write(
+      'secret-env=' + JSON.stringify(Object.keys(process.env).filter((k) => /GITHUB|LINEAR|TOKEN/.test(k)).sort()) + '\r\n',
+    ),
   'subagent-start': (id, type) =>
     fire('SubagentStart', type, { agent_id: id, agent_type: type }),
   'subagent-stop': (id, type) =>
