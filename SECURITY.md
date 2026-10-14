@@ -1,7 +1,7 @@
 # Security policy
 
-Dugout runs shells, reads and writes files in your repositories, and stores a GitHub token, so
-security reports are very welcome.
+Dugout runs shells, reads and writes files in your repositories, and stores a GitHub token and,
+if you connect Linear, a Linear API key, so security reports are very welcome.
 
 ## Reporting a vulnerability
 
@@ -22,7 +22,8 @@ Only the latest release (and `main`) receives security fixes.
 
 Especially relevant:
 
-- The GitHub token leaving the main process, or being written anywhere unencrypted.
+- The GitHub token or the Linear API key leaving the main process, or being written anywhere
+  unencrypted.
 - The renderer reaching the OS other than through the validated IPC API.
 - File access escaping a project's checkout (including through symlinks).
 - Anything that lets one terminal's agent act on another project through the MCP server or the

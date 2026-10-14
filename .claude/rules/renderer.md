@@ -5,7 +5,7 @@ paths:
 
 # Renderer rules
 
-- Organise by feature: `src/features/<feature>/` holds its components, hooks, styles and tests.
+- Organise by feature: `src/renderer/src/features/<feature>/` holds its components, hooks, styles and tests.
 - Styling: CSS Modules per component, colours/spacing/fonts only from `styles/tokens.css`.
   No hardcoded hex values in components; add a token instead.
 - Inside a project, the UI `--accent` is that project's colour; the logo's brand colours

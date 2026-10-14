@@ -22,16 +22,22 @@ Accepted limitations to revisit are in `docs/known-issues.md`; update it when fi
 
 Needs Node 24+, see `.nvmrc` (Electron 44 bundles Node 24; `@types/node` follows it).
 
-| Command                 | What it does                                                         |
-| ----------------------- | -------------------------------------------------------------------- |
-| `npm run dev`           | Run the app with hot reload                                          |
-| `npm run check`         | Typecheck + lint + format check + unit tests with the coverage floor |
-| `npm test`              | Unit tests (Vitest), without coverage                                |
-| `npm run test:coverage` | Unit tests with coverage (`coverage/`), failing below the floor      |
-| `npm run test:e2e`      | Build, then drive the real app with Playwright                       |
-| `npm run build`         | Typecheck and production build into `out/`                           |
-| `npm run dist`          | Package the macOS app (DMG, zip) into `dist/`                        |
-| `npm run demo:gif`      | Record raw demo footage (`scripts/demo/`)                            |
+| Command                     | What it does                                                         |
+| --------------------------- | -------------------------------------------------------------------- |
+| `npm run dev`               | Run the app with hot reload                                          |
+| `npm start`                 | Preview the production build in `out/` (after `npm run build`)       |
+| `npm run check`             | Typecheck + lint + format check + unit tests with the coverage floor |
+| `npm run typecheck`         | `tsc` for the node (main, preload, shared) and web projects          |
+| `npm run lint`              | ESLint                                                               |
+| `npm run format`            | Prettier, writing fixes (`format:check` only reports)                |
+| `npm test`                  | Unit tests (Vitest), without coverage (`test:watch` re-runs them)    |
+| `npm run test:coverage`     | Unit tests with coverage (`coverage/`), failing below the floor      |
+| `npm run test:e2e`          | Build, then drive the real app with Playwright                       |
+| `npm run build`             | Typecheck and production build into `out/`                           |
+| `npm run dist`              | Package the macOS app (DMG, zip) into `dist/`                        |
+| `npm run test:e2e:packaged` | The e2e suite against the packaged app (after `dist`)                |
+| `npm run icons`             | Regenerate `resources/icon.png` and `icon.icns` from the SVGs        |
+| `npm run demo:gif`          | Record raw demo footage (`scripts/demo/`)                            |
 
 **Definition of done:** `npm run check` and `npm run test:e2e` both pass, and the docs are
 updated as `.claude/rules/docs.md` describes. CI (`.github/workflows/ci.yml`) runs both checks on
@@ -66,11 +72,13 @@ src/
                 context/ (project context for agents: .dugout/context/ entries, private notes,
                 proposals, pinned-file hashes, search, headless codemap).
     mcp/        The "dugout" MCP server agents use for tasks and project context (separate build
-                entry: mcp.js).
+                entry: mcp.js); its tools are listed in docs/mcp-tools.md.
     compose/    The composition root, split by domain (decision 065): index.ts `start()` calls
                 compose<Domain>() for GitHub, git, tasks, context, usage and terminals, then
                 registerIpc. Electron wiring only, excluded from coverage; logic belongs in services/.
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
+    window.ts   The main BrowserWindow (secure webPreferences, traffic lights); appIcon.ts sets
+                the Dock icon for unpackaged runs.
     devOverrides.ts  Every test/dev env override, ignored by a packaged build (decision 060).
   preload/    Sandboxed bridge. Exposes the typed `DugoutApi` as `window.dugout`. Nothing else.
               api.ts builds it from an injected ipcRenderer (unit-tested); index.ts exposes it.
@@ -78,7 +86,8 @@ src/
               `agents.ts` is the agent registry the UI reads (labels, capabilities).
               ipc/ holds one `<domain>Contract.ts` per IPC domain behind the `contract.ts` barrel;
               persistence/ holds the on-disk formats (projects.json, workspace.json).
-  renderer/   React UI. Organised by feature: src/features/<feature>/, shared bits in src/lib/.
+  renderer/   React UI. Organised by feature: src/renderer/src/features/<feature>/, shared bits
+              in src/renderer/src/lib/, the root component in app/, design tokens in styles/.
               Layout: project tabs (title bar) / Explorer over Agents | editor over terminals |
               Git panel; side panels collapse via workspace/SidePanel.tsx, and the Agents list
               (agents/) minimises down to its header (workspace/LeftSidebar.tsx).
@@ -104,15 +113,25 @@ src/
               timeline/ shows a session's steps (editor tab kind `timeline`), opened from an
               agent header or a task tab (decision 048).
               taskQueue/ starts queued tasks while a project has free agent slots (decision 047).
+              Also: inbox/ (Needs you, with pending tool calls), compare/ (two agents' worktrees
+              side by side), clone/ (clone dialog), github/ (sign-in, account), worktrees/
+              (checkout picker), agentConfig/ (Agent settings tab), openIn/ ("Open in…" menu),
+              projects/ (project tabs, colours), explorer/ (file tree), git/ (Git panel,
+              branches, pull request block), editor/ (Monaco tabs), terminal/ (xterm panes).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               big stores are built from slices: workspace/ (workspaceState, paneLayoutSlice,
               paneRuntimeSlice, workspaceSnapshot) and editor/ (editorState, editorTabsSlice,
               editorBuffersSlice, editorOps). Pure state transitions (e.g. workspace/layout.ts)
               are unit-tested.
 tests/e2e/    Playwright tests against the built Electron app.
+scripts/      postinstall helpers (fix-node-pty-permissions.mjs, brand-dev-electron.mjs) and
+              generate-icons.mjs (`npm run icons`).
 scripts/demo/ Records raw demo footage (out/demo/demo.gif): sample repos, scripted agents, frames.
               The README GIF (docs/media/demo.gif) is edited from it by hand; never overwrite it.
-docs/         Decisions and design notes.
+docs/         decisions.md (decisions, roadmap), known-issues.md, adding-an-agent.md (adapter
+              checklist), mcp-tools.md (the "dugout" MCP tools).
+.github/workflows/  ci.yml (check + e2e on every push and PR), release.yml (a draft release
+              from a `v*` tag).
 ```
 
 Process boundaries, IPC and security rules live in `.claude/rules/`.
@@ -123,9 +142,9 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   terminals are **shells**, and repos are **projects**. Agent names come from `shared/agents.ts`
   (`label` "Claude", `productName` "Claude Code", `cliName`); never hard-code them in the UI.
   "Pane" is only a code name (`Pane`, `addPane`); never show it in the UI.
-- **Agents are adapters** (decision 037): add one as `main/services/agents/<kind>/` plus entries in
-  `agents/registry.ts` and `shared/agents.ts`. Outside those, never branch on an agent's kind;
-  read its `capabilities` instead. Its `instructionsFiles` and `projectMcp`, and the adapter's
+- **Agents are adapters** (decision 037; checklist in `docs/adding-an-agent.md`): add one as
+  `main/services/agents/<kind>/` plus entries in `agents/registry.ts` and `shared/agents.ts`.
+  Outside those, never branch on an agent's kind; read its `capabilities` instead. Its `instructionsFiles` and `projectMcp`, and the adapter's
   `instructionsImport` / `projectMcpSharing`, drive Agent settings (decision 061);
   `renderer/src/agentNames.test.ts` fails on agent names written into renderer code.
 - **Transcripts are read only inside the agent's own folder** (`~/.claude`, `~/.codex`, or

@@ -29,7 +29,8 @@ installed copy of Dugout.
 2. Read [.claude/CLAUDE.md](.claude/CLAUDE.md) (layout and gotchas) and the rules in
    [.claude/rules/](.claude/rules/). They apply to human and AI contributors alike.
 3. Write the test first. Unit tests sit next to the code as `*.test.ts`; end-to-end tests live
-   in `tests/e2e/` and never run the real `claude` (they use a fake from `tests/e2e/helpers.ts`).
+   in `tests/e2e/` and never run a real agent CLI (they use the fake `claude`, `codex` and
+   `opencode` from `tests/e2e/helpers.ts`).
 4. Keep the docs current in the same commit (see [.claude/rules/docs.md](.claude/rules/docs.md)).
 
 **Done means both pass:**

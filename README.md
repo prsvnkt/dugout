@@ -13,8 +13,34 @@ changed.
 ![Dugout demo: describe a task and pick an agent, Claude Code and Codex working side by side, live status on every project tab, switching projects while agents keep going, and one inbox for every agent that needs you](docs/media/demo.gif)
 
 Dugout runs each agent's own CLI in a real terminal, so any terminal-based agent works in a
-shell pane. Claude Code, Codex and OpenCode are integrated today (live status, notifications,
+shell. Claude Code, Codex and OpenCode are integrated today (live status, notifications,
 resumable sessions, task tools); more agents will get the same support one by one.
+
+## Features
+
+- **Projects and agents:** one repo per project, as coloured tabs; side-by-side agent and shell
+  terminals under a file explorer and editor; an Agents list with each agent's subagents;
+  layouts and sessions restored on launch.
+- **Inbox:** every agent that needs you or has finished, across projects, with pending tool calls
+  shown in full.
+- **Worktrees:** start an agent in its own worktree, with optional setup (copy files such as
+  `.env`, run a command such as `npm install`); compare two agents' worktrees on one task.
+- **Tasks:** GitHub Issues or a Linear team, per project, as task cards; start an agent on a
+  task, or queue tasks to start as agent slots free up.
+- **Review:** a Git panel (changes, diffs, stage, commit, push, branches) with pull request and
+  CI status; line comments on a diff, pull request review comments and failing CI go back to the
+  agent as a prompt.
+- **Verify on Stop:** run the project's check command each time an agent finishes, and send a
+  failure back to it.
+- **Overlap warnings** when agents in different worktrees change the same files.
+- **Token usage** per agent, task and project, and **session timelines** from agent transcripts
+  (Claude Code and Codex).
+- **Project context** agents read over MCP (notes, pinned files, links, a codemap), with notes
+  agents propose waiting for your approval.
+- **Preview:** a branch's preview deployment, and a dev server per worktree on its own port.
+- **Open in…** VS Code, Cursor, Zed or Finder.
+- **Agent settings:** the project's `.mcp.json` servers (passed to Codex only once you approve
+  them), AGENTS.md as the shared instructions, worktree setup and the check command.
 
 ## Getting started
 
