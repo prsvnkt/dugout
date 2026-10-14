@@ -23,6 +23,7 @@ import { createFlowControl } from './flowControl'
 import { createOutputRouter } from './outputRouter'
 import { createFrameCoalescer, createTrailingDebounce, RESIZE_SETTLE_MS } from './resizeScheduling'
 import { createWebglToggle, type LoadWebgl, type WebglToggle } from './webglToggle'
+import { parseOsc52Copy } from './osc52'
 import { useCheckStore } from '@renderer/features/checks/checkStore'
 import {
   applySubagentUpdate,
@@ -177,6 +178,24 @@ function wireInput(terminal: Terminal, id: TerminalId, kind: TerminalKind): Arra
   ]
 }
 
+/**
+ * Copies OSC 52 writes to the clipboard: agents with mouse tracking on copy their own selection
+ * this way. Reads are never answered (decision 066). Returns the disposer.
+ */
+function copyOnOsc52(terminal: Terminal): () => void {
+  const handler = terminal.parser.registerOscHandler(52, (payload) => {
+    const text = parseOsc52Copy(payload)
+    if (text !== null) {
+      navigator.clipboard.writeText(text).catch((error: unknown) => {
+        console.warn('[terminal] could not copy to the clipboard', error)
+      })
+    }
+    // Handled either way, so a read request or a bad payload goes no further.
+    return true
+  })
+  return () => handler.dispose()
+}
+
 /** Writes output to xterm, pausing the PTY while xterm is far behind (decision 056). */
 function flowControlled(terminal: Terminal, id: TerminalId) {
   return createFlowControl({
@@ -305,6 +324,7 @@ export function useTerminal(
     const cleanups: Array<() => void> = [
       dugout.terminal.onData((sourceId, data) => output.receive(sourceId, data)),
       () => output.dispose(),
+      copyOnOsc52(terminal),
     ]
     const setters: TerminalEventSetters = {
       setStatus,

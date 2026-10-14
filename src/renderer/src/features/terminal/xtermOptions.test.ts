@@ -23,6 +23,10 @@ describe('XTERM_OPTIONS', () => {
     expect(XTERM_OPTIONS.minimumContrastRatio).toBeGreaterThanOrEqual(READABLE_RATIO)
   })
 
+  test('Option+drag selects text even while a program tracks the mouse', () => {
+    expect(XTERM_OPTIONS.macOptionClickForcesSelection).toBe(true)
+  })
+
   test.each([
     'foreground',
     'red',

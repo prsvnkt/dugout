@@ -1496,6 +1496,22 @@ injected). The two big stores are composed from slices with shared state types:
 `CloneDialog`, `TaskDetailView`, `TerminalPane`, `TasksPanel` and `CompareView` are left for a
 follow-up.
 
+## 066 — Terminals honour OSC 52 copy, write-only (2026-10-14)
+
+**Context.** Text could not be copied out of agent terminals (#114). Claude Code turns on mouse
+tracking, so a drag goes to the agent instead of becoming an xterm selection; the agent draws
+its own highlight and copies with OSC 52 (`ESC ] 52 ; Pc ; base64 BEL`), which xterm.js drops
+unless a handler is registered.
+
+**Decision.** Every terminal, agent or shell, registers an OSC 52 handler (`useTerminal`) that
+decodes the payload with `terminal/osc52.ts` (base64 to UTF-8, at most 1 MB of base64) and
+writes it with `navigator.clipboard.writeText`, the `clipboard-sanitized-write` permission the
+window already grants (decision 063). It is write-only: a read request (`?`) is swallowed and
+never answered, so nothing running in a terminal can read the user's clipboard. Clears, invalid
+base64 or UTF-8 and oversized payloads are ignored. A failed write (e.g. the window not
+focused) is only logged. Option+drag (`macOptionClickForcesSelection`) also makes a normal xterm
+selection, copied with Cmd+C, while an agent tracks the mouse.
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1551,5 +1567,7 @@ follow-up.
 34. **Done since:** defence in depth: no `.git` access, agent-config files path-checked, safe
     first prompts, hook token off `ps`, stricter window and CSP, preview host shown ✅.
 35. **Done since:** the composition root and the big stores split into focused modules ✅.
-36. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38), following
+36. **Done since:** copying from agent terminals: OSC 52 copies reach the clipboard (write-only),
+    and Option+drag selects ✅.
+37. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38), following
     [adding-an-agent.md](adding-an-agent.md).
