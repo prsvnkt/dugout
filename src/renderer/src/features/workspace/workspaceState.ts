@@ -1,5 +1,5 @@
 import type { StoreApi } from 'zustand'
-import type { WorkspaceSnapshot } from '@shared/ipc/contract'
+import type { WorkspaceSnapshot } from '@shared/persistence'
 import type { ProjectId } from '@shared/project'
 import type { TerminalId, TerminalKind } from '@shared/terminal'
 import type { PendingToolCall } from '@shared/toolCall'

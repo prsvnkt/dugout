@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { buildHookSettings } from '../../agentHooks/hookSettings'
-import { launchContext, MCP_ENTRY, memoryFiles } from '../testContext'
+import { launchContext, MCP_ENTRY, memoryFiles } from '../testContext.testSupport'
 import { claudeAdapter, CLAUDE_SETTINGS_FILE } from './claudeAdapter'
 
 describe('claudeAdapter', () => {

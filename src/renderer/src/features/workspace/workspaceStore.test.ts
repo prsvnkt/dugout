@@ -1,6 +1,6 @@
 import '@renderer/lib/fakeDugout.testSupport'
 import { beforeEach, describe, expect, test } from 'vitest'
-import type { WorkspaceSnapshot } from '@shared/ipc/contract'
+import type { WorkspaceSnapshot } from '@shared/persistence'
 import { useWorkspaceStore } from './workspaceStore'
 
 const PROJECT = 'project-1'

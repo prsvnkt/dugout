@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest'
 import { AGENTS, SHARED_INSTRUCTIONS_FILE } from '@shared/agents'
 import type { AgentAdapter } from './AgentAdapter'
 import { AGENT_ADAPTERS, agentCommands } from './registry'
-import { launchContext, MCP_ENTRY, memoryFiles } from './testContext'
+import { launchContext, MCP_ENTRY, memoryFiles } from './testContext.testSupport'
 
 /**
  * Every combination of resuming, a first prompt and the task server that `TerminalManager`

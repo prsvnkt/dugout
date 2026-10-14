@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
-import { FakeIpcMain, PROJECT_ID, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, PROJECT_ID, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerUsageIpc } from './registerUsageIpc'
 
 afterEach(() => {

@@ -1,6 +1,14 @@
 import { describe, expect, test } from 'vitest'
-import { NO_TOKENS } from '../transcripts/types'
+import type { TokenDetail } from '../transcripts/types'
 import { contextWindowOf, costOf, normalizeModel, priceOf } from './prices'
+
+const NO_TOKENS: TokenDetail = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  cacheWriteLong: 0,
+}
 
 describe('prices', () => {
   test('finds a model by id without its date suffix or 1M marker', () => {

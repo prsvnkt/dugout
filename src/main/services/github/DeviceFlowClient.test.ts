@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { DeviceFlowClient, RefreshRejectedError } from './DeviceFlowClient'
 import { GitHubUnavailableError } from './GitHubApi'
-import { fakeFetch } from './fakeFetch'
+import { fakeFetch } from './fakeFetch.testSupport'
 
 const CODE = {
   device_code: 'dev-123',

@@ -10,15 +10,19 @@
 
 ## Adding a capability (e.g. git status)
 
-1. Types and request schemas in `src/shared/` (schemas in `ipc/contract.ts`, or a domain file
-   beside it such as `ipc/contextContract.ts` once it grows; channel names in `ipc/channels.ts`).
+1. Types and request schemas in `src/shared/`. Request schemas go in the domain's
+   `ipc/<domain>Contract.ts` (e.g. `gitContract.ts`; fields several domains share, such as
+   `projectId` or `repoRelativePath`, in `ipc/fields.ts`), re-exported by the `ipc/contract.ts`
+   barrel, which callers import. Schemas for files Dugout stores (projects.json, workspace.json)
+   go in `shared/persistence/`, imported from `@shared/persistence`. Channel names go in
+   `ipc/channels.ts`.
 2. Extend `DugoutApi` in `src/shared/api.ts`.
 3. Domain logic in `src/main/services/<domain>/`, behind an interface when it wraps a process or
    library, with its dependencies injected so it is unit-testable without Electron.
 4. A thin `src/main/ipc/register<Domain>Ipc.ts` that validates payloads and calls the service.
 5. Map the methods in `createDugoutApi` (`src/preload/api.ts`) and add them to its table test.
    `register<Domain>Ipc` takes an optional `IpcMainLike` last, so its test passes `FakeIpcMain`
-   (`src/main/ipc/fakeIpcMain.ts`) instead of mocking Electron.
+   (`src/main/ipc/fakeIpcMain.testSupport.ts`) instead of mocking Electron.
 6. UI in `src/renderer/src/features/<domain>/`.
 
 ## Design rules

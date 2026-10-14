@@ -49,14 +49,6 @@ export interface TranscriptUsage {
   readonly carry: TranscriptCarry
 }
 
-export const NO_TOKENS: TokenDetail = {
-  input: 0,
-  output: 0,
-  cacheRead: 0,
-  cacheWrite: 0,
-  cacheWriteLong: 0,
-}
-
 /** A token count from untrusted JSON: a non-negative integer, else 0. */
 export function count(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0

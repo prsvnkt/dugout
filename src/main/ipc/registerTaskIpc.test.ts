@@ -9,7 +9,7 @@ import {
   fakeWorktrees,
   silenceIpcLogs,
   testProject,
-} from './fakeIpcMain'
+} from './fakeIpcMain.testSupport'
 import { registerTaskIpc } from './registerTaskIpc'
 
 const TASK_URL = 'https://github.com/acme/demo/issues/12'

@@ -1,4 +1,4 @@
-import type { WorkspaceSnapshot } from '@shared/ipc/contract'
+import type { WorkspaceSnapshot } from '@shared/persistence'
 import type { ProjectId } from '@shared/project'
 import type { Pane, PaneId, ProjectLayout } from './layout'
 import type { RecentSession } from './recentSessions'

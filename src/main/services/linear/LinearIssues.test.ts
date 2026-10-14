@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { fakeLinear } from './fakeLinear'
+import { fakeLinear } from './fakeLinear.testSupport'
 import { LinearIssues, type LinearIssueNode } from './LinearIssues'
 
 const API_URL = 'https://api.linear.test/graphql'

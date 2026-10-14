@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { readProjectServers } from '../../agentConfig/serverApproval'
-import { launchContext, MCP_ENTRY, memoryFiles } from '../testContext'
+import { launchContext, MCP_ENTRY, memoryFiles } from '../testContext.testSupport'
 import { codexAdapter } from './codexAdapter'
 import { codexConfigOverrides } from './codexConfig'
 

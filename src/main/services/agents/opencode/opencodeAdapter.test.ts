@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, test } from 'vitest'
-import { launchContext, MCP_ENTRY, memoryFiles } from '../testContext'
+import { launchContext, MCP_ENTRY, memoryFiles } from '../testContext.testSupport'
 import { OPENCODE_PLUGIN_FILE, opencodeAdapter } from './opencodeAdapter'
 import { OPENCODE_STATUS_PLUGIN } from './statusPlugin'
 

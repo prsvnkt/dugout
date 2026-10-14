@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { SettingsStore } from '../services/settings/SettingsStore'
 import type { ShellRunner } from '../services/welcome/checkAgentClis'
-import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerWelcomeIpc } from './registerWelcomeIpc'
 
 const AGENT_COMMANDS = { claude: 'claude', codex: 'codex', opencode: 'opencode' }

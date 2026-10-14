@@ -4,7 +4,7 @@ import {
   workspaceSnapshotSchema,
   type SavedPane,
   type WorkspaceSnapshot,
-} from '@shared/ipc/contract'
+} from '@shared/persistence'
 import type { ProjectId } from '@shared/project'
 import { writeFileAtomic } from '../projects/atomicWrite'
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { IpcChannel } from '@shared/ipc/channels'
 import type { TimelineService } from '../services/timeline/TimelineService'
-import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain'
+import { FakeIpcMain, silenceIpcLogs } from './fakeIpcMain.testSupport'
 import { registerTimelineIpc } from './registerTimelineIpc'
 
 const SESSION_ID = '3f2a6c1e-8f5b-4c6d-9a7e-1b2c3d4e5f60'
