@@ -1,3 +1,5 @@
+import type { AgentKind } from './agents'
+
 /** One MCP server from a project's `.mcp.json`, in the fields Dugout edits. */
 export type McpServer = StdioMcpServer | RemoteMcpServer
 
@@ -18,13 +20,19 @@ export interface RemoteMcpServer {
 
 export const MCP_SERVER_TYPES = ['stdio', 'http', 'sse'] as const
 
-/** Names Codex can use as a TOML key; Dugout's own task server keeps its name. */
+/** Names every agent can use (Codex needs a TOML key); Dugout's own task server keeps its name. */
 export const MCP_SERVER_NAME = /^[A-Za-z0-9_-]{1,64}$/
 export const RESERVED_MCP_SERVER = 'dugout'
 
-/** Whether Codex panes get the server too, and if not, why. */
-export type CodexSharing =
+/** Whether an agent gets a server, and if not, why. */
+export type McpSharing =
   { readonly isShared: true } | { readonly isShared: false; readonly reason: string }
+
+/**
+ * Whether each agent that takes `.mcp.json` servers (`projectMcp` other than `none`) gets one
+ * server, keyed by agent kind.
+ */
+export type AgentSharing = Readonly<Partial<Record<AgentKind, McpSharing>>>
 
 /**
  * `.mcp.json` servers an agent with `needsMcpApproval` did not get when it started, because the
@@ -44,12 +52,19 @@ export interface ServerApproval {
   readonly isApproved: boolean
 }
 
-/** Which instruction file Claude reads, and whether it imports the shared AGENTS.md. */
+/** An agent that reads its own instructions file, which should import the shared one. */
+export interface OwnInstructions {
+  readonly kind: AgentKind
+  /** The first of its `instructionsFiles` that exists; null when none does. */
+  readonly path: string | null
+  /** Whether that file imports `SHARED_INSTRUCTIONS_FILE`. */
+  readonly importsShared: boolean
+}
+
+/** Whether the shared instructions exist, and whether every agent's own file imports them. */
 export interface InstructionsStatus {
-  readonly hasAgentsMd: boolean
-  /** `CLAUDE.md` or `.claude/CLAUDE.md`, whichever exists (root first); null when neither does. */
-  readonly claudeMdPath: string | null
-  readonly importsAgentsMd: boolean
+  readonly hasSharedFile: boolean
+  readonly ownFiles: readonly OwnInstructions[]
 }
 
 export interface AgentConfig {
@@ -58,7 +73,8 @@ export interface AgentConfig {
     | {
         readonly ok: true
         readonly servers: readonly McpServer[]
-        readonly codex: Readonly<Record<string, CodexSharing>>
+        /** Which agents get each server, keyed by its name. */
+        readonly sharing: Readonly<Record<string, AgentSharing>>
         /** Whether agents with `needsMcpApproval` may get the servers (decision 057). */
         readonly approval: ServerApproval
         /** Identifies the file contents read, so a save never overwrites newer changes. */
@@ -66,8 +82,8 @@ export interface AgentConfig {
       }
     | { readonly ok: false; readonly error: string }
   readonly instructions: InstructionsStatus
-  /** Whether Codex agents can use each preset (`MCP_PRESETS`), keyed by its server name. */
-  readonly presetCodex: Readonly<Record<string, CodexSharing>>
+  /** Which agents could use each preset (`MCP_PRESETS`), keyed by its server name. */
+  readonly presetSharing: Readonly<Record<string, AgentSharing>>
 }
 
 const SECRET_KEY = /token|secret|password|passwd|api[-_]?key|auth/i

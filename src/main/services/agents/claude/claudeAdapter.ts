@@ -1,5 +1,5 @@
-import { join } from 'node:path'
-import { AGENTS } from '@shared/agents'
+import { join, posix } from 'node:path'
+import { AGENTS, SHARED_INSTRUCTIONS_FILE } from '@shared/agents'
 import { buildHookSettings } from '../../agentHooks/hookSettings'
 import { readClaudeTimeline } from '../../transcripts/claudeTimeline'
 import { readClaudeTranscript } from '../../transcripts/claudeTranscript'
@@ -71,4 +71,7 @@ export const claudeAdapter: AgentAdapter = {
     }
   },
   timeline: { find: findClaudeTranscript, read: readClaudeTimeline },
+
+  // CLAUDE.md imports other files with `@path`, relative to itself.
+  instructionsImport: (path) => `@${posix.relative(posix.dirname(path), SHARED_INSTRUCTIONS_FILE)}`,
 }

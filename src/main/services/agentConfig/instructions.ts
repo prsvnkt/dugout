@@ -1,43 +1,36 @@
-import { posix } from 'node:path'
+const NEW_SHARED_INSTRUCTIONS = '# Agent instructions\n'
 
-export const AGENTS_MD = 'AGENTS.md'
-/** Where Claude Code looks for project instructions, in the order Dugout prefers them. */
-export const CLAUDE_MD_PATHS = ['CLAUDE.md', '.claude/CLAUDE.md'] as const
-
-const NEW_AGENTS_MD = '# Agent instructions\n'
-const CLAUDE_ONLY_HEADING = '## Claude-only notes\n'
-
-/** The `@` import of AGENTS.md as written in the CLAUDE.md at `claudePath` (imports are relative). */
-export function agentsImport(claudePath: string): string {
-  return `@${posix.relative(posix.dirname(claudePath), AGENTS_MD)}`
+/** Whether `text` has `importLine` (e.g. `@AGENTS.md`) as a line of its own. */
+export function importsShared(text: string, importLine: string): boolean {
+  return text.split(/\r?\n/).some((candidate) => candidate.trim() === importLine)
 }
 
-export function importsAgentsMd(claude: string, claudePath: string): boolean {
-  const line = agentsImport(claudePath)
-  return claude.split(/\r?\n/).some((candidate) => candidate.trim() === line)
+export interface LinkInput {
+  /** AGENTS.md, or null when it does not exist. */
+  readonly shared: string | null
+  /** The agent's own instructions file (e.g. CLAUDE.md), or null when it does not exist. */
+  readonly own: string | null
+  /** The line that makes the own file import AGENTS.md, from the agent's adapter. */
+  readonly importLine: string
+  /** Heading for notes only that agent reads, e.g. `## Claude-only notes`. */
+  readonly heading: string
 }
 
 /**
- * Makes AGENTS.md the instructions every agent reads, with CLAUDE.md importing it. Existing
- * CLAUDE.md content becomes AGENTS.md when there is none yet; otherwise it stays below the import.
+ * Makes AGENTS.md the instructions every agent reads, with the agent's own file importing it.
+ * Existing own-file content becomes AGENTS.md when there is none yet; otherwise it stays below
+ * the import.
  */
-export function linkInstructions(files: {
-  readonly agents: string | null
-  readonly claude: string | null
-  readonly claudePath: string
-}): { agents: string; claude: string } {
-  const importLine = agentsImport(files.claudePath)
-  if (files.claude !== null && importsAgentsMd(files.claude, files.claudePath)) {
-    return { agents: files.agents ?? NEW_AGENTS_MD, claude: files.claude }
+export function linkInstructions(input: LinkInput): { shared: string; own: string } {
+  const { shared, own, importLine } = input
+  if (own !== null && importsShared(own, importLine)) {
+    return { shared: shared ?? NEW_SHARED_INSTRUCTIONS, own }
   }
-  if (files.agents === null) {
+  if (shared === null) {
     return {
-      agents: files.claude?.trim() ? files.claude : NEW_AGENTS_MD,
-      claude: `${importLine}\n\n${CLAUDE_ONLY_HEADING}`,
+      shared: own?.trim() ? own : NEW_SHARED_INSTRUCTIONS,
+      own: `${importLine}\n\n${input.heading}\n`,
     }
   }
-  return {
-    agents: files.agents,
-    claude: files.claude ? `${importLine}\n\n${files.claude}` : `${importLine}\n`,
-  }
+  return { shared, own: own ? `${importLine}\n\n${own}` : `${importLine}\n` }
 }

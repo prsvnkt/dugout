@@ -6,6 +6,17 @@
 export const AGENT_KINDS = ['claude', 'codex', 'opencode'] as const
 export type AgentKind = (typeof AGENT_KINDS)[number]
 
+/** The instructions file agents share (decision 022); others import it into their own file. */
+export const SHARED_INSTRUCTIONS_FILE = 'AGENTS.md'
+
+/**
+ * How an agent gets the servers in a project's `.mcp.json` (decision 061):
+ * - `native`: its CLI loads the file itself (and asks before it runs them);
+ * - `via-dugout`: Dugout passes it the servers it can express, see `needsMcpApproval`;
+ * - `none`: it does not get them.
+ */
+export type ProjectMcp = 'native' | 'via-dugout' | 'none'
+
 /** What an agent supports. The UI hides what an agent cannot do instead of checking its kind. */
 export interface AgentCapabilities {
   /** Ready / working / needs you / done from hooks or a plugin; otherwise only "Running". */
@@ -25,6 +36,8 @@ export interface AgentCapabilities {
    * running them, so they wait for the user's approval in Dugout (decision 057).
    */
   readonly needsMcpApproval: boolean
+  /** How it gets the project's `.mcp.json` servers. */
+  readonly projectMcp: ProjectMcp
 }
 
 export interface AgentInfo {
@@ -36,6 +49,11 @@ export interface AgentInfo {
   /** The CLI's name on the welcome screen's agent check: "Codex CLI". */
   readonly cliName: string
   readonly installCommand: string
+  /**
+   * The project instruction files it reads, preferred first. One without
+   * `SHARED_INSTRUCTIONS_FILE` imports it from its own file (its adapter knows how).
+   */
+  readonly instructionsFiles: readonly string[]
   readonly capabilities: AgentCapabilities
 }
 
@@ -46,6 +64,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
     productName: 'Claude Code',
     cliName: 'Claude Code',
     installCommand: 'npm install -g @anthropic-ai/claude-code',
+    instructionsFiles: ['CLAUDE.md', '.claude/CLAUDE.md'],
     capabilities: {
       hasStatus: true,
       hasMcp: true,
@@ -55,6 +74,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       hasTimeline: true,
       // Claude Code asks before it starts the servers in .mcp.json.
       needsMcpApproval: false,
+      projectMcp: 'native',
     },
   },
   codex: {
@@ -63,6 +83,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
     productName: 'Codex',
     cliName: 'Codex CLI',
     installCommand: 'npm install -g @openai/codex',
+    instructionsFiles: [SHARED_INSTRUCTIONS_FILE],
     capabilities: {
       hasStatus: true,
       hasMcp: true,
@@ -71,6 +92,7 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       canRunHeadless: false,
       hasTimeline: true,
       needsMcpApproval: true,
+      projectMcp: 'via-dugout',
     },
   },
   opencode: {
@@ -79,6 +101,8 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
     productName: 'OpenCode',
     cliName: 'OpenCode',
     installCommand: 'npm install -g opencode-ai',
+    // It falls back to CLAUDE.md only when there is no AGENTS.md.
+    instructionsFiles: [SHARED_INSTRUCTIONS_FILE],
     capabilities: {
       hasStatus: true,
       hasMcp: true,
@@ -88,12 +112,16 @@ export const AGENTS: Readonly<Record<AgentKind, AgentInfo>> = {
       hasTimeline: false,
       // Does not get .mcp.json servers yet (known issues).
       needsMcpApproval: false,
+      projectMcp: 'none',
     },
   },
 }
 
 /** Every agent, in menu order. */
 export const AGENT_LIST: readonly AgentInfo[] = AGENT_KINDS.map((kind) => AGENTS[kind])
+
+/** The agent the start screen's prompt box and ⌘T use until the user picks another. */
+export const DEFAULT_AGENT: AgentKind = 'claude'
 
 /** ⌘T and ⌥⌘T start the default agent (settings); other agents are in the menus. */
 export const NEW_AGENT_SHORTCUT = { accelerator: 'CmdOrCtrl+T', symbols: '⌘T' } as const

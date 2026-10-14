@@ -59,4 +59,9 @@ describe('claudeAdapter', () => {
     const written = JSON.parse(readFileSync(join(dataDir, CLAUDE_SETTINGS_FILE), 'utf8'))
     expect(written).toEqual(buildHookSettings())
   })
+
+  test('imports AGENTS.md relative to where CLAUDE.md lives', () => {
+    expect(claudeAdapter.instructionsImport?.('CLAUDE.md')).toBe('@AGENTS.md')
+    expect(claudeAdapter.instructionsImport?.('.claude/CLAUDE.md')).toBe('@../AGENTS.md')
+  })
 })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { CodexSharing, McpServer } from '@shared/agentConfig'
+import type { AgentSharing, McpServer } from '@shared/agentConfig'
+import { AGENT_LIST, SHARED_INSTRUCTIONS_FILE } from '@shared/agents'
 import type { ProjectId } from '@shared/project'
 import { useEditorStore } from '@renderer/features/editor/editorStore'
 import { CheckCommandSection } from './CheckCommandSection'
@@ -8,7 +9,8 @@ import { MaxAgentsSection } from './MaxAgentsSection'
 import { PresetList } from './PresetList'
 import { ServerApprovalSection } from './ServerApprovalSection'
 import { serverCommand } from './serverSummary'
-import { sharingText } from './sharingText'
+import { instructionsText } from './instructionsText'
+import { notSharedReasons, projectMcpText, sharingText } from './sharingText'
 import { draftFromServer, EMPTY_DRAFT } from './serverDraft'
 import { ServerForm } from './ServerForm'
 import { useAgentConfig } from './useAgentConfig'
@@ -19,12 +21,17 @@ interface AgentSettingsViewProps {
   readonly projectId: ProjectId
 }
 
+/** Agents that get `.mcp.json` servers only once the project approves them (decision 057). */
+const APPROVAL_KINDS = AGENT_LIST.filter((agent) => agent.capabilities.needsMcpApproval).map(
+  (agent) => agent.kind,
+)
+
 /** `null` while browsing; the server's name when editing it; `''` when adding one. */
 type Editing = string | null
 
 function ServerRow(props: {
   server: McpServer
-  sharing: CodexSharing | undefined
+  sharing: AgentSharing | undefined
   isApproved: boolean
   isBusy: boolean
   onEdit(): void
@@ -39,10 +46,7 @@ function ServerRow(props: {
         <span className={styles.badge}>{server.type}</span>
         <code className={styles.summary}>{serverCommand(server)}</code>
       </div>
-      <p
-        className={styles.sharing}
-        title={sharing?.isShared === false ? sharing.reason : undefined}
-      >
+      <p className={styles.sharing} title={notSharedReasons(sharing)}>
         {sharingText(sharing, props.isApproved)}
       </p>
       <div className={styles.rowActions}>
@@ -86,8 +90,10 @@ function McpSection({ projectId, agent }: SectionProps) {
       </div>
     )
   }
-  const { servers, codex, approval } = config.mcp
-  const toApprove = servers.filter((server) => codex[server.name]?.isShared)
+  const { servers, sharing, approval } = config.mcp
+  const toApprove = servers.filter((server) =>
+    APPROVAL_KINDS.some((kind) => sharing[server.name]?.[kind]?.isShared),
+  )
   const save = (next: readonly McpServer[]) =>
     void saveServers(next).then((isSaved) => {
       if (isSaved) setEditing(null)
@@ -112,7 +118,7 @@ function McpSection({ projectId, agent }: SectionProps) {
             <ServerRow
               key={server.name}
               server={server}
-              sharing={codex[server.name]}
+              sharing={sharing[server.name]}
               isApproved={approval.isApproved}
               isBusy={isBusy}
               onEdit={() => setEditing(server.name)}
@@ -158,7 +164,7 @@ function McpSection({ projectId, agent }: SectionProps) {
       {editing === null && (
         <PresetList
           takenNames={servers.map((server) => server.name)}
-          presetCodex={config.presetCodex}
+          presetSharing={config.presetSharing}
           isBusy={isBusy}
           onAdd={(server) => save([...servers, server])}
         />
@@ -171,42 +177,38 @@ function InstructionsSection({ projectId, agent }: SectionProps) {
   const { config, isBusy, linkInstructions } = agent
   const openFile = useEditorStore((state) => state.openFile)
   if (!config) return null
-  const { hasAgentsMd, claudeMdPath, importsAgentsMd } = config.instructions
+  const { hasSharedFile, ownFiles } = config.instructions
+  const { isLinked, text } = instructionsText(config.instructions)
   return (
     <>
-      {importsAgentsMd ? (
-        <p className={styles.ok}>
-          ✓ {claudeMdPath} imports AGENTS.md, so every agent follows the same instructions.
-        </p>
+      {isLinked ? (
+        <p className={styles.ok}>✓ {text}</p>
       ) : (
         <>
-          <p className={styles.muted}>
-            Codex and OpenCode read AGENTS.md; Claude reads CLAUDE.md. Make AGENTS.md the single
-            source and have {claudeMdPath ?? 'CLAUDE.md'} import it, keeping a section for
-            Claude-only notes.
-            {!hasAgentsMd && claudeMdPath && ` The current ${claudeMdPath} becomes AGENTS.md.`}
-          </p>
+          <p className={styles.muted}>{text}</p>
           <div className={styles.formActions}>
             <button
               className={styles.primary}
               disabled={isBusy}
               onClick={() => void linkInstructions()}
             >
-              Make AGENTS.md the source
+              Make {SHARED_INSTRUCTIONS_FILE} the source
             </button>
           </div>
         </>
       )}
       <div className={styles.formActions}>
-        {hasAgentsMd && (
-          <button onClick={() => openFile(projectId, null, 'AGENTS.md', false)}>
-            Open AGENTS.md
+        {hasSharedFile && (
+          <button onClick={() => openFile(projectId, null, SHARED_INSTRUCTIONS_FILE, false)}>
+            Open {SHARED_INSTRUCTIONS_FILE}
           </button>
         )}
-        {claudeMdPath && (
-          <button onClick={() => openFile(projectId, null, claudeMdPath, false)}>
-            Open {claudeMdPath}
-          </button>
+        {ownFiles.map(({ kind, path }) =>
+          path ? (
+            <button key={kind} onClick={() => openFile(projectId, null, path, false)}>
+              Open {path}
+            </button>
+          ) : null,
         )}
       </div>
     </>
@@ -224,11 +226,7 @@ export function AgentSettingsView({ projectId }: AgentSettingsViewProps) {
     <section className={styles.view} aria-label="Agent settings">
       <section className={styles.section} aria-labelledby="agent-settings-mcp">
         <h2 id="agent-settings-mcp">MCP servers</h2>
-        <p className={styles.muted}>
-          From .mcp.json at the project root. Claude Code loads them itself and asks before it runs
-          them; Codex agents get the ones Codex can run, once you approve them below. OpenCode
-          agents get only Dugout&apos;s task tools for now.
-        </p>
+        <p className={styles.muted}>From .mcp.json at the project root. {projectMcpText()}</p>
         <McpSection projectId={projectId} agent={agent} />
       </section>
       <section className={styles.section} aria-labelledby="agent-settings-instructions">

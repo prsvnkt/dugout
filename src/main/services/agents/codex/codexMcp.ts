@@ -1,8 +1,8 @@
 import {
   MCP_SERVER_NAME,
   RESERVED_MCP_SERVER,
-  type CodexSharing,
   type McpServer,
+  type McpSharing,
   type RemoteMcpServer,
   type StdioMcpServer,
 } from '@shared/agentConfig'
@@ -79,7 +79,8 @@ export function codexMcpServer(server: McpServer): CodexMcpResult {
   return server.type === 'stdio' ? stdioConfig(server) : httpConfig(server)
 }
 
-export function codexSharing(server: McpServer): CodexSharing {
+/** Whether Dugout can pass Codex the server, and if not, why. */
+export function codexSharing(server: McpServer): McpSharing {
   const result = codexMcpServer(server)
   return result.ok ? { isShared: true } : { isShared: false, reason: result.reason }
 }
