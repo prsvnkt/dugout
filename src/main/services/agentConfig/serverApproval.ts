@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import type { McpServer } from '@shared/agentConfig'
+import { readTextInsideSync } from '../files/FileService'
 import { MCP_JSON, parseMcpJson } from './mcpJson'
 
 type Canonical = string | readonly Canonical[] | { readonly [key: string]: Canonical }
@@ -34,10 +33,13 @@ export interface ProjectServers {
   readonly hash: string
 }
 
-/** The servers in `<cwd>/.mcp.json` and their hash; null when there is no readable file. */
+/**
+ * The servers in `<cwd>/.mcp.json` and their hash; null when there is no readable file, or it
+ * links out of the checkout.
+ */
 export function readProjectServers(cwd: string): ProjectServers | null {
   try {
-    const { servers } = parseMcpJson(readFileSync(join(cwd, MCP_JSON), 'utf8'))
+    const { servers } = parseMcpJson(readTextInsideSync(cwd, MCP_JSON))
     return { servers, hash: serversHash(servers) }
   } catch {
     return null

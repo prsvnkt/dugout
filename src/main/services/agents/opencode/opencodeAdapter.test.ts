@@ -22,7 +22,8 @@ describe('opencodeAdapter', () => {
       '"$DUGOUT_OPENCODE_COMMAND" --session "$DUGOUT_RESUME_SESSION"',
     )
     expect(opencodeAdapter.launch(launchContext({ hasInitialPrompt: true })).commandLine).toBe(
-      '"$DUGOUT_OPENCODE_COMMAND" --prompt "$DUGOUT_INITIAL_PROMPT"',
+      // `--prompt=…` keeps a prompt that starts with - the option's value, never a flag.
+      '"$DUGOUT_OPENCODE_COMMAND" --prompt="$DUGOUT_INITIAL_PROMPT"',
     )
   })
 

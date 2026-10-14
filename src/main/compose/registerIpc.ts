@@ -77,7 +77,7 @@ function registerAgentIpc(env: AppEnv, services: AppServices): void {
         root,
       ),
   })
-  registerAgentConfigIpc(projects, new AgentConfigService())
+  registerAgentConfigIpc(projects, new AgentConfigService(repo.files))
 }
 
 /** GitHub sign-in, pull requests and preview deployments. */

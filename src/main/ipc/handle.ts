@@ -10,6 +10,15 @@ export interface IpcMainLike {
 }
 
 /**
+ * Only the window's own page may call main: a subframe (none exist today, the CSP and navigation
+ * rules keep it so) is refused. Test events without a frame count as the main frame.
+ */
+function isFromSubframe(event: IpcMainInvokeEvent): boolean {
+  const frame = event.senderFrame as { parent: unknown } | null | undefined
+  return frame != null && frame.parent != null
+}
+
+/**
  * Registers a request-response handler that validates its payload and always resolves
  * to a `Result`, so the renderer gets a readable error instead of a rejected promise.
  */
@@ -20,6 +29,10 @@ export function handleRequest<Request, Response>(
   ipc: IpcMainLike = ipcMain,
 ): void {
   ipc.handle(channel, async (event, payload: unknown): Promise<Result<Response>> => {
+    if (isFromSubframe(event)) {
+      console.warn(`[ipc] rejected "${channel}" from a subframe`)
+      return fail('Invalid request.')
+    }
     const request = parsePayload(schema, payload, channel)
     if (request === null) return fail('Invalid request.')
     try {

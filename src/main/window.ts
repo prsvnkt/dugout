@@ -10,6 +10,9 @@ const MIN_SIZE = { minWidth: 800, minHeight: 500 }
  */
 const TRAFFIC_LIGHT_POSITION = { x: 18, y: 18 }
 
+/** The sign-in dialog copies the device code with `navigator.clipboard.writeText`. */
+const ALLOWED_PERMISSIONS: ReadonlySet<string> = new Set(['clipboard-sanitized-write'])
+
 function isAllowedNavigation(url: string, devServerUrl: string | undefined): boolean {
   return devServerUrl !== undefined && url.startsWith(devServerUrl)
 }
@@ -38,9 +41,15 @@ export function createMainWindow(devServerUrl: string | undefined): BrowserWindo
     if (url.startsWith('https://')) void shell.openExternal(url)
     return { action: 'deny' }
   })
-  window.webContents.on('will-navigate', (event, url) => {
+  const blockNavigation = (event: { preventDefault(): void }, url: string) => {
     if (!isAllowedNavigation(url, devServerUrl)) event.preventDefault()
-  })
+  }
+  window.webContents.on('will-navigate', blockNavigation)
+  window.webContents.on('will-redirect', blockNavigation)
+  // The UI needs no camera, microphone, location, notifications etc.; only copying to the clipboard.
+  window.webContents.session.setPermissionRequestHandler((_contents, permission, callback) =>
+    callback(ALLOWED_PERMISSIONS.has(permission)),
+  )
 
   if (devServerUrl) {
     void window.loadURL(devServerUrl)

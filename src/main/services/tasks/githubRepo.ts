@@ -22,5 +22,15 @@ export function githubRepoFromRemote(remoteUrl: string, webBaseUrl: string): Git
     .replace(/\.git$/, '')
     .replace(/\/$/, '')
     .split('/')
-  return owner && name ? { owner, name } : null
+  return isRepoSegment(owner) && isRepoSegment(name) ? { owner, name } : null
+}
+
+const REPO_SEGMENT = /^[A-Za-z0-9_.-]+$/
+
+/**
+ * An owner or repo name as GitHub allows them. `.` and `..` are refused: they survive
+ * `encodeURIComponent` and would point token-bearing API requests at other paths.
+ */
+function isRepoSegment(segment: string | undefined): segment is string {
+  return segment !== undefined && REPO_SEGMENT.test(segment) && segment !== '.' && segment !== '..'
 }

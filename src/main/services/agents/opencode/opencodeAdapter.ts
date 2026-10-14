@@ -52,7 +52,8 @@ function commandLine(context: AgentLaunchContext): string {
   return [
     '"$DUGOUT_OPENCODE_COMMAND"',
     ...(context.isResuming ? ['--session "$DUGOUT_RESUME_SESSION"'] : []),
-    ...(context.hasInitialPrompt ? ['--prompt "$DUGOUT_INITIAL_PROMPT"'] : []),
+    // `--prompt=…`: a prompt starting with `-` stays the option's value, never a flag.
+    ...(context.hasInitialPrompt ? ['--prompt="$DUGOUT_INITIAL_PROMPT"'] : []),
   ].join(' ')
 }
 

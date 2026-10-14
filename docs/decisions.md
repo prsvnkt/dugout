@@ -1418,6 +1418,43 @@ scroll their target into view, render it and focus it. With the same 5,000-entry
 holds 26 rows and the expand takes about 35 ms; `tests/e2e/explorerLargeFolder.spec.ts` asserts
 fewer than 200 rows.
 
+## 063 — Defence in depth: .git, agent-config files, prompts, hook token, window (2026-10-14)
+
+**Context.** The 2026-10-09 audit listed LOW-severity gaps (#64): each harmless today or
+behind another guard, each a few lines to close.
+
+**Decision.**
+
+- **No file access in `.git`.** `repoRelativePath` and `FileService.resolveInside` refuse any
+  path with a `.git` segment (any case), before and after resolving symlinks, so the explorer,
+  editor, pinned context files and git path requests can never read or write `.git/config` or
+  `.git/hooks/*`. Copying files into a new worktree already skipped `.git`.
+- **Agent-config files go through `FileService`.** `AgentConfigService` gets it injected and
+  reads and writes `.mcp.json`, `AGENTS.md` and each adapter's instruction files (`CLAUDE.md`, …)
+  with `readText` / `writeText`, so a
+  `CLAUDE.md` symlinked out of the checkout is refused (the settings view shows the error)
+  instead of being copied into `AGENTS.md`. Codex's launch line is built synchronously, so
+  `readProjectServers` uses `readTextInsideSync`, the same check without the async API; a
+  `.mcp.json` that links out is treated as missing.
+- **A first prompt is never an option.** Claude and Codex get it last, after `--` (both CLIs
+  honour it; it also ends `--mcp-config`'s list and stops Codex reading a prompt such as
+  "resume" as a subcommand). OpenCode gets `--prompt="$DUGOUT_INITIAL_PROMPT"`. Lines stay plain
+  `"$VAR"` (decision 013); no prompt is rejected.
+- **GitHub owner and name** must match `^[A-Za-z0-9_.-]+$` and are never `.` or `..`, which
+  survive `encodeURIComponent` and could steer token-bearing requests to other API paths.
+- **The hook token is off curl's command line.** Each agent terminal's `Authorization` header
+  is written to `<app data>/hook-headers/<terminal id>` (folder 0700, file 0600, removed on exit,
+  folder cleared at start) and hook commands pass `-H "@$DUGOUT_HOOK_HEADER"`; stdin still
+  carries the payload. `DUGOUT_HOOK_TOKEN` stays in the env for the dugout MCP server and the
+  OpenCode plugin (decision 059). Changing the hook commands makes Codex ask each user once to
+  trust the hooks again; the commands stay identical across terminals, so it asks only once.
+- **Window.** Permission requests are denied except `clipboard-sanitized-write` (the sign-in
+  dialog copies its code); `will-redirect` is blocked like `will-navigate`; `handleRequest`
+  refuses calls from a subframe; the CSP adds `base-uri 'none'; form-action 'none';
+frame-ancestors 'none'`.
+- **Preview.** The deployment row shows the URL's host next to "Open preview", since the link
+  comes from a GitHub deployment status that anyone with deploy access can set.
+
 ## 065 — Composition root split into compose/ modules; stores as slices (2026-10-14)
 
 **Context.** A few closures had grown far past the 50-line rule (#70): `start()` in
@@ -1492,5 +1529,7 @@ follow-up.
 32. **Done since:** notifications, Agent settings and the welcome screen name agents from the
     registry; agent config goes through the adapters ✅.
 33. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
-34. **Done since:** the composition root and the big stores split into focused modules ✅.
-35. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+34. **Done since:** defence in depth: no `.git` access, agent-config files path-checked, safe
+    first prompts, hook token off `ps`, stricter window and CSP, preview host shown ✅.
+35. **Done since:** the composition root and the big stores split into focused modules ✅.
+36. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

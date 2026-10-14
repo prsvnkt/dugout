@@ -116,6 +116,25 @@ describe('handleRequest', () => {
     expect(result).toEqual({ ok: false, error: 'Something went wrong.' })
   })
 
+  test('refuses requests from a subframe, answering only the main frame', async () => {
+    // Arrange
+    silenceIpcLogs()
+    let listener: ((event: unknown, payload: unknown) => unknown) | undefined
+    const handler = vi.fn(() => 'answered')
+    const ipc = { handle: (_channel: string, fn: typeof listener) => (listener = fn), on: vi.fn() }
+    handleRequest(CHANNEL, schema, handler, ipc as never)
+    const call = (senderFrame: unknown) => listener?.({ sender: {}, senderFrame }, { name: 'Ada' })
+
+    // Act
+    const fromSubframe = await call({ parent: { parent: null } })
+    const fromMainFrame = await call({ parent: null })
+
+    // Assert
+    expect(fromSubframe).toEqual({ ok: false, error: 'Invalid request.' })
+    expect(fromMainFrame).toEqual({ ok: true, data: 'answered' })
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
   test('never puts the stack trace in the result', async () => {
     // Arrange
     silenceIpcLogs()
