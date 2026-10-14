@@ -14,9 +14,8 @@ function isAllowedNavigation(url: string, devServerUrl: string | undefined): boo
   return devServerUrl !== undefined && url.startsWith(devServerUrl)
 }
 
-export function createMainWindow(): BrowserWindow {
-  const devServerUrl = process.env.ELECTRON_RENDERER_URL
-
+/** `devServerUrl` is electron-vite's dev server, from `readOverrides` (never set when packaged). */
+export function createMainWindow(devServerUrl: string | undefined): BrowserWindow {
   const window = new BrowserWindow({
     ...DEFAULT_SIZE,
     ...MIN_SIZE,

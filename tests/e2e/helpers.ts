@@ -47,6 +47,8 @@ export async function launchApp(
     ...(packagedApp ? { executablePath: packagedApp, args: [] } : { args: ['.'] }),
     env: {
       ...process.env,
+      // A packaged app ignores every DUGOUT_* override without this flag (decision 060).
+      DUGOUT_E2E: '1',
       DUGOUT_USER_DATA_DIR: userDataDir,
       // The welcome screen searches the home folder for repos; never the real one in tests.
       DUGOUT_HOME_DIR: makeTempDir('dugout-home-'),
@@ -419,6 +421,11 @@ const actions = {
   'stop-later': () =>
     setTimeout(() => fire('Stop', undefined, { last_assistant_message: 'Fixed the login bug.' }), 2500),
   exit: () => process.exit(0),
+  // Names (never values) of variables that look like credentials, to prove none reached the agent.
+  'secret-env': () =>
+    process.stdout.write(
+      'secret-env=' + JSON.stringify(Object.keys(process.env).filter((k) => /GITHUB|LINEAR|TOKEN/.test(k)).sort()) + '\r\n',
+    ),
   'subagent-start': (id, type) =>
     fire('SubagentStart', type, { agent_id: id, agent_type: type }),
   'subagent-stop': (id, type) =>

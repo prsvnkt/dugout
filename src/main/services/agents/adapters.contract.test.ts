@@ -34,10 +34,10 @@ describe.each(Object.entries(AGENT_ADAPTERS))('%s adapter contract', (kind, adap
     expect(adapter.commandVariable).toMatch(/^DUGOUT_[A-Z]+_COMMAND$/)
   })
 
-  test('takes its command from its own variable, or runs the default', () => {
+  test('runs its override command, or the default', () => {
     expect(agentCommands({})[adapter.info.kind]).toBe(adapter.defaultCommand)
-    const env = { [adapter.commandVariable]: '/opt/fake' }
-    expect(agentCommands(env)[adapter.info.kind]).toBe('/opt/fake')
+    const overrides = { [adapter.info.kind]: '/opt/fake' }
+    expect(agentCommands(overrides)[adapter.info.kind]).toBe('/opt/fake')
   })
 
   test.each(CASES)('launch line is plain "$VAR"s it provides (%o)', (flags) => {

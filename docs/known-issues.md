@@ -18,6 +18,22 @@ token, so Dugout's task tools fail to start there (closed, not open).
 **Likely fix:** pass the token to the MCP server over an inherited file descriptor or a one-time
 handshake instead of an env var, if the agent CLIs ever support it.
 
+## Packaged app: DUGOUT_E2E is a gate, not a boundary
+
+- **Area:** `src/main/devOverrides.ts`, `tests/e2e/helpers.ts`
+- **Found:** 2026-10-09, fixing #61 (decision 060)
+
+**What happens:** The packaged app ignores every test override unless `DUGOUT_E2E=1` is set, but
+that flag is an environment variable too: something running as the user can `launchctl setenv`
+it alongside other overrides. Base URLs are loopback only when packaged, so the remaining
+exposure is a listener on 127.0.0.1 receiving the token, which is already the user's own
+process space; it can also switch on plaintext token storage, fake agent commands or another
+data folder. The startup `console.warn` line names all of them (and says "PLAINTEXT TOKEN
+STORAGE"), but it is only visible in Console.app or a terminal.
+
+**Likely fix:** build the packaged e2e app with a build-time flag (or Electron fuse) so release
+builds contain no override code, and test that build.
+
 ## Windowed lists need one fixed row height; other long lists are not windowed
 
 - **Area:** `src/renderer/src/lib/useVirtualRows.ts`, `features/explorer/FileTree.tsx`
@@ -45,6 +61,19 @@ progress for its up to 10 minutes, and an interactive shell banner would end up 
 **Likely fix:** add `headless` to the Codex (`codex exec`) and OpenCode (`opencode run`) adapters
 once their stdout is checked to be the answer alone; refresh the tab with the existing change
 polling; stream the build's output into the tab.
+
+## Pinned folders: files past the first 2,000 are invisible to "Changed since pinned"
+
+- **Area:** `src/main/services/files/hashTree.ts`
+- **Found:** 2026-10-09, while unit-testing `hashTree` (issue #76)
+
+**What happens:** a pinned folder is hashed from at most `MAX_HASHED_FILES` (2,000) files, in
+sorted path order, skipping `.git` and `node_modules`. Changing, adding or deleting a file past
+that point leaves the hash unchanged, so the pin is not flagged. Files over 5 MB are hashed by
+size and modification time, so an edit that keeps both is missed too.
+
+**Likely fix:** fall back to a cheaper signal past the cap (every file's size and mtime, or
+`git ls-files -s` blob ids for tracked files), or tell the user the pin is too large to track.
 
 ## Task descriptions reach agents; only task writes are gated
 
@@ -352,18 +381,6 @@ visible cards; follow moved issues by their UUID.
 
 **Likely fix:** drop the `dompurify` override once monaco depends on a version past 3.4.15; check
 `npm ls dompurify` on every monaco upgrade, and the same for `global-agent` once #33 lands.
-
-## README demo GIF is 9.7 MB
-
-- **Area:** `docs/media/demo.gif`
-- **Found:** 2026-10-09, in the repo audit (#85)
-
-**What happens:** the edited README demo is 9,727,926 bytes, against the ~2 MB that
-`scripts/demo/makeGif.sh` expects. Every clone downloads it, and each new cut adds another copy
-to the history.
-
-**Likely fix:** re-encode the existing file in place with gifsicle (`-O3 --lossy=80 --colors 128`)
-or an ffmpeg palette pass at the same size and frame rate, or host it as a release asset.
 
 ## Git panel push skips pre-push hooks; repo http settings and filters still apply
 

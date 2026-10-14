@@ -6,7 +6,7 @@ import { parsePayload } from './validate'
 /** The part of Electron's `ipcMain` the handlers use; unit tests pass a fake. */
 export interface IpcMainLike {
   handle(channel: string, listener: (event: IpcMainInvokeEvent, payload: unknown) => unknown): void
-  on(channel: string, listener: (event: IpcMainEvent) => void): unknown
+  on(channel: string, listener: (event: IpcMainEvent, payload: unknown) => void): unknown
 }
 
 /**

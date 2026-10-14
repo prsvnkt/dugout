@@ -1325,6 +1325,46 @@ The e2e fake Codex now gives the MCP server only `PATH`, `HOME` and its `env_var
 so a missing forward fails the Codex task test. Same-user processes can still read each other's
 environments; see `docs/known-issues.md`.
 
+## 060 — Test and dev environment overrides are gated in the packaged app (2026-10-09)
+
+(059 is reserved for a parallel branch; this one is 060 on purpose.)
+
+**Context.** Variables meant for e2e tests and `npm run dev` were read unconditionally, so the
+installed app honoured them too: `DUGOUT_GITHUB_BASE_URL` / `DUGOUT_LINEAR_BASE_URL` (where the
+GitHub token and Linear key are sent), `DUGOUT_INSECURE_TOKEN_STORAGE_FOR_TESTS` (plaintext
+instead of Keychain), `DUGOUT_USER_DATA_DIR`, `DUGOUT_HOME_DIR`, `DUGOUT_OPEN_COMMAND`,
+`DUGOUT_GITHUB_CLIENT_ID`, `DUGOUT_<AGENT>_COMMAND` and `ELECTRON_RENDERER_URL` (loads any page
+with the privileged preload). An agent with a shell could `launchctl setenv` one of them and the
+next Dock launch would send the token elsewhere or hand a remote page the whole IPC (#61).
+
+**Decision.**
+
+- **One reader.** `src/main/devOverrides.ts` `readOverrides(env, { isPackaged })` reads every
+  override into a frozen, typed object; `index.ts` and `window.ts` take their values from it and
+  never read those variables from `process.env`.
+- **Packaged builds ignore them all** unless `DUGOUT_E2E=1` is also set. That flag is how
+  `npm run test:e2e:packaged` keeps testing the real artefact with its temp data folder, fake
+  agent CLIs, GitHub / Linear stubs and plaintext tokens; `launchApp` in `tests/e2e/helpers.ts`
+  sets it on every launch. Unpackaged (dev) runs behave as before.
+- **`ELECTRON_RENDERER_URL` is never honoured when packaged**, flag or not; the packaged e2e
+  run loads the bundled renderer anyway.
+- **Packaged base URLs are loopback only:** even with `DUGOUT_E2E=1`, `DUGOUT_GITHUB_BASE_URL`
+  and `DUGOUT_LINEAR_BASE_URL` must be `http://127.0.0.1:<port>` or `http://localhost:<port>`, so
+  the token can never be sent off the machine. Dev runs also accept `https://` hosts (a fork can
+  point a dev build at GitHub Enterprise). Credentials in the URL, other schemes and other hosts
+  (`http://evil`, `http://10.0.0.1`) are always ignored.
+- **Visible:** when any override is set, main logs one `console.warn` line naming the active and
+  the ignored ones, and it says "PLAINTEXT TOKEN STORAGE (not Keychain)" when that one is on.
+- `DUGOUT_GITHUB_CLIENT_ID` is gated too. A fork that wants its own OAuth app sets the
+  `GITHUB_CLIENT_ID` constant in `services/github/config.ts`.
+- Not overrides, so not gated: `CLAUDE_CONFIG_DIR` / `CODEX_HOME` (the agent CLIs' own variables,
+  which they honour themselves) and the environment passed through to shells and agents.
+
+**Why not a build-time switch.** Compiling the overrides out of release builds would mean
+`test:e2e:packaged` tests a different binary from the one shipped. `DUGOUT_E2E` on its own is
+only a gate, since it is an environment variable too; the loopback-only rule is what keeps a
+packaged build from sending a token elsewhere (see `docs/known-issues.md`).
+
 ## 061 — Agent settings and notifications read agents from their adapters (2026-10-13)
 
 **Context.** Decision 037 put every agent behind an adapter, but an audit (#67, #68) found the
@@ -1426,7 +1466,8 @@ fewer than 200 rows.
 29. **Done since:** keyboard navigation for editor tabs, the file tree and menus, and muted text
     at WCAG AA contrast ✅.
 30. **Done since:** each agent terminal gets its own hook token, kept out of MCP configs ✅.
-31. **Done since:** notifications, Agent settings and the welcome screen name agents from the
+31. **Done since:** test and dev environment overrides are ignored by the packaged app ✅.
+32. **Done since:** notifications, Agent settings and the welcome screen name agents from the
     registry; agent config goes through the adapters ✅.
-32. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
-33. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).
+33. **Done since:** the explorer stays fast with `node_modules` open (windowed rows) ✅.
+34. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38).

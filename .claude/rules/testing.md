@@ -26,6 +26,9 @@ paths:
 - E2E tests never run a real agent CLI (they need auth). Use plain shells, or the fakes in
   `tests/e2e/helpers.ts` (`makeFakeClaude` / `Codex` / `OpenCode`, via `DUGOUT_<AGENT>_COMMAND`),
   which run the generated hooks or the real OpenCode plugin.
+- Command lines Dugout types into the user's shell (adapter launch lines, hook commands, the CLI
+  check, worktree setup) are checked by `agents/shellCommandLines.contract.test.ts` for plain
+  `"$VAR"` expansions only (decision 013); add any new one to it.
 - Coverage target is 80% statements and lines, 75% branches and functions. `vitest.config.ts`
   `coverage.thresholds` enforces it for `src/main` and `src/shared`, and a lower whole-codebase
   floor (currently 61 / 63 / 55 / 64%) that includes renderer `.ts` logic; React views (`.tsx`)

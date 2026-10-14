@@ -74,7 +74,7 @@ interface SetupNext {
 }
 
 /** Runs the setup in the user's shell, as if typed there; plain "$VAR"s only (decision 013). */
-const SETUP_COMMAND_LINE = 'echo "$DUGOUT_SETUP_BANNER" && eval "$DUGOUT_SETUP_COMMAND"'
+export const SETUP_COMMAND_LINE = 'echo "$DUGOUT_SETUP_BANNER" && eval "$DUGOUT_SETUP_COMMAND"'
 const DIM = '\x1b[2m'
 const RED = '\x1b[31m'
 const RESET = '\x1b[0m'
