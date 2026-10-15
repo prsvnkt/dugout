@@ -22,6 +22,19 @@ describe('Markdown', () => {
     expect(html).not.toMatch(/<script|onerror|<img/i)
   })
 
+  it('draws only the images the resolver allows, and links the rest', () => {
+    const imageUrl = (src: string) => (src === 'a.png' ? 'dugout-file://checkout/a.png' : null)
+    const html = renderToStaticMarkup(
+      createElement(Markdown, {
+        text: '![local](a.png) ![remote](https://example.com/b.png) ![up](../c.png)',
+        imageUrl,
+      }),
+    )
+    expect(html).toContain('src="dugout-file://checkout/a.png"')
+    expect(html).toContain('href="https://example.com/b.png"')
+    expect(html.match(/<img/g)).toHaveLength(1)
+  })
+
   it('neutralises javascript: links', () => {
     const html = render('[click](javascript:alert(1)) and <javascript:alert(2)>')
     expect(html).not.toMatch(/href="javascript:/i)

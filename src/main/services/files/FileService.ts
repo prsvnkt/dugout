@@ -4,6 +4,7 @@ import {
   glob,
   lstat,
   mkdir,
+  open,
   readdir,
   readFile,
   realpath,
@@ -11,6 +12,7 @@ import {
   stat,
 } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
+import { Readable } from 'node:stream'
 import {
   MAX_DIR_ENTRIES,
   MAX_OPEN_FILE_BYTES,
@@ -26,6 +28,15 @@ import { hashTree } from './hashTree'
 
 export interface FileServiceDeps {
   readonly git: GitService
+}
+
+/** A regular file opened for reading by a viewer: its size, and its bytes as a stream. */
+export interface OpenedFile {
+  readonly size: number
+  /** Streams bytes `start` to `end` (inclusive), or the whole file; closes the file when done. */
+  stream(range?: { start: number; end: number }): ReadableStream<Uint8Array>
+  /** Closes the file without reading it (e.g. for a HEAD request or a refused range). */
+  close(): Promise<void>
 }
 
 export class FileConflictError extends Error {
@@ -137,6 +148,28 @@ export class FileService {
       content: isBinary ? '' : buffer.toString('utf8'),
       isBinary,
       isTooLarge: false,
+    }
+  }
+
+  /**
+   * Opens a regular file inside the checkout for streaming (the viewers' `dugout-file:`
+   * protocol), so a large video is never read into memory. Same path checks as every read.
+   */
+  async openRead(root: string, path: string): Promise<OpenedFile> {
+    const handle = await open(await this.resolveInside(root, path), 'r')
+    const info = await handle.stat().catch(async (error: unknown) => {
+      await handle.close()
+      throw error
+    })
+    if (!info.isFile()) {
+      await handle.close()
+      throw new Error(`${path} is not a file.`)
+    }
+    return {
+      size: info.size,
+      stream: (range) =>
+        Readable.toWeb(handle.createReadStream(range ?? {})) as ReadableStream<Uint8Array>,
+      close: () => handle.close(),
     }
   }
 

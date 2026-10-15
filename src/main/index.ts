@@ -11,6 +11,7 @@ import { describeOverrides, readOverrides } from './devOverrides'
 import { applyAppIcon } from './appIcon'
 import { sendCommand, tokenEncryption, type AppEnv } from './compose/appEnv'
 import { composeContext } from './compose/composeContext'
+import { registerFileScheme, serveFileProtocol } from './compose/composeFileProtocol'
 import { composeGit } from './compose/composeGit'
 import { composeGithub } from './compose/composeGithub'
 import { composeTasks } from './compose/composeTasks'
@@ -38,6 +39,8 @@ const userDataOverride =
 if (userDataOverride) app.setPath('userData', userDataOverride)
 
 trackUnsavedChanges()
+// The viewers' file scheme must be privileged before the app is ready (decision 067).
+registerFileScheme()
 
 function appEnv(): AppEnv {
   return {
@@ -99,6 +102,7 @@ async function start(): Promise<void> {
   const services = await composeServices(env)
   stopOnQuit(services.terminal, services.usage)
   registerAllIpc(env, services)
+  serveFileProtocol(services.projects, services.repo)
   installMenu(sendCommand, !app.isPackaged)
   openWindow()
   app.on('activate', () => {

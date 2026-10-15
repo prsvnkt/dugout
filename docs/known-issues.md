@@ -414,3 +414,19 @@ during status and diffs (Git LFS needs them).
 **Likely fix:** run Git LFS's upload (`git lfs pre-push`) without the token in its env, or ask
 before pushing when the repo has a `pre-push` hook; for push and fetch, override `http.*` for the
 GitHub host from Dugout's side (repo config can name a longer URL, so `-c` alone is not enough).
+
+## File viewers: PDFs without text, some codecs and PDF images missing
+
+- **Area:** `src/renderer/src/features/viewers/`, `src/main/services/viewers/`
+- **Found:** 2026-10-15, adding the viewers (decision 067)
+
+**What happens:** PDF pages are drawn to canvases without pdf.js's text layer, so text in a PDF
+cannot be selected, copied or searched. pdf.js runs without its WebAssembly decoders (the CSP
+has no `wasm-unsafe-eval`), so some JPEG 2000 or JBIG2 images inside PDFs may not draw. Videos
+play only in codecs Chromium ships (H.264, VP8/9, AV1): a `.mov` in HEVC or ProRes shows "could
+not be played". A PDF's pages are kept once drawn, so a very long PDF zoomed in uses more
+memory the further it is scrolled.
+
+**Likely fix:** add pdf.js's `TextLayer` (and find-in-page) over each canvas; serve the wasm
+decoders from `'self'` and allow `'wasm-unsafe-eval'` if PDFs with such images turn up; release
+canvases of pages far from the viewport.

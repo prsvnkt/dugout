@@ -27,3 +27,7 @@ paths:
 - The renderer CSP in `src/renderer/index.html` stays strict (`script-src 'self'`, `base-uri`,
   `form-action` and `frame-ancestors` all `'none'`). Permission requests are denied except
   `clipboard-sanitized-write`; `handleRequest` answers only the main frame.
+- File bytes for viewers come only over the `dugout-file:` protocol (decision 067): the URL
+  names a project and a repo-relative path, main resolves the checkout and reads through
+  `FileService.openRead`, and only the media types in `shared/viewers.ts` are served. The CSP
+  allows the scheme in `img-src`, `media-src` and `connect-src`, nowhere else.

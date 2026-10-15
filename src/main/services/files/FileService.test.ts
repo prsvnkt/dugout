@@ -329,3 +329,43 @@ describe('FileService.hashPath', () => {
     expect(await files.hashPath(root, 'src')).not.toBe(first)
   })
 })
+
+describe('FileService.openRead', () => {
+  test('streams a whole file, or a byte range of it', async () => {
+    // Arrange
+    const root = makeRepo()
+    writeFileSync(join(root, 'clip.mp4'), '0123456789')
+
+    // Act
+    const whole = await files.openRead(root, 'clip.mp4')
+    const part = await files.openRead(root, 'clip.mp4')
+
+    // Assert
+    expect(whole.size).toBe(10)
+    expect(await new Response(whole.stream()).text()).toBe('0123456789')
+    expect(await new Response(part.stream({ start: 2, end: 4 })).text()).toBe('234')
+  })
+
+  test('can be closed without reading', async () => {
+    const root = makeRepo()
+    writeFileSync(join(root, 'a.png'), 'x')
+
+    const opened = await files.openRead(root, 'a.png')
+
+    await expect(opened.close()).resolves.toBeUndefined()
+  })
+
+  test('refuses folders, symlinks out of the checkout and .git', async () => {
+    const root = makeRepo()
+    const outside = realpathSync(mkdtempSync(join(tmpdir(), 'dugout-files-outside-')))
+    writeFileSync(join(outside, 'secret.png'), 'secret')
+    symlinkSync(join(outside, 'secret.png'), join(root, 'link.png'))
+    mkdirSync(join(root, 'folder.png'))
+
+    await expect(files.openRead(root, 'link.png')).rejects.toThrow(/outside the project/)
+    await expect(files.openRead(root, '../secret.png')).rejects.toThrow(/outside the project/)
+    await expect(files.openRead(root, '.git/config')).rejects.toThrow(/\.git/)
+    await expect(files.openRead(root, 'folder.png')).rejects.toThrow(/not a file/)
+    await expect(files.openRead(root, 'missing.png')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+})
