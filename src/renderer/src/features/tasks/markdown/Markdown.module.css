@@ -133,6 +133,13 @@
   font-weight: 600;
 }
 
+/* Local images in a file's preview; tasks never draw images. */
+.image {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
 .unsafeLink {
   color: var(--text-secondary);
   text-decoration: underline dotted;

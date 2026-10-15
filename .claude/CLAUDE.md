@@ -70,12 +70,15 @@ src/
                 welcome/ (first-run repo search, agent CLI check),
                 checks/ (Verify on Stop: the project's check command after each Done),
                 context/ (project context for agents: .dugout/context/ entries, private notes,
-                proposals, pinned-file hashes, search, headless codemap).
+                proposals, pinned-file hashes, search, headless codemap),
+                viewers/ (the `dugout-file:` protocol handler and Range parsing that stream
+                media to the editor's viewers through FileService: decision 067).
     mcp/        The "dugout" MCP server agents use for tasks and project context (separate build
                 entry: mcp.js); its tools are listed in docs/mcp-tools.md.
     compose/    The composition root, split by domain (decision 065): index.ts `start()` calls
                 compose<Domain>() for GitHub, git, tasks, context, usage and terminals, then
-                registerIpc. Electron wiring only, excluded from coverage; logic belongs in services/.
+                registerIpc and the `dugout-file:` protocol (composeFileProtocol.ts). Electron
+                wiring only, excluded from coverage; logic belongs in services/.
     menu.ts     Native menu; owns all keyboard shortcuts and sends AppCommands to the renderer.
     window.ts   The main BrowserWindow (secure webPreferences, traffic lights); appIcon.ts sets
                 the Dock icon for unpackaged runs.
@@ -117,7 +120,9 @@ src/
               side by side), clone/ (clone dialog), github/ (sign-in, account), worktrees/
               (checkout picker), agentConfig/ (Agent settings tab), openIn/ ("Open in…" menu),
               projects/ (project tabs, colours), explorer/ (file tree), git/ (Git panel,
-              branches, pull request block), editor/ (Monaco tabs), terminal/ (xterm panes).
+              branches, pull request block), editor/ (Monaco tabs), terminal/ (xterm panes),
+              viewers/ (a file tab's viewer: Markdown preview with a Source toggle, images,
+              video, audio, and PDFs with pdf.js in viewers/pdf/, loaded lazily; decision 067).
               State lives in small Zustand stores per feature (projectsStore, workspaceStore);
               big stores are built from slices: workspace/ (workspaceState, paneLayoutSlice,
               paneRuntimeSlice, workspaceSnapshot) and editor/ (editorState, editorTabsSlice,
@@ -181,6 +186,10 @@ Process boundaries, IPC and security rules live in `.claude/rules/`.
   differently in zsh and bash and does not exist in fish.
 - **Store updates that change nothing must return the same object.** Panes report values from
   effects; returning a new object for an unchanged value causes an infinite render loop.
+- **The `dugout-file:` scheme is registered before `app.ready`** (`registerFileScheme()` at the
+  top of `main/index.ts`); Electron ignores it later. It serves only the media types listed in
+  `shared/viewers.ts`, so a new viewer type goes there, and the renderer CSP lists the scheme
+  in `img-src`, `media-src` and `connect-src` only (decision 067).
 - **Monaco loads lazily** (`features/editor/monaco/`). The eager editor store talks to it only
   through `editorBridge`; never import `monaco-editor` outside that folder.
 - **All file access goes through `FileService`**, which realpaths every path and refuses

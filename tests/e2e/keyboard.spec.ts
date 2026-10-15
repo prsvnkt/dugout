@@ -73,7 +73,7 @@ test('arrow keys move between editor tabs and show each one', async () => {
   await expect(tab(/notes\.md/)).toBeVisible()
   await treeItem('readme.md').dblclick()
   await expect(tab(/readme\.md/)).toHaveAttribute('aria-selected', 'true')
-  await expect(editor().getByRole('tabpanel')).toContainText('# Keys')
+  await expect(editor().getByRole('tabpanel')).toContainText('Keys')
   await tab(/readme\.md/).focus()
 
   // Act: Left goes to the previous tab and activates it, keeping focus on the tabs
@@ -84,7 +84,7 @@ test('arrow keys move between editor tabs and show each one', async () => {
   await expect(tab(/notes\.md/)).toHaveAttribute('aria-selected', 'true')
   await expect(tab(/notes\.md/)).toHaveAttribute('tabindex', '0')
   await expect(tab(/readme\.md/)).toHaveAttribute('tabindex', '-1')
-  await expect(editor().getByRole('tabpanel')).toContainText('# Notes')
+  await expect(editor().getByRole('tabpanel')).toContainText('Notes')
 
   // Left again wraps to the last tab; Home goes back to the first
   await page.keyboard.press('ArrowLeft')

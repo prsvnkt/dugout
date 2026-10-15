@@ -1512,6 +1512,62 @@ base64 or UTF-8 and oversized payloads are ignored. A failed write (e.g. the win
 focused) is only logged. Option+drag (`macOptionClickForcesSelection`) also makes a normal xterm
 selection, copied with Cmd+C, while an agent tracks the mouse.
 
+## 067 — File viewers: a `dugout-file:` protocol, pdf.js for PDFs (2026-10-15)
+
+**Context.** Every file opened in Monaco (#116): images, video and PDFs showed "Binary file — not
+shown", Markdown only as source. Media can be far bigger than the 5 MB text cap and needs
+seeking, so it cannot go through the `files.read` IPC as a string.
+
+**Decision.**
+
+- **Viewers per type** (`renderer/features/viewers/`, the table in `shared/viewers.ts`): Markdown
+  (`.md`, `.markdown`) opens as a rendered preview with a Preview / Source toggle; Source is the
+  same Monaco model, so dirty state, save and disk sync are unchanged, and unsaved edits show in
+  the preview. SVG gets the same toggle. Images (png, jpg, gif, webp, avif, bmp, ico, svg) fit the
+  tab or show at actual size, with dimensions; video (mp4, m4v, webm, mov) and audio (mp3, wav,
+  m4a, ogg) use the native controls; PDFs show scrolling pages with zoom. Only file tabs get
+  viewers; diffs stay in Monaco. The choice of Preview or Source is kept per file while the app
+  runs.
+- **Bytes come from a privileged custom scheme, `dugout-file://checkout/<repo-relative path>?
+project=<id>[&worktree=<path>][&v=<mtime>]`**, registered before `app.ready`
+  (`standard`, `secure`, `supportFetchAPI`, `stream`, `corsEnabled`) and served by
+  `services/viewers/fileProtocol.ts` through `protocol.handle` (`compose/composeFileProtocol.ts`).
+  The URL names a project and a path, never a folder: main resolves the checkout with
+  `WorktreeManager.resolveCheckout` (unknown project or foreign worktree: 403) and opens the file
+  with the new `FileService.openRead` (realpath, inside the checkout, never `.git`, regular files
+  only: decision 063). The path is also validated as `repoRelativePath` when the URL is parsed
+  (400). Only the media types in the table are served (415), so source files, `.env` and Markdown
+  stay behind the files IPC. Files stream from an open file handle with single-range `Range`
+  support (206 / 416), so a large video is never read into memory and seeking works. Responses
+  carry `nosniff`, `Cache-Control: no-store` and `Content-Security-Policy: default-src 'none';
+sandbox` (an SVG opened as a document could not run script), and `Access-Control-Allow-Origin:
+*` so pdf.js can fetch ranges from the renderer's `file://` (or dev server) origin; nothing
+  else can reach the scheme, since navigation and new windows stay blocked. The `v` (mtime)
+  parameter reloads a viewer when an agent changes the file.
+- **Why a protocol, not IPC.** An IPC call returns the whole file as one message, so it would
+  need a cap (the issue rules out loading a big video) and `<video>` could not seek. A blob URL
+  built from IPC chunks has the same memory problem. The protocol streams, and `<img>`,
+  `<video>`, `<audio>` and pdf.js all use plain URLs.
+- **CSP, narrowly:** `img-src` and the new `media-src` and `connect-src` gain `dugout-file:` only
+  (`connect-src 'self' dugout-file:` for pdf.js; `'self'` keeps what `default-src` allowed). No
+  `frame-src`, no `'unsafe-eval'`, no `'wasm-unsafe-eval'`; `webPreferences` are unchanged.
+- **Markdown images** resolve relative paths (and `/root-relative` ones, as on GitHub) against the
+  Markdown file (`viewers/markdownImages.ts`) to a `dugout-file:` URL; anything that climbs out
+  of the checkout, has a scheme (`https:`, `data:`, `file:`), points into `.git` or is not an
+  image stays a link, as in task cards. The renderer is still `tasks/markdown/Markdown` (no raw
+  HTML, `safeLink.ts`), with an optional `imageUrl` resolver; tasks pass none.
+- **PDFs use pdf.js (`pdfjs-dist` 6.3.289, Apache-2.0), not Chromium's viewer.** The built-in
+  viewer needs `webPreferences.plugins: true` and an `<iframe>`/`<embed>` (so a `frame-src`),
+  and runs as a separate extension page we cannot style or test well. pdf.js loads lazily like
+  Monaco (its own chunk, a devDependency per decision 052), its worker is a same-origin module
+  allowed by the existing `worker-src 'self'`, it needs no `eval`, and it fetches byte ranges from
+  the protocol (`disableAutoFetch`). Pages draw to canvases as they scroll near the viewport.
+  WebAssembly decoders are off (`useWasm: false`), so the CSP needs no `wasm-unsafe-eval`.
+
+**Limits** (`docs/known-issues.md`): no text selection or search in PDFs (no text layer), some
+JPEG 2000 / JBIG2 images in PDFs may not draw without the wasm decoders, and `.mov` / `.m4v` play
+only when Chromium has the codec (H.264, not HEVC or ProRes).
+
 ## Roadmap
 
 1. **Now:** one terminal running Claude Code or a shell in a chosen folder. ✅
@@ -1569,5 +1625,7 @@ selection, copied with Cmd+C, while an agent tracks the mouse.
 35. **Done since:** the composition root and the big stores split into focused modules ✅.
 36. **Done since:** copying from agent terminals: OSC 52 copies reach the clipboard (write-only),
     and Option+drag selects ✅.
-37. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38), following
+37. **Done since:** viewers in the editor: Markdown preview with a Source toggle, images, video,
+    audio and PDFs ✅.
+38. **Next:** more agents (Gemini CLI, Cursor CLI, Amp, …), one adapter each (#38), following
     [adding-an-agent.md](adding-an-agent.md).

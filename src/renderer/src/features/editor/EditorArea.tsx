@@ -12,6 +12,8 @@ import { ReviewComments } from '@renderer/features/reviewComments/ReviewComments
 import { TaskDetailView } from '@renderer/features/tasks/TaskDetailView'
 import { TimelineView } from '@renderer/features/timeline/TimelineView'
 import { UsageView } from '@renderer/features/usage/UsageView'
+import { FileViewer } from '@renderer/features/viewers/FileViewer'
+import { viewerFor } from '@renderer/features/viewers/viewerInfo'
 import { Icon } from '@renderer/lib/Icon'
 import { useArrowNavigation } from '@renderer/lib/useArrowNavigation'
 import { useEditorStore, useProjectTabs, type FileBuffer } from './editorStore'
@@ -270,23 +272,35 @@ function ActiveTabPanel({ projectId, active, panelId, labelledBy }: ActiveTabPan
   const diff = useEditorStore((state) => state.diffs[active.id])
   const needsBuffer = !VIEW_TABS.has(active.kind) && (active.kind === 'file' || !active.staged)
   const isEditable = buffer?.content.kind === 'text'
+  const viewer = active.kind === 'file' && buffer ? viewerFor(active.path, buffer.content) : null
+  const editor = (
+    <Suspense fallback={<p className={styles.notice}>Loading editor…</p>}>
+      <EditorSurface
+        projectId={projectId}
+        tab={active}
+        fileKey={fileKey}
+        modelRevision={buffer?.revision ?? 0}
+        diff={diff}
+      />
+    </Suspense>
+  )
   return (
     <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={labelledBy}>
       {buffer && needsBuffer && <DiskBanner buffer={buffer} />}
       {hasView(active) ? (
         <TabView projectId={projectId} tab={active} />
+      ) : viewer && buffer ? (
+        <FileViewer
+          checkout={buffer.checkout}
+          path={active.path}
+          kind={viewer}
+          buffer={buffer}
+          source={editor}
+        />
       ) : needsBuffer && !isEditable ? (
         <Notice buffer={buffer} />
       ) : (
-        <Suspense fallback={<p className={styles.notice}>Loading editor…</p>}>
-          <EditorSurface
-            projectId={projectId}
-            tab={active}
-            fileKey={fileKey}
-            modelRevision={buffer?.revision ?? 0}
-            diff={diff}
-          />
-        </Suspense>
+        editor
       )}
       {active.kind === 'diff' && (
         <ReviewComments

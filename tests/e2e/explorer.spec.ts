@@ -20,7 +20,7 @@ function makeRepo(): string {
   mkdirSync(join(root, 'src'), { recursive: true })
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root })
   writeFileSync(join(root, 'src', 'app.ts'), 'export const answer = 41\n')
-  writeFileSync(join(root, 'readme.md'), '# App\n')
+  writeFileSync(join(root, 'notes.txt'), '# App\n')
   return root
 }
 
@@ -85,46 +85,46 @@ test('edits are saved to disk', async () => {
 })
 
 test('an open file reloads when an agent changes it on disk', async () => {
-  await openFromExplorer('readme.md')
+  await openFromExplorer('notes.txt')
   await expect(editor()).toContainText('# App')
 
-  writeFileSync(join(repo, 'readme.md'), '# App\n\nEdited by an agent\n')
+  writeFileSync(join(repo, 'notes.txt'), '# App\n\nEdited by an agent\n')
 
   await expect(editor()).toContainText('Edited by an agent', { timeout: 10_000 })
 })
 
 test('unsaved edits are protected when the file changes on disk', async () => {
-  await openFromExplorer('readme.md')
+  await openFromExplorer('notes.txt')
   await expect(editor()).toContainText('# App')
   await typeInEditor('my unsaved line')
 
-  writeFileSync(join(repo, 'readme.md'), '# Agent version\n')
+  writeFileSync(join(repo, 'notes.txt'), '# Agent version\n')
 
   await expect(editor().getByRole('alert')).toContainText('Changed on disk', { timeout: 10_000 })
   await editor().getByRole('button', { name: 'Keep mine' }).click()
   await clickMenuItem(app, 'File', 'Save')
   await expect
-    .poll(() => readFileSync(join(repo, 'readme.md'), 'utf8'))
+    .poll(() => readFileSync(join(repo, 'notes.txt'), 'utf8'))
     .toContain('my unsaved line')
 })
 
 test('closing a tab with unsaved edits asks first', async () => {
-  await openFromExplorer('readme.md')
+  await openFromExplorer('notes.txt')
   await typeInEditor('draft')
 
   await editor()
-    .getByRole('button', { name: /Close readme\.md \(unsaved\)/ })
+    .getByRole('button', { name: /Close notes\.txt \(unsaved\)/ })
     .click()
-  await expect(editor().getByRole('alertdialog')).toContainText('Save changes to readme.md?')
+  await expect(editor().getByRole('alertdialog')).toContainText('Save changes to notes.txt?')
   await editor().getByRole('button', { name: 'Don’t Save' }).click()
 
   await expect(editor()).toBeHidden()
-  expect(readFileSync(join(repo, 'readme.md'), 'utf8')).toBe('# App\n')
+  expect(readFileSync(join(repo, 'notes.txt'), 'utf8')).toBe('# App\n')
 })
 
 test('⌘W closes the editor tab when the editor has focus, otherwise the pane', async () => {
   await clickMenuItem(app, 'File', 'New Shell')
-  await openFromExplorer('readme.md')
+  await openFromExplorer('notes.txt')
   await editor().locator('.monaco-editor .view-lines').click()
 
   await clickMenuItem(app, 'File', 'Close Tab, Agent or Shell')
